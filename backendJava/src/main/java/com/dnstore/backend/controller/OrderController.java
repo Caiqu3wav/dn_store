@@ -38,13 +38,13 @@ public class OrderController {
 
     /**
      * GET /api/orders/{id}
-     * (Simulado: Em app real buscaria no DB via Service)
+     * Busca um pedido pelo ID.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<String> getOrder(@PathVariable Long id) {
-        // Mock de demonstração, já que OrderService não tem persistencia de histórico na memória ainda
-        // Para o vídeo, focar no Checkout.
-        return ResponseEntity.ok("Detalhes do pedido " + id + " (Simulação: Implementar persistência para visualizar histórico)");
+    public ResponseEntity<?> getOrder(@PathVariable Long id) {
+        return orderService.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // DTOs auxiliares

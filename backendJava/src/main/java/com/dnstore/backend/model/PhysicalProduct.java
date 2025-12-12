@@ -16,17 +16,20 @@ import java.math.BigDecimal;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
+@Entity
+@PrimaryKeyJoinColumn(name = "product_id")
 public class PhysicalProduct extends Product {
-    
-    private double weightKg; // Peso em Quilos
+    private double weight;
+    private double width;
+    private double height;
+    private double depth;
 
-    public PhysicalProduct(Long id, String name, BigDecimal price, String imageUrl, double weightKg) {
-        super(id, name, price, imageUrl);
-        this.weightKg = weightKg;
-    }
-
-    @Override
-    public double getShippingWeight() {
-        return this.weightKg;
+    public PhysicalProduct(Long id, String name, String description, BigDecimal price, String imageUrl, double weight, double width, double height, double depth) {
+        super(id, name, description, price, imageUrl);
+        this.weight = weight;
+        this.width = width;
+        this.height = height;
+        this.depth = depth;
     }
 }

@@ -1,66 +1,71 @@
 package com.dnstore.backend.service;
 
+import com.dnstore.backend.exception.DeliveryException;
+import com.dnstore.backend.service.impl.ViaCepResponse;
 import com.dnstore.backend.service.strategy.DeliveryStrategy;
 import com.dnstore.backend.service.strategy.DeliveryStrategy.DeliveryResult;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
  * 🚚 DeliveryService (Serviço de Entregas)
  * 
- * Responsável por:
- * 1. Validar o CEP via API Externa (ViaCEP).
- * 2. Selecionar a Estratégia de Frete correta (SEDEX ou PAC).
- * 3. Calcular custos.
- * 
- * Conceito: Service Layer e Integração.
+ * Responsável por orquestrar o cálculo de frete:
+ * 1. Valida e enriquece o CEP via Serviço dedicado (ZipCodeService).
+ * 2. Determina a distância baseada na região (UF).
+ * 3. Delega o cálculo final para a estratégia selecionada.
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DeliveryService {
 
-    private final RestTemplate restTemplate;
-    // O Spring injeta TODAS as implementações de DeliveryStrategy em um Map!
-    // A chave é o nome do componente (ex: "SEDEX", "PAC").
+    private final ZipCodeService zipCodeService;
     private final Map<String, DeliveryStrategy> strategies;
+    
+    private static final Map<String, Integer> STATE_DISTANCES = new HashMap<>();
+
+    static {
+        // Tabela de Zonas (Em produção, isso viria de um Banco de Dados)
+        // Distância do Centro de Distribuição (ex: SP) em km
+        STATE_DISTANCES.put("SP", 50);
+        STATE_DISTANCES.put("RJ", 400);
+        STATE_DISTANCES.put("MG", 600);
+        STATE_DISTANCES.put("ES", 800);
+        STATE_DISTANCES.put("PR", 700);
+        STATE_DISTANCES.put("SC", 850);
+        STATE_DISTANCES.put("RS", 1000);
+        STATE_DISTANCES.put("DF", 1000);
+    }
 
     public DeliveryResult calculateShipping(String zipCode, double weight, String strategyName) {
-        // 1. Validar CEP (Simulação de chamada real)
-        validateZipCode(zipCode);
-        
-        // 2. Simular distância baseada no estado (simplificado para demo)
-        // Em um app real, usaríamos o UF retornado pelo ViaCEP para consultar uma tabela de distâncias.
-        int simulatedDistance = getSimulatedDistance(zipCode);
+        log.info("Calculando frete para CEP: {}, Estratégia: {}", zipCode, strategyName);
 
-        // 3. Selecionar Estratégia
+        // 1. Chamada de Serviço Externo (Validação e Enriquecimento)
+        ViaCepResponse address = zipCodeService.getAddress(zipCode);
+
+        // 2. Cálculo de Distância baseado na Zona (UF)
+        int distance = getDistanceFromState(address.getUf());
+        log.debug("Distância derivada para o estado {}: {}km", address.getUf(), distance);
+
+        // 3. Seleção de Estratégia
         DeliveryStrategy strategy = strategies.get(strategyName.toUpperCase());
         if (strategy == null) {
-            throw new IllegalArgumentException("Tipo de frete inválido: " + strategyName);
+            log.error("Estratégia não encontrada: {}", strategyName);
+            throw new DeliveryException("Estratégia de entrega inválida: " + strategyName);
         }
 
-        // 4. Executar cálculo (Polimorfismo em ação!)
-        return strategy.calculate(weight, simulatedDistance);
+        // 4. Execução do Cálculo
+        return strategy.calculate(weight, distance);
     }
-    
-    private void validateZipCode(String zipCode) {
-        String url = "https://viacep.com.br/ws/" + zipCode + "/json/";
-        try {
-            // Se o request falhar, lança exceção
-            String result = restTemplate.getForObject(url, String.class);
-            if (result != null && result.contains("\"erro\": true")) {
-                throw new IllegalArgumentException("CEP não encontrado.");
-            }
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Erro ao validar CEP: " + e.getMessage());
-        }
-    }
-    
-    private int getSimulatedDistance(String zipCode) {
-        // Simplificado: CEPs de SP (01xxx) são pertos, outros longe
-        if (zipCode.startsWith("0")) return 50; 
-        return 800;
+
+    private int getDistanceFromState(String uf) {
+        // Se UF desconhecida, assume longa distância (Frete Nacional)
+        if (uf == null) return 2000; 
+        return STATE_DISTANCES.getOrDefault(uf.toUpperCase(), 2000); 
     }
 }

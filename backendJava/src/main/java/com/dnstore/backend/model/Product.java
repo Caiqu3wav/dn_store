@@ -1,15 +1,16 @@
+```java
 package com.dnstore.backend.model;
 
-import lombok.AllArgsConstructor;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 
 /**
- * 📦 Classe Abstrata Product
+ * 📦 Classe Product
  * 
  * Representa um produto genérico no sistema.
- * Utilizamos 'abstract' para garantir que apenas produtos concretos (Físicos, Digitais) sejam instanciados.
+ * Esta classe é uma entidade JPA e serve como base para produtos concretos (Físicos, Digitais).
  * 
  * Conceitos de POO:
  * - Abstração: Define o modelo base.

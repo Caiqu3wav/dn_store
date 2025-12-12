@@ -7,25 +7,29 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * 📦 Order (Pedido)
- * 
- * Representa o recibo final de uma compra.
- * É Imutável conceitualmente após criado (Snapshot).
- */
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "orders") // "order" é palavra reservada em SQL
 public class Order {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    
     private LocalDateTime createdAt;
-    private List<CartItem> items; // Snapshot dos itens
+    
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id")
+    private List<OrderItem> items; // Mudança de CartItem para OrderItem
+    
     private BigDecimal productsTotal;
     private BigDecimal entregaCusto;
-    private int entregaDias;
+    private Integer entregaDias;
     private String entregaTipo;
     private BigDecimal granTotal;
-    
-    // Status do pedido (Enum seria ideal, string por simplicidade)
-    @Builder.Default
-    private String status = "CONFIRMED"; 
+    private String status;
 }
+```
