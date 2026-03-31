@@ -8,27 +8,49 @@ import { EventsTeaser } from "./components/home/EventsTeaser";
 import { PaymentMethods } from "./components/home/PaymentMethods";
 
 export default function Home() {
-  // Dynamically checking for desafionatureza images in the public/assets directory
   let brandImages: string[] = [];
+  let heroImages: string[] = [];
+  
   try {
     const assetsDir = path.join(process.cwd(), 'public', 'assets');
     const files = fs.readdirSync(assetsDir);
-    const matched = files
+    
+    // Check for Brand images
+    const matchedBrand = files
       .filter(f => f.startsWith('desafionatureza') && (f.endsWith('.jpg') || f.endsWith('.png') || f.endsWith('.jpeg') || f.endsWith('.webp')))
       .sort();
-      
-    if (matched.length > 0) {
-      brandImages = matched.map(f => `/assets/${f}`);
-    } else {
-      brandImages = ['/assets/desafionatureza1.jpg']; // Fallback explicit path
+    brandImages = matchedBrand.length > 0 
+      ? matchedBrand.map(f => `/assets/${f}`) 
+      : ['/assets/desafionatureza1.jpg'];
+
+    // Check for Hero images in the nested "dn" folder
+    try {
+      const dnAssetsDir = path.join(process.cwd(), 'public', 'assets', 'dn');
+      if (fs.existsSync(dnAssetsDir)) {
+        const dnFiles = fs.readdirSync(dnAssetsDir);
+        const matchedHero = dnFiles
+          .filter(f => (f.endsWith('.jpg') || f.endsWith('.png') || f.endsWith('.jpeg') || f.endsWith('.webp') || f.endsWith('.jfif')))
+          .sort();
+        if (matchedHero.length > 0) {
+          heroImages = matchedHero.map(f => `/assets/dn/${f}`);
+        }
+      }
+    } catch (e) {
+      console.error("Error reading dn folder", e);
     }
+
+    if (heroImages.length === 0) {
+      heroImages = ['/assets/bg_hero.png']; // Default fallback
+    }
+
   } catch (e) {
-    brandImages = ['/assets/desafionatureza1.jpg']; // Fallback
+    brandImages = ['/assets/desafionatureza1.jpg'];
+    heroImages = ['/assets/bg_hero.png'];
   }
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <Hero />
+      <Hero images={heroImages} />
       <FeaturedProducts />
       <Categories />
       <BrandSection images={brandImages} />

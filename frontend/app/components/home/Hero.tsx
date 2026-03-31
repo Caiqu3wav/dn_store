@@ -1,26 +1,57 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronDown } from 'lucide-react';
 
-export function Hero() {
+interface HeroProps {
+    images?: string[];
+}
+
+export function Hero({ images = [] }: HeroProps) {
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    const safeImages = images.length > 0 ? images : ['/assets/bg_hero.png'];
+
+    // Auto-play for carousel
+    useEffect(() => {
+        if (safeImages.length > 1) {
+            const timer = setInterval(() => {
+                setCurrentIndex((prev) => (prev + 1) % safeImages.length);
+            }, 6000); // 6 seconds per slide
+            return () => clearInterval(timer);
+        }
+    }, [safeImages.length]);
+
     return (
         <section className="relative h-screen w-full flex items-center justify-center overflow-hidden">
-            {/* Background Image */}
-            <div className="absolute inset-0 z-0">
-                <Image
-                    src="/assets/bg_hero.png"
-                    alt="Mountain biking background"
-                    fill
-                    priority
-                    className="object-cover object-center"
-                />
-                <div className="absolute inset-0 bg-black/60" />
+            {/* Background Image Carousel */}
+            <div className="absolute inset-0 z-0 bg-black">
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={currentIndex}
+                        initial={{ opacity: 0, scale: 1.05 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 1.2, ease: "easeInOut" }}
+                        className="absolute inset-0"
+                    >
+                        <Image
+                            src={safeImages[currentIndex]}
+                            alt={`DN Store Background ${currentIndex + 1}`}
+                            fill
+                            priority={currentIndex === 0}
+                            className="object-cover object-center"
+                        />
+                    </motion.div>
+                </AnimatePresence>
+                {/* Dark Overlay to make text and logo pop */}
+                <div className="absolute inset-0 bg-black/60 z-10" />
             </div>
 
-            <div className="relative z-10 flex flex-col items-center container mx-auto px-4 text-center text-white mt-16">
+            <div className="relative z-20 flex flex-col items-center container mx-auto px-4 text-center text-white mt-16">
                 
                 {/* Logo Overlay */}
                 <motion.div
@@ -55,6 +86,25 @@ export function Hero() {
                 >
                     Performance, tecnologia e estilo puro para quem domina as montanhas de bicicleta.
                 </motion.p>
+                
+                {/* Carousel Indicators (Optional visual cue) */}
+                {safeImages.length > 1 && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.8 }}
+                        className="flex items-center gap-2 mt-12"
+                    >
+                        {safeImages.map((_, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => setCurrentIndex(idx)}
+                                className={`h-1.5 rounded-full transition-all ${idx === currentIndex ? 'w-8 bg-brand-secondary' : 'w-2 bg-white/40 hover:bg-white/60'}`}
+                                aria-label={`Ir para a imagem ${idx + 1}`}
+                            />
+                        ))}
+                    </motion.div>
+                )}
             </div>
 
             {/* Scroll Down Arrow Indicator */}
@@ -62,7 +112,7 @@ export function Hero() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.8, duration: 1 }}
-                className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center"
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center z-20"
             >
                 <Link 
                     href="#destaques"
