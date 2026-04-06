@@ -4,15 +4,15 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Calendar, MapPin, ExternalLink, Timer } from 'lucide-react';
-import { NEXT_EVENT } from '../../../lib/data';
+import { EVENTS, NEXT_EVENT } from '../../../lib/data';
 
 export function EventsTeaser() {
     return (
         <section className="py-24 bg-brand-primary text-white relative overflow-hidden">
             <div className="container mx-auto px-4 lg:px-8 relative z-10">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
                     
-                    {/* Left: Banner & Text */}
+                    {/* Left: Banner, Text and Upcoming Events List */}
                     <motion.div
                         initial={{ opacity: 0, x: -30 }}
                         whileInView={{ opacity: 1, x: 0 }}
@@ -30,7 +30,21 @@ export function EventsTeaser() {
                         <p className="text-gray-400 text-lg mb-8 leading-relaxed max-w-xl">
                             A verdadeira adrenalina acontece nas trilhas. Participe do nosso circuito anual e conecte-se com ciclistas que compartilham da mesma paixão que você.
                         </p>
-                        
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                            {EVENTS.map((event) => (
+                                <div key={event.id} className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur-sm">
+                                    <span className="text-xs uppercase tracking-[0.3em] text-brand-secondary font-bold">
+                                        {event.date}
+                                    </span>
+                                    <h3 className="text-xl font-black mt-3 leading-tight">
+                                        {event.name}
+                                    </h3>
+                                    <p className="text-sm text-gray-200 mt-2">{event.location}</p>
+                                </div>
+                            ))}
+                        </div>
+
                         <div className="hidden lg:block">
                             <div className="relative w-full h-64 rounded-3xl overflow-hidden">
                                 <Image 
