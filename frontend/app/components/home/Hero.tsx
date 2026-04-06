@@ -105,14 +105,12 @@ export function Hero({ images = [] }: HeroProps) {
                         ))}
                     </motion.div>
                 )}
-            </div>
-
-            {/* Scroll Down Arrow Indicator */}
+                {/* Scroll Down Arrow Indicator */}
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.8, duration: 1 }}
-                className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center z-20"
+                className="mt-8 flex flex-col items-center z-20"
             >
                 <Link 
                     href="#destaques"
@@ -128,6 +126,9 @@ export function Hero({ images = [] }: HeroProps) {
                     </motion.div>
                 </Link>
             </motion.div>
+            </div>
+
+            
         </section>
     );
 }
