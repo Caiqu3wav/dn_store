@@ -1,4 +1,4 @@
-.header {
+.navbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -58,4 +58,14 @@
 
 .right {
   gap: 15px;
+}
+
+.text-link {
+  font-weight: bold;
+}
+
+.icon{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
