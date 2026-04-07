@@ -11,6 +11,7 @@ background-image: url('../Images/mb.jpg');
 
 .hero-text h1 {
   font-size: 48px;
+
 }
 
 .hero-text p {
@@ -23,6 +24,7 @@ background-image: url('../Images/mb.jpg');
   background: white;
   border: none;
   cursor: pointer;
+  
 }
 .logo {
   width: 100px;

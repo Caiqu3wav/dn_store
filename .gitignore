@@ -137,6 +137,7 @@ out/
 !.vscode/launch.json
 !.vscode/extensions.json
 *.code-workspace
+TODO.md
 
 # NetBeans
 /nbproject/private/

@@ -1,4 +1,6 @@
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Provider } from "./components/ui/provider"
+
 
 import Home from "./pages/Home";
 import Login from "./pages/Auth/Login";
@@ -9,22 +11,22 @@ import Header from "./components/Header";
 
 
 function App() {
-  
+
 
   return (
-    
-    <BrowserRouter>
-      <Header/>
-      <Routes>
-     
-        <Route path="/" element={<Home />} />
+    <Provider>
+      <BrowserRouter>
+        <Header />
+        <Routes>
+          <Route path="/" element={<Home />} />
 
-        <Route path="/login" element={<Login />} />
-        <Route path="/cadastro" element={<Register />} />
-        <Route path="/recuperar" element={<ForgotPassword />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/cadastro" element={<Register />} />
+          <Route path="/recuperar" element={<ForgotPassword />} />
 
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </Provider>
   );
 }
 
