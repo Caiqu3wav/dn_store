@@ -7,12 +7,13 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 🥫 ProductService
- * 
+ *
  * Gerencia o catálogo de produtos.
- * Utiliza Postgres via JPA Repository.
+ * Utiliza MySQL via JPA Repository.
  */
 @Service
 @RequiredArgsConstructor
@@ -25,7 +26,7 @@ public class ProductService {
         return productRepository.findAll();
     }
 
-    public Optional<Product> findById(Long id) {
+    public Optional<Product> findById(UUID id) {
         return productRepository.findById(id);
     }
 
@@ -35,7 +36,7 @@ public class ProductService {
     }
 
     // --- U: Update ---
-    public Optional<Product> update(Long id, Product updatedData) {
+    public Optional<Product> update(UUID id, Product updatedData) {
         return productRepository.findById(id).map(existing -> {
             existing.setName(updatedData.getName());
             existing.setPrice(updatedData.getPrice());
@@ -47,17 +48,11 @@ public class ProductService {
     }
 
     // --- D: Delete ---
-    public boolean delete(Long id) {
+    public boolean delete(UUID id) {
         if (productRepository.existsById(id)) {
             productRepository.deleteById(id);
             return true;
         }
         return false;
-    }
-}
-
-    // --- D: Delete ---
-    public boolean delete(Long id) {
-        return products.removeIf(p -> p.getId().equals(id));
     }
 }

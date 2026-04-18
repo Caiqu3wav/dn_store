@@ -10,10 +10,11 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 🛒 ProductController - REST Completo
- * 
+ *
  * API para gerenciamento de catálogo.
  * Suporta GET (Lista/Detalhe), POST (Criar), PUT (Web Atualizar), DELETE (Remover).
  */
@@ -38,7 +39,7 @@ public class ProductController {
      * GET /api/products/{id}
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getById(@PathVariable Long id) {
+    public ResponseEntity<Product> getById(@PathVariable UUID id) {
         return productService.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -51,13 +52,13 @@ public class ProductController {
     @PostMapping
     public ResponseEntity<Product> create(@RequestBody PhysicalProduct product) {
         Product created = productService.create(product);
-        
+
         // Retorna 201 Created com Header Location
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(created.getId())
                 .toUri();
-        
+
         return ResponseEntity.created(location).body(created);
     }
 
@@ -66,7 +67,7 @@ public class ProductController {
      * PUT /api/products/{id}
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Product> update(@PathVariable Long id, @RequestBody PhysicalProduct product) {
+    public ResponseEntity<Product> update(@PathVariable UUID id, @RequestBody PhysicalProduct product) {
         return productService.update(id, product)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -77,7 +78,7 @@ public class ProductController {
      * DELETE /api/products/{id}
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
         if (productService.delete(id)) {
             return ResponseEntity.noContent().build();
         }
