@@ -34,6 +34,10 @@ public class User implements UserDetails {
     @Column(length = 20)
     private String phone;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Role role = Role.USER;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -45,7 +49,7 @@ public class User implements UserDetails {
     // UserDetails implementation for Spring Security
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
     @Override
