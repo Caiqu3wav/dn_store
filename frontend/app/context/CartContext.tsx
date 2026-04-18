@@ -24,19 +24,17 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-    const [items, setItems] = useState<CartItem[]>([]);
-
-    // Load cart from localStorage on mount
-    useEffect(() => {
+    const [items, setItems] = useState<CartItem[]>(() => {
         const savedCart = localStorage.getItem('cart');
-        if (savedCart) {
-            try {
-                setItems(JSON.parse(savedCart));
-            } catch (e) {
-                console.error('Failed to parse cart', e);
-            }
-        }
-    }, []);
+                if (savedCart) {
+                    try {
+                        return JSON.parse(savedCart);
+                    } catch (e) {
+                        console.error('Failed to parse cart', e);
+                    }
+                }
+                return [];
+    });
 
     // Save cart to localStorage whenever it changes
     useEffect(() => {
@@ -46,7 +44,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const addItem = (newItem: CartItem) => {
         setItems((currentItems) => {
             const existingItem = currentItems.find((item) => item.id === newItem.id && item.size === newItem.size);
-            if (existingItem) {
+            if (existingItem && existingItem.price < 1) {
                 return currentItems.map((item) =>
                     item.id === newItem.id && item.size === newItem.size
                         ? { ...item, quantity: item.quantity + newItem.quantity }

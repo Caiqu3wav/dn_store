@@ -1,33 +1,50 @@
 package com.dnstore.backend.model;
 
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
+import java.util.UUID;
 
 /**
  * 🛒 CartItem (Item do Carrinho)
- * 
- * Representa a associação entre um Produto e a Quantidade desejada.
- * Calcula seu próprio subtotal.
+ *
+ * JPA Entity representing an item in a shopping cart.
+ * Associates a product variant with quantity and belongs to a cart.
  */
+@Entity
+@Table(name = "cart_items")
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class CartItem {
-    private Product product;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cart_id", nullable = false)
+    private Cart cart;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_variant_id", nullable = false)
+    private ProductVariant productVariant;
+
+    @Column(nullable = false)
     private int quantity;
 
     /**
      * Encapsula a lógica de cálculo do subtotal.
      */
     public BigDecimal getSubtotal() {
-        if (product == null) return BigDecimal.ZERO;
-        return product.getPrice().multiply(new BigDecimal(quantity));
+        if (productVariant == null || productVariant.getProduct() == null) return BigDecimal.ZERO;
+        return productVariant.getProduct().getPrice().multiply(new BigDecimal(quantity));
     }
-    
+
     public double getTotalWeight() {
-        if (product == null) return 0.0;
-        return product.getShippingWeight() * quantity;
+        if (productVariant == null || productVariant.getProduct() == null) return 0.0;
+        return productVariant.getProduct().getShippingWeight() * quantity;
     }
 }

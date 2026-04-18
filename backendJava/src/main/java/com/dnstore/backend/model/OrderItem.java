@@ -1,43 +1,60 @@
 package com.dnstore.backend.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.math.BigDecimal;
+import lombok.Setter;
+import lombok.Getter;
+import org.hibernate.annotations.GenericGenerator;
 
-@Data
+import java.math.BigDecimal;
+import java.util.UUID;
+
+@Getter
+@Setter
 @NoArgsConstructor
 @Entity
 @Table(name = "order_items")
 public class OrderItem {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(generator = "UUID")
+    @GenericGenerator(name="UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @Column(updatable = false, nullable = false)
+    private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id")
-    private Product product;
+    @JoinColumn(name = "order_id", nullable = false)
+    private Order order;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_variant_id", nullable = false)
+    private ProductVariant productVariant;
+
+    @Column(nullable = false)
     private int quantity;
-    private BigDecimal priceAtPurchase;
-    
+
+    @Column(name = "price", nullable = false, precision = 10, scale = 2)
+    private BigDecimal price;
+
     // Construtor auxiliar para facilitar criação
-    public OrderItem(Product product, int quantity) {
-        this.product = product;
+    public OrderItem(Order order, ProductVariant productVariant, int quantity, BigDecimal price) {
+        this.order = order;
+        this.productVariant = productVariant;
         this.quantity = quantity;
-        this.priceAtPurchase = product.getPrice();
+        this.price = price;
     }
-    
-    public BigDecimal getSubtotal() {
-        if (priceAtPurchase == null) return BigDecimal.ZERO;
-        return priceAtPurchase.multiply(new BigDecimal(quantity));
-    }
-    
+
     public Double getTotalWeight() {
-        if (product instanceof PhysicalProduct) {
-             return ((PhysicalProduct) product).getWeight() * quantity;
+        if (productVariant != null && productVariant.getProduct() instanceof PhysicalProduct) {
+             return ((PhysicalProduct) productVariant.getProduct()).getWeight() * quantity;
         }
         return 0.0;
+    }
+
+    public BigDecimal getTotalPrice() {
+        if (price != null) {
+            return price.multiply(BigDecimal.valueOf(quantity));
+        }
+        return BigDecimal.ZERO;
     }
 }
