@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ProductCard } from '../components/shop/ProductCard';
+import { ProductCard } from '../components/ui/ProductCard';
 import { Button } from '../components/ui/Button';
 import { Filter, X } from 'lucide-react';
 
