@@ -4,8 +4,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ShoppingCart, Menu, X, Search, User, Heart } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { cn } from '../ui/Button';
-import { useCart } from '../../context/CartContext';
+import { cn } from './ui/Button';
+import { useCart } from '../context/CartContext';
 
 export function Navbar() {
     const [isScrolled, setIsScrolled] = useState(false);

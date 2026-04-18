@@ -11,7 +11,7 @@ export function Footer() {
                     <div className="space-y-6">
                         <div className="relative w-40 h-16">
                             <Image 
-                                src="/assets/dn_store2.png" 
+                                src="/assets/dnstore_logo_transparente.png" 
                                 alt="DN Store Logo" 
                                 fill 
                                 className="object-contain object-left"

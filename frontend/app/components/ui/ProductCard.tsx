@@ -20,7 +20,8 @@ export function ProductCard({ id, name, price, image, category, tag }: ProductCa
         <Image 
           src={image} 
           alt={name} 
-          fill 
+          fill
+          sizes="(max-width: 768px) 100vw, 320px"
           className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
         />
         
@@ -54,6 +55,9 @@ export function ProductCard({ id, name, price, image, category, tag }: ProductCa
           <span className="text-lg font-black text-brand-primary">
             R$ {price.toFixed(2).replace('.', ',')}
           </span>
+          <button className="bg-brand-secondary w-fit py-3 px-5 text-white rounded-xl flex items-center justify-center hover:bg-brand-primary hover:scale-105 transition-all outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 shrink-0">
+            COMPRAR
+          </button>
           <button className="w-10 h-10 bg-brand-primary text-white rounded-full flex items-center justify-center hover:bg-brand-secondary hover:scale-105 transition-all outline-none focus:ring-2 focus:ring-brand-secondary focus:ring-offset-2 shrink-0 group-hover:bg-brand-secondary">
             <ShoppingCart className="w-4 h-4" />
           </button>

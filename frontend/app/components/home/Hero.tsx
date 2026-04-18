@@ -61,11 +61,11 @@ export function Hero({ images = [] }: HeroProps) {
                     className="mb-8 opacity-90"
                 >
                     <Image 
-                        src="/assets/dn_store2.png" 
+                        src="/assets/dnstore_logo_white.png" 
                         alt="DN Store" 
                         width={230} 
                         height={100} 
-                        className="object-contain drop-shadow-lg"
+                        className="object-contain mt-6 drop-shadow-lg"
                     />
                 </motion.div>
 
