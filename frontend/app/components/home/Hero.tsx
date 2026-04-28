@@ -92,7 +92,7 @@ export function Hero({ images = [] }: HeroProps) {
                     <motion.div 
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ delay: 0.8 }}
+                        transition={{ delay: 3.2 }}
                         className="flex items-center gap-2 mt-12"
                     >
                         {safeImages.map((_, idx) => (
