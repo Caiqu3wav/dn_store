@@ -101,7 +101,7 @@ export function FeaturedProducts() {
                                 transition={{ delay: index * 0.1 }}
                                 className="flex-shrink-0 w-80"
                             >
-                                <ProductCard {...product} />
+                                <ProductCard product={product} />
                             </motion.div>
                         ))}
                     </div>
