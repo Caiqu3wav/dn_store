@@ -1,10 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { Hero } from "./components/home/Hero";
-import { Sobre } from "./components/home/Sobre";
 import { Categories } from "./components/home/Categories";
 import { FeaturedProducts } from "./components/home/FeaturedProducts";
 import { EventsTeaser } from "./components/home/EventsTeaser";
+import { Sobre } from './components/home/Sobre';
 
 export default function Home() {
   let brandImages: string[] = [];
