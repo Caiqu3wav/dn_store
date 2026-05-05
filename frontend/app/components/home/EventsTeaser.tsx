@@ -8,7 +8,7 @@ import { EVENTS, NEXT_EVENT } from '../../../lib/data';
 
 export function EventsTeaser() {
     return (
-        <section className="py-24 bg-brand-primary text-white relative overflow-hidden">
+        <section className="py-24 bg-brand-primary  relative overflow-hidden">
             <div className="container mx-auto px-4 lg:px-8 relative z-10">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
                     
@@ -21,13 +21,13 @@ export function EventsTeaser() {
                     >
                         <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-secondary/20 text-brand-secondary font-bold text-sm mb-6">
                             <Timer className="w-4 h-4" />
-                            Próximo Desafio
+                            Próximos Desafios
                         </span>
                         <h2 className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 leading-tight tracking-tight">
                             Ultrapasse seus <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-secondary to-brand-highlight">Próprios Limites</span>
                         </h2>
-                        <p className="text-gray-400 text-lg mb-8 leading-relaxed max-w-xl">
+                        <p className="text-foreground text-lg mb-8 leading-relaxed max-w-xl">
                             A verdadeira adrenalina acontece nas trilhas. Participe do nosso circuito anual e conecte-se com ciclistas que compartilham da mesma paixão que você.
                         </p>
 
@@ -40,21 +40,9 @@ export function EventsTeaser() {
                                     <h3 className="text-xl font-black mt-3 leading-tight">
                                         {event.name}
                                     </h3>
-                                    <p className="text-sm text-gray-200 mt-2">{event.location}</p>
+                                    <p className="text-sm text-gray-500 mt-2">{event.location}</p>
                                 </div>
                             ))}
-                        </div>
-
-                        <div className="hidden lg:block">
-                            <div className="relative w-full h-64 rounded-3xl overflow-hidden">
-                                <Image 
-                                    src={NEXT_EVENT.image}
-                                    alt="Ciclistas em trilha"
-                                    fill
-                                    className="object-cover"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-brand-primary/80 to-transparent" />
-                            </div>
                         </div>
                     </motion.div>
 
@@ -64,10 +52,10 @@ export function EventsTeaser() {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.8, delay: 0.2 }}
-                        className="bg-white rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl text-brand-primary border border-gray-100"
+                        className="bg-white rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl text-brand border border-gray-100"
                     >
-                        <h3 className="text-3xl font-black mb-2">{NEXT_EVENT.name}</h3>
-                        <p className="text-gray-500 mb-8 font-medium">{NEXT_EVENT.description}</p>
+                        <h3 className="text-3xl text-brand font-black mb-2">{NEXT_EVENT.name}</h3>
+                        <p className="text-brand mb-8 font-medium">{NEXT_EVENT.description}</p>
                         
                         <div className="space-y-6 mb-8">
                             <div className="flex items-center gap-4">
@@ -86,7 +74,7 @@ export function EventsTeaser() {
                                 </div>
                                 <div>
                                     <span className="block text-sm text-gray-400 font-bold uppercase tracking-wider">Localização</span>
-                                    <span className="block font-bold mt-0.5">{NEXT_EVENT.location}</span>
+                                    <span className="block text-brand font-bold mt-0.5">{NEXT_EVENT.location}</span>
                                 </div>
                             </div>
                         </div>
@@ -102,15 +90,20 @@ export function EventsTeaser() {
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-center justify-center">
                                 <div className="w-12 h-12 bg-brand-primary rounded-full flex items-center justify-center shadow-lg transform -translate-y-4">
-                                    <MapPin className="w-6 h-6 text-white" />
+                                    <MapPin className="w-6 h-6 " />
                                 </div>
                             </div>
                         </div>
 
-                        <Link href={NEXT_EVENT.mapsLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full bg-brand-primary text-white font-bold py-4 rounded-xl hover:bg-brand-secondary transition-colors outline-none focus:ring-4 focus:ring-brand-secondary/30">
+                        <Link href={NEXT_EVENT.mapsLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full bg-brand-primary  font-bold py-4 rounded-xl hover:bg-brand-secondary transition-colors outline-none focus:ring-4 focus:ring-brand-secondary/30">
                             Abrir no Google Maps
                             <ExternalLink className="w-5 h-5" />
                         </Link>
+                        
+                        <button className="bg-brand-secondary text-white font-black px-5 py-2 rounded-lg transition-colors hover:bg-foreground block mx-auto my-5">
+                    Inscreva-se
+                        </button>
+                        
                     </motion.div>
                 </div>
             </div>

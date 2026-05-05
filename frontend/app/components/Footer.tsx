@@ -4,7 +4,7 @@ import { Instagram, Phone, MapPin, Mail, CreditCard } from 'lucide-react';
 
 export function Footer() {
     return (
-        <footer className="bg-background flex flex-col items-center text-gray-300 pb-8 border-t border-gray-800">
+        <footer className="bg-background flex flex-col items-center text-gray-300 border-t border-gray-800">
             <div className="  mx-auto">
                 <div className="grid ml-20 mt-10 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
                     {/* Brand Info */}

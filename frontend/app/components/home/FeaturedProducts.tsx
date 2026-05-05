@@ -39,7 +39,7 @@ export function FeaturedProducts() {
     };
 
     return (
-        <section id="destaques" className="py-24 bg-white mt-10">
+        <section id="destaques" className="py-24 bg-white">
             <div className="container mx-auto px-4 lg:px-8">
                 <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
                     <div>
@@ -47,7 +47,7 @@ export function FeaturedProducts() {
                             initial={{ opacity: 0, x: -20 }}
                             whileInView={{ opacity: 1, x: 0 }}
                             viewport={{ once: true }}
-                            className="text-3xl md:text-5xl font-black text-brand-primary tracking-tight mb-2"
+                            className="text-3xl md:text-5xl font-black text-brand tracking-tight mb-2"
                         >
                             Destaques Profissionais
                         </motion.h2>
@@ -56,7 +56,7 @@ export function FeaturedProducts() {
                         </p>
                     </div>
                     
-                    <Link href="/produtos" className="hidden md:flex items-center gap-2 text-brand-secondary font-bold hover:text-brand-primary transition-colors">
+                    <Link href="/produtos" className="hidden md:flex items-center gap-2 text-brand-secondary font-bold hover:text-brand transition-colors">
                         Ver loja completa
                         <ArrowRight className="w-5 h-5" />
                     </Link>
@@ -67,7 +67,7 @@ export function FeaturedProducts() {
                     {canScrollLeft && (
                         <button
                             onClick={() => scroll('left')}
-                            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg rounded-full p-2 transition-all duration-200"
+                            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-background hover:bg-white hover:text-foreground shadow-lg rounded-full p-2 transition-all duration-200"
                             aria-label="Scroll left"
                         >
                             <ChevronLeft className="w-6 h-6 text-brand-primary" />
@@ -78,7 +78,7 @@ export function FeaturedProducts() {
                     {canScrollRight && (
                         <button
                             onClick={() => scroll('right')}
-                            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg rounded-full p-2 transition-all duration-200"
+                            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background hover:bg-white hover:text-foreground shadow-lg rounded-full p-2 transition-all duration-200"
                             aria-label="Scroll right"
                         >
                             <ChevronRight className="w-6 h-6 text-brand-primary" />
