@@ -1,11 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { Hero } from "./components/home/Hero";
-import { BrandSection } from "./components/home/BrandSection";
+import { Sobre } from "./components/home/Sobre";
 import { Categories } from "./components/home/Categories";
 import { FeaturedProducts } from "./components/home/FeaturedProducts";
 import { EventsTeaser } from "./components/home/EventsTeaser";
-import { PaymentMethods } from "./components/home/PaymentMethods";
 
 export default function Home() {
   let brandImages: string[] = [];
@@ -53,9 +52,8 @@ export default function Home() {
       <Hero images={heroImages} />
       <FeaturedProducts />
       <Categories />
-      <BrandSection images={brandImages} />
+      <Sobre images={brandImages} />
       <EventsTeaser />
-      <PaymentMethods />
     </div>
   );
 }
