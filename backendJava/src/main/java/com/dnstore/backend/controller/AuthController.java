@@ -9,6 +9,11 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -38,6 +43,7 @@ public class AuthController {
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setPhone(request.getPhone());
         user.setRole(Role.USER);
+        
 
         userRepository.save(user);
 
@@ -58,6 +64,109 @@ public class AuthController {
         String jwtToken = jwtService.generateToken(user);
 
         return ResponseEntity.ok(new AuthResponse(jwtToken, new UserResponse(user)));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(
+            @RequestBody ForgotPasswordRequest request
+    ) {
+
+        Optional<User> optionalUser =
+                userRepository.findByEmail(request.getEmail());
+
+        if (optionalUser.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body("User not found");
+        }
+
+        User user = optionalUser.get();
+
+        String resetToken = UUID.randomUUID().toString();
+
+        user.setResetToken(resetToken);
+
+        user.setResetTokenExpiration(
+                LocalDateTime.now().plusMinutes(30)
+        );
+
+        userRepository.save(user);
+
+        // futuramente:
+        // enviar email aqui
+
+        return ResponseEntity.ok(
+                "Reset token: " + resetToken
+        );
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(
+            @RequestBody ResetPasswordRequest request
+    ) {
+
+            User user = userRepository
+        .findByResetToken(request.getToken())
+        .orElseThrow(() ->
+                new RuntimeException("Invalid token")
+        );
+
+            if (user.getResetTokenExpiration() == null ||
+                user.getResetTokenExpiration().isBefore(LocalDateTime.now())) {
+
+                return ResponseEntity.badRequest()
+                        .body("Token expired");
+            }
+
+            user.setPasswordHash(
+                    passwordEncoder.encode(request.getNewPassword())
+            );
+
+            user.setResetToken(null);
+
+            userRepository.save(user);
+
+            return ResponseEntity.ok("Password updated");
+        }
+
+    public static class ForgotPasswordRequest {
+
+        @Email
+        @NotBlank
+        private String email;
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+    }
+
+    public static class ResetPasswordRequest {
+
+        @NotBlank
+        private String token;
+
+        @NotBlank
+        @Size(min = 8)
+        private String newPassword;
+
+        public String getToken() {
+            return token;
+        }
+
+        public void setToken(String token) {
+            this.token = token;
+        }
+
+        public String getNewPassword() {
+            return newPassword;
+        }
+
+        public void setNewPassword(String newPassword) {
+            this.newPassword = newPassword;
+        }
     }
 
     public static class RegisterRequest {
