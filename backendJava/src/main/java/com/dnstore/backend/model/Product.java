@@ -42,6 +42,8 @@ public abstract class Product {
     @Column(name = "image_url", length = 500)
     private String imageUrl;
 
+    @Column(nullable = false)
+    private boolean active = true;
     /**
      * Método abstrato que força as subclasses a definir como calcular o peso para frete.
      * Isso demonstra Polimorfismo: cada tipo de produto se comporta de um jeito.
