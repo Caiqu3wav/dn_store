@@ -24,8 +24,8 @@ export function Navbar() {
         <header
             className={cn(
                 'fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b',
-                isScrolled 
-                    ? 'bg-white/80 backdrop-blur-lg border-gray-200 py-3 shadow-sm' 
+                isScrolled
+                    ? 'bg-white/80 backdrop-blur-lg border-gray-200 py-3 shadow-sm'
                     : 'bg-background border-transparent py-4'
             )}
         >
@@ -33,10 +33,10 @@ export function Navbar() {
                 {/* 1. Logo */}
                 <Link href="/" className="flex items-center gap-2 shrink-0">
                     <div className="relative w-10 h-10 overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 flex items-center justify-center">
-                        <Image 
-                            src="/assets/dn_store.jpg" 
-                            alt="DN Store Logo" 
-                            fill 
+                        <Image
+                            src="/assets/dn_store.jpg"
+                            alt="DN Store Logo"
+                            fill
                             className="object-contain p-1"
                         />
                     </div>
@@ -48,9 +48,9 @@ export function Navbar() {
                 {/* 2. Search Bar (Central) */}
                 <div className="hidden md:flex flex-1 max-w-md mx-4">
                     <div className="relative w-full">
-                        <input 
-                            type="text" 
-                            placeholder="Buscar produtos..." 
+                        <input
+                            type="text"
+                            placeholder="Buscar produtos..."
                             className="w-full bg-gray-100 border-transparent focus:bg-white focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20 rounded-full py-2.5 pl-11 pr-4 text-sm transition-all outline-none text-brand-primary"
                         />
                         <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -69,9 +69,9 @@ export function Navbar() {
 
                     {/* Icons */}
                     <div className="flex items-center gap-4 text-gray-700">
-                        <button className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Conta">
+                        <Link href="/Auth" className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Conta">
                             <User className="w-5 h-5" />
-                        </button>
+                        </Link>
                         <button className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Favoritos">
                             <Heart className="w-5 h-5" />
                         </button>
@@ -99,9 +99,9 @@ export function Navbar() {
             {isMobileMenuOpen && (
                 <div className="md:hidden absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-lg py-4 px-4 flex flex-col gap-4">
                     <div className="relative w-full mb-2">
-                        <input 
-                            type="text" 
-                            placeholder="Buscar produtos..." 
+                        <input
+                            type="text"
+                            placeholder="Buscar produtos..."
                             className="w-full bg-gray-100 rounded-full py-2.5 pl-11 pr-4 text-sm outline-none"
                         />
                         <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -110,10 +110,12 @@ export function Navbar() {
                     <Link href="/produtos" className="text-gray-800 font-medium py-2 border-b border-gray-100">Produtos</Link>
                     <Link href="/eventos" className="text-gray-800 font-medium py-2 border-b border-gray-100">Eventos</Link>
                     <Link href="/sobre" className="text-gray-800 font-medium py-2 border-b border-gray-100">Sobre</Link>
-                    
+
                     <div className="flex items-center justify-around pt-4 pb-2">
                         <button className="flex flex-col items-center gap-1 text-gray-600">
-                            <User className="w-5 h-5" />
+                            <Link href="/Auth">
+                                <User className="w-5 h-5" />
+                            </Link>
                             <span className="text-xs">Conta</span>
                         </button>
                         <button className="flex flex-col items-center gap-1 text-gray-600">
