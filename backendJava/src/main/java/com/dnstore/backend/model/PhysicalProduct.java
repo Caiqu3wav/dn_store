@@ -27,15 +27,7 @@ public class PhysicalProduct extends Product {
     private double width;
     private double height;
     private double depth;
-
-    public PhysicalProduct(UUID id, String name, String description, BigDecimal price, String imageUrl, double weight, double width, double height, double depth) {
-        super(id, name, description, price, imageUrl);
-        this.weight = weight;
-        this.width = width;
-        this.height = height;
-        this.depth = depth;
-    }
-
+    
     @Override
     public double getShippingWeight() {
         return weight;
