@@ -1,6 +1,7 @@
 package com.dnstore.backend.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -19,6 +20,7 @@ import java.util.UUID;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
+@AllArgsConstructor
 @NoArgsConstructor
 @Entity
 @PrimaryKeyJoinColumn(name = "id")
@@ -27,7 +29,7 @@ public class PhysicalProduct extends Product {
     private double width;
     private double height;
     private double depth;
-    
+
     @Override
     public double getShippingWeight() {
         return weight;
