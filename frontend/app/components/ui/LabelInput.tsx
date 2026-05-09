@@ -31,7 +31,7 @@ export function LabelInput({ label, placeholder, type, name }: LabelInputProps) 
     return (
         <>
             <StyledLabel aria-label={label}  htmlFor={name}>{label}</StyledLabel>
-            <StyledInput id={name} placeholder={placeholder} type={type} />
+            <StyledInput name={name} id={name} placeholder={placeholder} type={type} />
         </>
     );
 }

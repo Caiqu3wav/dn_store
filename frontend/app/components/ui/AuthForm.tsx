@@ -18,18 +18,24 @@ const FormContainer = styled.form`
         justify-content: center;
 `;
 
-const handleSubmit = (e: React.FormEvent) => {
+export const AuthForm = ({ title}: AuthFormProps) => {
+
+    const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    console.log({email, password});
 }
 
-export const AuthForm = ({ title, onSubmit }: AuthFormProps) => {
     return (
-        <FormContainer>
+        <FormContainer onSubmit={handleSubmit}>
             <Title>{title}</Title>
 
             <LabelInput name="email" type="email" placeholder="Email" label="Email" />
             <LabelInput name="password" type="password" placeholder="Senha" label="Senha" />
-            <Button type="submit" onClick={handleSubmit}>Entrar</Button>
+            <Button type="submit">Entrar</Button>
 
         </FormContainer>
     )
