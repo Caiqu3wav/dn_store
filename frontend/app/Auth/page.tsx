@@ -11,10 +11,6 @@ function Auth() {
   const [error, setError] = useState("");
   const [pagetype, setPagetype] = useState("login");
 
-  interface AuthFormProps {
-    onSubmit?: (email: string, password: string) => void;
-  }
-
   interface pagetype {
     login: string;
     register: string;
