@@ -18,6 +18,9 @@ const StyledInput = styled.input`
         border-color: #007bff;
     }
     width: 90%;
+    :required {
+        border-color: red;
+    }
 `;
 
 const StyledLabel = styled.label`
@@ -29,10 +32,18 @@ const StyledLabel = styled.label`
 
 export function LabelInput({ label, placeholder, type, name }: LabelInputProps) {
     return (
-        <>
-            <StyledLabel aria-label={label}  htmlFor={name}>{label}</StyledLabel>
-            <StyledInput name={name} id={name} placeholder={placeholder} type={type} />
-        </>
+      <>
+        <StyledLabel aria-label={label} htmlFor={name}>
+          {label}
+        </StyledLabel>
+        <StyledInput
+          name={name}
+          id={name}
+          placeholder={placeholder}
+          type={type}
+          required
+        />
+      </>
     );
 }
 

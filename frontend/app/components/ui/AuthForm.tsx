@@ -33,9 +33,12 @@ export const AuthForm = ({ title}: AuthFormProps) => {
         <FormContainer onSubmit={handleSubmit}>
             <Title>{title}</Title>
 
-            <LabelInput name="email" type="email" placeholder="Email" label="Email" />
+            <LabelInput  name="email" type="email" placeholder="Email" label="Email" />
             <LabelInput name="password" type="password" placeholder="Senha" label="Senha" />
-            <Button type="submit">{title === "Login" ? "Entrar" : "Cadastro"}</Button>
+            {title === "Cadastro" && (
+                <LabelInput name="confirmPassword" type="password" placeholder="Confirmar Senha" label="Confirmar Senha" />
+            )}
+            <Button type="submit">{title === "Entrar" ? "Acessar" : "Cadastro"}</Button>
 
         </FormContainer>
     )

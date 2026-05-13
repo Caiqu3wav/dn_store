@@ -36,7 +36,7 @@ function Auth() {
       <Container>
         <Login>
           <Logo />
-          <AuthForm title="Cadastro" />
+          <AuthForm  title="Cadastro" />
           <p>Já tem conta? <OnClickText onClick={()=> setPagetype("login")}>Entrar</OnClickText></p>
         </Login>
       </Container>
