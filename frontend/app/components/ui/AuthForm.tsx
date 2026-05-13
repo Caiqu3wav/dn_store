@@ -35,7 +35,7 @@ export const AuthForm = ({ title}: AuthFormProps) => {
 
             <LabelInput name="email" type="email" placeholder="Email" label="Email" />
             <LabelInput name="password" type="password" placeholder="Senha" label="Senha" />
-            <Button type="submit">Entrar</Button>
+            <Button type="submit">{title === "Login" ? "Entrar" : "Cadastro"}</Button>
 
         </FormContainer>
     )
