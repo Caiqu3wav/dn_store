@@ -51,9 +51,9 @@ export function Navbar() {
                 {/* 2. Search Bar (Central) */}
                 <div className="hidden md:flex flex-1 max-w-md mx-4">
                     <div className="relative w-full">
-                        <input 
-                            type="text" 
-                            placeholder="Buscar produtos..." 
+                        <input
+                            type="text"
+                            placeholder="Buscar produtos..."
                             className="w-full bg-gray-100 border-transparent focus:bg-white focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20 rounded-full py-2.5 pl-11 pr-4 text-sm transition-all outline-none text-brand"
                         />
                         <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -72,9 +72,9 @@ export function Navbar() {
 
                     {/* Icons */}
                     <div className="flex items-center gap-4 text-white">
-                        <button className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Conta">
+                        <Link href="/Auth" className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Conta">
                             <User className="w-5 h-5" />
-                        </button>
+                        </Link>
                         <button className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Favoritos">
                             <Heart className="w-5 h-5" />
                         </button>
@@ -102,21 +102,23 @@ export function Navbar() {
             {isMobileMenuOpen && (
                 <div className="md:hidden absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-lg py-4 px-4 flex flex-col gap-4">
                     <div className="relative w-full mb-2">
-                        <input 
-                            type="text" 
-                            placeholder="Buscar produtos..." 
+                        <input
+                            type="text"
+                            placeholder="Buscar produtos..."
                             className="w-full bg-gray-100 rounded-full py-2.5 pl-11 pr-4 text-sm outline-none"
                         />
                         <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
                     </div>
-                    <Link href="/" className="text-white font-medium py-2 border-b border-gray-100">Home</Link>
-                    <Link href="/produtos" className="text-white font-medium py-2 border-b border-gray-100">Produtos</Link>
-                    <Link href="/eventos" className="text-white font-medium py-2 border-b border-gray-100">Eventos</Link>
-                    <Link href="/sobre" className="text-white font-medium py-2 border-b border-gray-100">Sobre</Link>
-                    
+                    <Link href="/" className="text-gray-800 font-medium py-2 border-b border-gray-100">Home</Link>
+                    <Link href="/produtos" className="text-gray-800 font-medium py-2 border-b border-gray-100">Produtos</Link>
+                    <Link href="/eventos" className="text-gray-800 font-medium py-2 border-b border-gray-100">Eventos</Link>
+                    <Link href="/sobre" className="text-gray-800 font-medium py-2 border-b border-gray-100">Sobre</Link>
+
                     <div className="flex items-center justify-around pt-4 pb-2">
                         <button className="flex flex-col items-center gap-1 text-white">
-                            <User className="w-5 h-5" />
+                            <Link href="/Auth">
+                                <User className="w-5 h-5" />
+                            </Link>
                             <span className="text-xs">Conta</span>
                         </button>
                         <button className="flex flex-col items-center gap-1 text-white">
