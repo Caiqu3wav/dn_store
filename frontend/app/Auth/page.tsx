@@ -16,6 +16,8 @@ function Auth() {
     register: string;
   }
 
+  
+
 
   return (
     (pagetype === "login") && (
@@ -24,7 +26,7 @@ function Auth() {
 
           <Logo />
 
-          <AuthForm title="Login" />
+          <AuthForm title="Entrar" />
 
           <p>Não tem conta? <OnClickText onClick={()=> setPagetype("register")}>Cadastrar</OnClickText></p>
           <p><span>Esqueci minha senha</span></p>
@@ -34,7 +36,7 @@ function Auth() {
       <Container>
         <Login>
           <Logo />
-          <AuthForm title="Cadastrar" />
+          <AuthForm title="Cadastro" />
           <p>Já tem conta? <OnClickText onClick={()=> setPagetype("login")}>Entrar</OnClickText></p>
         </Login>
       </Container>
