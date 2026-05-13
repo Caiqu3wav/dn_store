@@ -72,9 +72,9 @@ export function Navbar() {
 
                     {/* Icons */}
                     <div className="flex items-center gap-4 text-white">
-                        <button className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Conta">
+                        <Link href='/Auth' className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Conta">
                             <User className="w-5 h-5" />
-                        </button>
+                        </Link>
                         <button className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Favoritos">
                             <Heart className="w-5 h-5" />
                         </button>
@@ -115,10 +115,10 @@ export function Navbar() {
                     <Link href="/sobre" className="text-gray-800 font-medium py-2 border-b border-gray-100">Sobre</Link>
                     
                     <div className="flex items-center justify-around pt-4 pb-2">
-                        <button className="flex flex-col items-center gap-1 text-gray-600">
+                        <Link href="/Auth" className="flex flex-col items-center gap-1 text-gray-600">
                             <User className="w-5 h-5" />
                             <span className="text-xs">Conta</span>
-                        </button>
+                        </Link>
                         <button className="flex flex-col items-center gap-1 text-gray-600">
                             <Heart className="w-5 h-5" />
                             <span className="text-xs">Favoritos</span>

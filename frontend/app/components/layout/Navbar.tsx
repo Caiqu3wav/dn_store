@@ -72,7 +72,8 @@ export function Navbar() {
 
                     {/* Icons */}
                     <div className="flex items-center gap-4 text-white">
-                        <Link href="/Auth" className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Conta">
+<Link href="/Auth" className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Conta">
+                            
                             <User className="w-5 h-5" />
                         </Link>
                         <button className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Favoritos">
@@ -116,7 +117,7 @@ export function Navbar() {
 
                     <div className="flex items-center justify-around pt-4 pb-2">
                         <button className="flex flex-col items-center gap-1 text-white">
-                            <Link href="/Auth">
+<Link href="/Auth">
                                 <User className="w-5 h-5" />
                             </Link>
                             <span className="text-xs">Conta</span>
