@@ -1,9 +1,12 @@
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+// @ts-expect-error: side-effect import of CSS global styles
 import "./globals.css";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { CartProvider } from "./context/CartContext";
+import StyledComponentsRegistry from "./StyledComponentsRegistry";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,19 +28,21 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black text-white`}
       >
         <CartProvider>
-          <Navbar />
-          <main className="min-h-screen">
-            {children}
-          </main>
-          <Footer />
+          <StyledComponentsRegistry>
+            <Navbar />
+            <main className="min-h-screen">{children}</main>
+            <Footer />
+          </StyledComponentsRegistry>
         </CartProvider>
       </body>
     </html>
   );
 }
+
