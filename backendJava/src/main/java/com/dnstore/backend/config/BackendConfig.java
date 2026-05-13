@@ -2,11 +2,13 @@ package com.dnstore.backend.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.client.RestTemplate;
 
 /**
  * ⚙️ Configuração do Spring
- * 
+ *
  * Define Beans que serão gerenciados pelo container do Spring (Injeção de Dependência).
  */
 @Configuration
@@ -21,12 +23,11 @@ public class BackendConfig {
     }
 
     /**
-     * Bean do Carrinho (Singleton para demo - compartilhado entre todos os usuarios).
-     * Em produção, seria @SessionScope.
+     * Password encoder for user authentication
      */
     @Bean
-    public com.dnstore.backend.model.Cart cart() {
-        return new com.dnstore.backend.model.Cart();
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     /**

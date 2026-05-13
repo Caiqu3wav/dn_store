@@ -6,11 +6,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 
-interface BrandSectionProps {
+interface SobreProps {
     images: string[];
 }
 
-export function BrandSection({ images }: BrandSectionProps) {
+export function Sobre({ images }: SobreProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
 
     // Auto-play for carousel
@@ -43,7 +43,7 @@ export function BrandSection({ images }: BrandSectionProps) {
                                 className="absolute inset-0"
                             >
                                 <Image
-                                    src={images[currentIndex]}
+                                    src={"/assets/images/pelotaodn.jpeg"}
                                     alt={`Sobre a DN Store imagem ${currentIndex + 1}`}
                                     fill
                                     className="object-cover"
@@ -88,22 +88,28 @@ export function BrandSection({ images }: BrandSectionProps) {
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.8 }}
+                        className='flex flex-col items-center'
                     >
-                        <span className="text-brand-highlight font-bold tracking-widest uppercase text-sm mb-4 block">Sobre a Marca</span>
-                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-brand-primary mb-6 tracking-tight leading-tight">
-                            Desafio Natureza
-                        </h2>
+                        <span className="text-brand-secondary self-center font-bold tracking-widest uppercase text-4xl mb-4 block">Sobre a Marca</span>
+                        <div className="relative w-90 h-90 overflow-hidden flex items-center justify-center">
+                        <Image 
+                            src="/assets/Images/novo-logotipo.png" 
+                            alt="DN Store Logo" 
+                            fill 
+                            className="object-contain "
+                        />
+                    </div>
                         
-                        <div className="space-y-6 text-gray-600 text-base md:text-lg mb-10 leading-relaxed">
+                        <div className="space-y-6 text-brand-primary text-base md:text-lg mb-10 leading-relaxed">
                             <p>
-                                Nascemos na trilha. Nossa jornada começou com a paixão pelo mountain bike e a necessidade de equipamentos que realmente acompanhassem o ritmo intenso das montanhas.
+                               O Desafio Natureza nasceu em Lorena (SP) com a proposta de reunir apaixonados por mountain bike e aventura ao ar livre. Mais do que um evento, tornou-se uma comunidade que valoriza superação, esporte e conexão com a natureza.
                             </p>
                             <p>
-                                Hoje, a DN Store veste ciclistas que não têm medo de subir mais alto. Cada peça é desenhada pensando em resistência, respirabilidade e, claro, um estilo inconfundível.
+                                A loja Desafio Natureza surge para levar esse espírito além das pistas. Aqui você encontra produtos desenvolvidos para quem vive o ciclismo e valoriza conforto, desempenho e qualidade em cada pedal. Mais do que uma marca, o Desafio Natureza representa uma comunidade movida pela paixão pelo esporte, pela natureza e pelos desafios que nos fazem ir sempre mais longe.
                             </p>
                         </div>
 
-                        <Link href="/sobre" className="inline-flex items-center gap-3 bg-brand-primary text-white text-base font-bold px-8 py-4 rounded-full hover:bg-brand-secondary transition-colors outline-none focus:ring-4 focus:ring-brand-secondary/30">
+                        <Link href="/sobre" className="inline-flex w-70 flex items-center gap-3 bg-brand-secondary text-white text-base font-bold px-8 py-4 rounded-full hover:bg-foreground transition-colors outline-none focus:ring-4 focus:ring-brand-secondary/30">
                             Saiba Mais Sobre Nós
                             <ArrowRight className="w-5 h-5" />
                         </Link>
