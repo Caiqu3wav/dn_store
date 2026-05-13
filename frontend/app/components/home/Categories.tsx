@@ -9,7 +9,7 @@ export function Categories() {
         <section className="py-12 bg-white pb-24">
             <div className="container mx-auto px-4 lg:px-8">
                 <div className="text-center mb-8">
-                    <h3 className="text-xl font-bold text-gray-400 uppercase tracking-widest">
+                    <h3 className="text-xl font-bold text-brand uppercase tracking-widest">
                         Navegue por Categoria
                     </h3>
                 </div>
@@ -19,7 +19,7 @@ export function Categories() {
                         <motion.span
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-gray-100 text-brand-primary font-bold transition-all hover:bg-brand-primary hover:text-white hover:shadow-lg"
+                            className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-background text-brand-primary font-bold transition-all hover:bg-brand-secondary hover:text-white hover:shadow-lg"
                         >
                             Todos os Produtos
                         </motion.span>
@@ -34,7 +34,7 @@ export function Categories() {
                                 transition={{ delay: index * 0.1 }}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-gray-100 text-brand-primary font-bold transition-all hover:bg-brand-secondary hover:text-white hover:shadow-lg"
+                                className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-background text-brand-primary font-bold transition-all hover:bg-brand-secondary hover:text-white hover:shadow-lg"
                             >
                                 {category.name}
                             </motion.span>

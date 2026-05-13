@@ -26,7 +26,7 @@ export function Hero({ images = [] }: HeroProps) {
     }, [safeImages.length]);
 
     return (
-        <section className="relative h-screen w-full flex items-center justify-center overflow-hidden">
+        <section className="relative h-fit py-30 w-full flex items-center justify-center overflow-hidden">
             {/* Background Image Carousel */}
             <div className="absolute inset-0 z-0 bg-black">
                 <AnimatePresence mode="wait">
@@ -61,22 +61,13 @@ export function Hero({ images = [] }: HeroProps) {
                     className="mb-8 opacity-90"
                 >
                     <Image 
-                        src="/assets/dn_store2.png" 
+                        src="/assets/dnstore_logo_white.png" 
                         alt="DN Store" 
-                        width={230} 
-                        height={100} 
-                        className="object-contain drop-shadow-lg"
+                        width={400} 
+                        height={200} 
+                        className="object-contain mt-6 drop-shadow-lg"
                     />
                 </motion.div>
-
-                <motion.h1
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.2 }}
-                    className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight mb-6 max-w-4xl"
-                >
-                    Vista a emoção da aventura
-                </motion.h1>
 
                 <motion.p
                     initial={{ opacity: 0, y: 20 }}
@@ -84,7 +75,7 @@ export function Hero({ images = [] }: HeroProps) {
                     transition={{ duration: 0.8, delay: 0.4 }}
                     className="text-lg md:text-2xl font-light max-w-2xl mx-auto text-gray-200"
                 >
-                    Performance, tecnologia e estilo puro para quem domina as montanhas de bicicleta.
+                    Equipamentos para quem vive o desafio.
                 </motion.p>
                 
                 {/* Carousel Indicators (Optional visual cue) */}
@@ -92,7 +83,7 @@ export function Hero({ images = [] }: HeroProps) {
                     <motion.div 
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ delay: 0.8 }}
+                        transition={{ delay: 3.2 }}
                         className="flex items-center gap-2 mt-12"
                     >
                         {safeImages.map((_, idx) => (

@@ -1,10 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #F5F5F5;
-  --foreground: #0F0F0F;
-  --brand-primary: #0F0F0F;
-  --brand-secondary: #D97706; /* brown/orange */
+  --background: #353535;
+  --foreground: #1A1B1D;
+  --brand-primary: #ffffff;
+  --brand: #7c7c7c;
+  --brand-red: #c70808; /* brown/orange */
+  --brand-secondary: #c70808; /* brown/orange */
   --brand-highlight: #16A34A; /* nature green */
 }
 
