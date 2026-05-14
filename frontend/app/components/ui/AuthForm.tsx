@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { Title } from "./Text";
-import { Button } from "../../Auth/page.style";
+import { Button } from "../../auth/page.style";
 import { LabelInput } from "./LabelInput";
 
 interface AuthFormProps {
@@ -18,22 +18,22 @@ const FormContainer = styled.form`
         justify-content: center;
 `;
 
-export const AuthForm = ({ title}: AuthFormProps) => {
+export const AuthForm = ({ title }: AuthFormProps) => {
 
     const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+        e.preventDefault();
 
-    const formData = new FormData(e.currentTarget as HTMLFormElement);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    console.log({email, password});
-}
+        const formData = new FormData(e.currentTarget as HTMLFormElement);
+        const email = formData.get("email") as string;
+        const password = formData.get("password") as string;
+        console.log({ email, password });
+    }
 
     return (
         <FormContainer onSubmit={handleSubmit}>
             <Title>{title}</Title>
 
-            <LabelInput  name="email" type="email" placeholder="Email" label="Email" />
+            <LabelInput name="email" type="email" placeholder="Email" label="Email" />
             <LabelInput name="password" type="password" placeholder="Senha" label="Senha" />
             {title === "Cadastro" && (
                 <LabelInput name="confirmPassword" type="password" placeholder="Confirmar Senha" label="Confirmar Senha" />
