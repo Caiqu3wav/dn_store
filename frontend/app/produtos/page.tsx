@@ -14,10 +14,7 @@ export default function ProdutosPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<{ min: string; max: string }>({ min: '', max: '' });
   const [sortBy, setSortBy] = useState<SortOption>('relevance');
-  const [selectedCategory, setSelectedCategory] = useState('Todos');
-  const [selectedColor, setSelectedColor] = useState('');
-  const [selectedSize, setSelectedSize] = useState('');
-  const [selectedSleeve, setSelectedSleeve] = useState('');
+
   // Prevent background scroll when mobile filters are open
   useEffect(() => {
     if (isMobileFiltersOpen) {
@@ -47,24 +44,9 @@ export default function ProdutosPage() {
     }
 
     // Categories
-if (
-  selectedCategory &&
-  selectedCategory !== 'Todos'
-) {
-  result = result.filter(
-    p => p.category === selectedCategory
-  );
-}
-
-// Color
-if (selectedColor) {
-  result = result.filter(p => p.color === selectedColor);
-}
-
-// Size
-if (selectedSize) {
-  result = result.filter(p => p.size?.includes(selectedSize));
-}
+    if (selectedCategories.length > 0) {
+      result = result.filter(p => selectedCategories.includes(p.category));
+    }
 
     // Price
     const minPrice = priceRange.min ? parseFloat(priceRange.min) : 0;
@@ -94,25 +76,20 @@ if (selectedSize) {
     }
 
     return result;
-  }, [searchQuery, selectedCategory, selectedColor, selectedSize, priceRange, sortBy]);
+  }, [searchQuery, selectedCategories, priceRange, sortBy]);
 
-  const allCategoryNames = [
-  'Todos',
-  ...Array.from(
-    new Set(FEATURED_PRODUCTS.map(p => p.category))
-  )
-];
+  const allCategoryNames = Array.from(new Set(FEATURED_PRODUCTS.map(p => p.category)));
 
   return (
     <div className="min-h-screen bg-white pt-24 pb-16">
       <div className="container mx-auto px-4 lg:px-8">
 
         {/* Header Section */}
-        <div className="mb-8 md:mb-12 mt-12">
+        <div className="mb-8 md:mb-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2">
-                 Produtos
+              <h1 className="text-4xl md:text-5xl font-black text-brand-secondary tracking-tight mb-2">
+                Nossos Produtos
               </h1>
               <p className="text-gray-600 text-sm md:text-base max-w-2xl">
                 Explore nossa coleção completa de equipamentos e vestuário para sua próxima aventura.
@@ -213,145 +190,20 @@ if (selectedSize) {
                       <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight">Categorias</h4>
                       <div className="space-y-2">
                         {allCategoryNames.map(category => (
-                          <label key={category} onClick={() => setSelectedCategory(category)} className="flex items-center gap-3 cursor-pointer group">
+                          <label key={category} className="flex items-center gap-3 cursor-pointer group">
                             <div className={`
                               w-5 h-5 rounded border flex items-center justify-center transition-all duration-200
-                              ${selectedCategory === category ? 'bg-brand-secondary border-brand-secondary' : 'bg-white border-gray-300 group-hover:border-brand-secondary'}
+                              ${selectedCategories.includes(category) ? 'bg-brand-secondary border-brand-secondary' : 'bg-white border-gray-300 group-hover:border-brand-secondary'}
                             `}>
-                              {selectedCategory === category && <X className="w-3 h-3 text-white" />}
+                              {selectedCategories.includes(category) && <X className="w-3 h-3 text-white" />}
                             </div>
-                            <span className={`text-sm transition-colors ${selectedCategory === category ? 'text-[#1A1B1D] font-medium' : 'text-gray-600 group-hover:text-[#1A1B1D]'}`}>
+                            <span className={`text-sm transition-colors ${selectedCategories.includes(category) ? 'text-[#1A1B1D] font-medium' : 'text-gray-600 group-hover:text-[#1A1B1D]'}`}>
                               {category}
                             </span>
                           </label>
                         ))}
                       </div>
                     </div>
-                    {/* Extra Filters */}
-
-{selectedCategory === 'Camisa Poliamida' && (
-  <div className="space-y-4">
-
-    <div>
-      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
-        Cor
-      </h4>
-
-      <select
-        value={selectedColor}
-        onChange={(e) => setSelectedColor(e.target.value)}
-        className="w-full border border-gray-200 rounded-xl p-3"
-      >
-        <option value="">Todas</option>
-        <option value="Cinza">Cinza</option>
-        <option value="Preta">Preta</option>
-        <option value="Azul">Azul</option>
-        <option value="Laranja">Laranja</option>
-        <option value="Rosa">Rosa</option>
-        <option value="Branca">Branca</option>
-        <option value="Vermelha">Vermelha</option>
-
-      </select>
-    </div>
-
-    <div>
-      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
-        Tamanho
-      </h4>
-
-      <select
-        value={selectedSize}
-        onChange={(e) => setSelectedSize(e.target.value)}
-        className="w-full border border-gray-200 rounded-xl p-3"
-      >
-        <option value="">Todos</option>
-        <option value="P">P</option>
-        <option value="M">M</option>
-        <option value="G">G</option>
-      </select>
-    </div>
- </div>
-)}
-{selectedCategory === 'Camisas de Ciclismo' && (
-  <div className="space-y-4">
-
-    <div>
-      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
-        Cor
-      </h4>
-
-      <select
-        value={selectedColor}
-        onChange={(e) => setSelectedColor(e.target.value)}
-        className="w-full border border-gray-200 rounded-xl p-3"
-      >
-        <option value="">Todas</option>
-        <option value="Cinza">Cinza</option>
-        <option value="Preta">Preta</option>
-        <option value="Azul">Azul</option>
-        <option value="Laranja">Laranja</option>
-        <option value="Rosa">Rosa</option>
-        <option value="Vermelha">Vermelho</option>
-        <option value="Marrom">Marrom</option>
-      </select>
-    </div>
-
-    <div>
-      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
-        Tamanho
-      </h4>
-
-      <select
-        value={selectedSize}
-        onChange={(e) => setSelectedSize(e.target.value)}
-        className="w-full border border-gray-200 rounded-xl p-3"
-      >
-        <option value="">Todos</option>
-        <option value="P">P</option>
-        <option value="M">M</option>
-        <option value="G">G</option>
-      </select>
-    </div>
- </div>
-)}
-
-    {selectedCategory === 'Bonés & Meias' && (
-  <div className="space-y-4">
-
-    <div>
-      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
-        Cor
-      </h4>
-
-      <select
-        value={selectedColor}
-        onChange={(e) => setSelectedColor(e.target.value)}
-        className="w-full border border-gray-200 rounded-xl p-3"
-      >
-        <option value="">Todas</option>
-        <option value="Preto e Vermelho">Preto e Vermelho</option>
-        <option value="Preto e Verde">Preto e Verde</option>
-      </select>
-    </div>
-
-    <div>
-      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
-        Tamanho
-      </h4>
-
-      <select
-        value={selectedSize}
-        onChange={(e) => setSelectedSize(e.target.value)}
-        className="w-full border border-gray-200 rounded-xl p-3"
-      >
-        <option value="">Todos</option>
-        <option value="35">35</option>
-        <option value="40">40</option>
-        <option value="42">42</option>
-      </select>
-    </div>
- </div>
-)}
 
                     {/* Price Range */}
                     <div className="space-y-3">
