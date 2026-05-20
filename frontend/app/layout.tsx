@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Navbar } from "./components/Navbar";
-import { Footer } from "./components/Footer";
 import { CartProvider } from "./context/CartContext";
 import StyledComponentsRegistry from "./StyledComponentsRegistry";
+import { ClientLayoutWrapper } from "./components/ClientLayoutWrapper";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,9 +34,10 @@ export default function RootLayout({
       >
         <CartProvider>
           <StyledComponentsRegistry>
-            <Navbar />
-            <main className="min-h-screen">{children}</main>
-            <Footer />
+            <ClientLayoutWrapper>
+              {children}
+            </ClientLayoutWrapper>
+            <Toaster theme="dark" richColors />
           </StyledComponentsRegistry>
         </CartProvider>
       </body>

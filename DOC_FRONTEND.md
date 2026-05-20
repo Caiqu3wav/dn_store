@@ -19,7 +19,7 @@ frontend/
 │   │   ├── shop/         ← Componentes da loja
 │   │   └── ui/           ← Componentes genéricos (Button, etc.)
 │   ├── context/          ← Contextos React (ex: CartContext)
-│   ├── loja/page.tsx     ← Rota "/loja"
+│   ├── loja/page.tsx     ← Rota "/produtos"
 │   ├── carrinho/page.tsx ← Rota "/carrinho"
 │   └── produto/[id]/     ← Rota dinâmica "/produto/123"
 ├── lib/                  ← Funções utilitárias e dados
@@ -36,7 +36,7 @@ No Next.js com App Router, **cada pasta dentro de `app/` com um arquivo `page.ts
 | Arquivo                          | Rota resultante     |
 |----------------------------------|---------------------|
 | `app/page.tsx`                   | `/`                 |
-| `app/loja/page.tsx`              | `/loja`             |
+| `app/produtos/page.tsx`              | `/produtos`             |
 | `app/carrinho/page.tsx`          | `/carrinho`         |
 | `app/produto/[id]/page.tsx`      | `/produto/123`      |
 | `app/eventos/page.tsx`           | `/eventos`          |
@@ -174,11 +174,11 @@ Se você está acostumado com Create React App ou Vite + React, aqui estão as p
 
 ```tsx
 // ❌ Não use <a> para links internos
-<a href="/loja">Loja</a>
+<a href="/produtos">Loja</a>
 
 // ✅ Use o componente Link do Next.js
 import Link from 'next/link';
-<Link href="/loja">Loja</Link>
+<Link href="/produtos">Loja</Link>
 ```
 
 O `Link` faz navegação client-side sem recarregar a página.
@@ -209,7 +209,7 @@ O roteamento é feito pela estrutura de pastas dentro de `app/`. Não instale ne
 Em Server Components, você pode buscar dados diretamente, sem `useEffect`:
 
 ```tsx
-// app/loja/page.tsx — Server Component (sem 'use client')
+// app/produtos/page.tsx — Server Component (sem 'use client')
 export default async function LojaPage() {
   const produtos = await fetch('http://localhost:8080/api/produtos').then(r => r.json());
 
