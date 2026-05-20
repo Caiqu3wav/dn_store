@@ -27,7 +27,7 @@ export default function CheckoutPage() {
         return (
             <div className="min-h-screen bg-gray-50 pt-32 pb-20 text-center">
                 <h1 className="text-3xl font-bold mb-4">Seu carrinho está vazio</h1>
-                <Button onClick={() => router.push('/loja')}>Voltar para a Loja</Button>
+                <Button onClick={() => router.push('/produtos')}>Voltar para a Loja</Button>
             </div>
         );
     }

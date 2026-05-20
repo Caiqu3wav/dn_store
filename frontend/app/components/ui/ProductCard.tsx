@@ -2,12 +2,28 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ShoppingCart, Heart } from 'lucide-react';
 import { Product } from '@/types';
+import { useCart } from '../../context/CartContext';
+import { toast } from 'sonner';
 
 interface ProductCardProps {
   product: Product;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
+  const { addItem } = useCart();
+
+  const handleAddToCart = () => {
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      quantity: 1,
+      size: 'Único', // Default until variant selection is fully implemented
+    });
+    toast.success(`${product.name} adicionado ao carrinho!`);
+  };
+
   return (
     <div className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col h-full">
       
@@ -51,10 +67,16 @@ export function ProductCard({ product }: ProductCardProps) {
           <span className="text-lg font-black text-[#1A1B1D]">
             R$ {product.price.toFixed(2).replace('.', ',')}
           </span>
-          <button className="bg-brand-secondary w-fit py-3 px-5 text-white rounded-xl font-bold flex items-center justify-center hover:bg-[#1A1B1D] hover:scale-105 transition-all outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 shrink-0">
+          <button 
+            onClick={handleAddToCart}
+            className="bg-brand-secondary w-fit py-3 px-5 text-white rounded-xl font-bold flex items-center justify-center hover:bg-[#1A1B1D] hover:scale-105 transition-all outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 shrink-0"
+          >
             COMPRAR
           </button>
-          <button className="w-10 h-10 bg-gray-100 text-[#1A1B1D] rounded-full flex items-center justify-center hover:bg-brand-secondary hover:text-white hover:scale-105 transition-all outline-none focus:ring-2 focus:ring-brand-secondary focus:ring-offset-2 shrink-0 group-hover:bg-brand-secondary group-hover:text-white">
+          <button 
+            onClick={handleAddToCart}
+            className="w-10 h-10 bg-gray-100 text-[#1A1B1D] rounded-full flex items-center justify-center hover:bg-brand-secondary hover:text-white hover:scale-105 transition-all outline-none focus:ring-2 focus:ring-brand-secondary focus:ring-offset-2 shrink-0 group-hover:bg-brand-secondary group-hover:text-white"
+          >
             <ShoppingCart className="w-4 h-4" />
           </button>
         </div>

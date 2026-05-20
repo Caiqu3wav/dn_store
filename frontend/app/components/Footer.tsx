@@ -78,10 +78,10 @@ export function Footer() {
     <p className="text-xl text-gray-400">Formas de pagamento</p>
 
     <div className="flex items-center gap-6">
-        <Image src="assets/pagamentos/pix.svg" alt="Pix" width={70} height={42} className="object-contain opacity-80 hover:opacity-100 transition"/>
-        <Image src="assets/pagamentos/visa.svg" alt="Visa" width={70} height={42} className="object-contain opacity-80 hover:opacity-100 transition"/>
-        <Image src="assets/pagamentos/mastercard.svg" alt="Mastercard" width={80} height={48} className="object-contain opacity-80 hover:opacity-100 transition"/>
-        <Image src="assets/pagamentos/mercadopago.svg" alt="Mercado Pago" width={70} height={42} className="object-contain opacity-80 hover:opacity-100 transition"/>
+        <Image src="/assets/pagamentos/pix.svg" alt="Pix" width={70} height={42} className="object-contain opacity-80 hover:opacity-100 transition"/>
+        <Image src="/assets/pagamentos/visa.svg" alt="Visa" width={70} height={42} className="object-contain opacity-80 hover:opacity-100 transition"/>
+        <Image src="/assets/pagamentos/mastercard.svg" alt="Mastercard" width={80} height={48} className="object-contain opacity-80 hover:opacity-100 transition"/>
+        <Image src="/assets/pagamentos/mercadopago.svg" alt="Mercado Pago" width={70} height={42} className="object-contain opacity-80 hover:opacity-100 transition"/>
     </div>
 </div>
                 <div className="border-t w-full  self-center border-gray-800 pt-8 flex flex-col md:flex-row items-center justify-center gap-4 text-white text-xs text-center md:text-left bg-black py-8">

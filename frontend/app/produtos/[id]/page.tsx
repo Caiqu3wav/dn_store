@@ -70,7 +70,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 <div className="flex items-center text-sm text-gray-500 mb-8">
                     <Link href="/" className="hover:text-brand-red">Home</Link>
                     <ChevronRight className="w-4 h-4 mx-2" />
-                    <Link href="/loja" className="hover:text-brand-red">Loja</Link>
+                    <Link href="/produtos" className="hover:text-brand-red">Loja</Link>
                     <ChevronRight className="w-4 h-4 mx-2" />
                     <span className="text-black font-medium">{product.name}</span>
                 </div>
