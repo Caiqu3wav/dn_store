@@ -109,7 +109,7 @@ export function Sobre({ images }: SobreProps) {
                             </p>
                         </div>
 
-                        <Link href="/sobre" className="inline-flex w-70 flex items-center gap-3 bg-brand-secondary text-white text-base font-bold px-8 py-4 rounded-full hover:bg-foreground transition-colors outline-none focus:ring-4 focus:ring-brand-secondary/30">
+                        <Link href="/sobre" className="inline-flex w-70 flex items-center gap-3 bg-brand-red-primary text-white text-base font-bold px-8 py-4 rounded-full hover:bg-foreground transition-colors outline-none focus:ring-4 focus:ring-brand-secondary/30">
                             Saiba Mais Sobre Nós
                             <ArrowRight className="w-5 h-5" />
                         </Link>
