@@ -19,13 +19,13 @@ export function EventsTeaser() {
                         viewport={{ once: true }}
                         transition={{ duration: 0.8 }}
                     >
-                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-secondary/20 text-brand-secondary font-bold text-sm mb-6">
+                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-red-primary/20 text-brand-secondary font-bold text-sm mb-6">
                             <Timer className="w-4 h-4" />
                             Próximos Desafios
                         </span>
                         <h2 className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 leading-tight tracking-tight">
                             Ultrapasse seus <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-secondary to-brand-highlight">Próprios Limites</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-red-primary to-brand-highlight">Próprios Limites</span>
                         </h2>
                         <p className="text-foreground text-lg mb-8 leading-relaxed max-w-xl">
                             A verdadeira adrenalina acontece nas trilhas. Participe do nosso circuito anual e conecte-se com ciclistas que compartilham da mesma paixão que você.
@@ -34,7 +34,7 @@ export function EventsTeaser() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                             {EVENTS.map((event) => (
                                 <div key={event.id} className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur-sm">
-                                    <span className="text-xs uppercase tracking-[0.3em] text-brand-secondary font-bold">
+                                    <span className="text-xs uppercase tracking-[0.3em] text-brand-red-primary font-bold">
                                         {event.date}
                                     </span>
                                     <h3 className="text-xl font-black mt-3 leading-tight">
@@ -95,12 +95,12 @@ export function EventsTeaser() {
                             </div>
                         </div>
 
-                        <Link href={NEXT_EVENT.mapsLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full bg-brand-primary  font-bold py-4 rounded-xl hover:bg-brand-secondary transition-colors outline-none focus:ring-4 focus:ring-brand-secondary/30">
+                        <Link href={NEXT_EVENT.mapsLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full bg-brand-primary  font-bold py-4 rounded-xl hover:bg-brand-red-primary transition-colors outline-none focus:ring-4 focus:ring-brand-secondary/30">
                             Abrir no Google Maps
                             <ExternalLink className="w-5 h-5" />
                         </Link>
                         
-                        <button className="bg-brand-secondary text-white font-black px-5 py-2 rounded-lg transition-colors hover:bg-foreground block mx-auto my-5">
+                        <button className="bg-brand-red-primary text-white font-black px-5 py-2 rounded-lg transition-colors hover:bg-foreground block mx-auto my-5">
                     Inscreva-se
                         </button>
                         
