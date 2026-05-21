@@ -39,7 +39,7 @@ export function FeaturedProducts() {
     };
 
     return (
-        <section id="destaques" className="py-24 bg-white">
+        <section id="s" className="py-24 bg-white">
             <div className="container mx-auto px-4 lg:px-8">
                 <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
                     <div>
@@ -49,14 +49,14 @@ export function FeaturedProducts() {
                             viewport={{ once: true }}
                             className="text-3xl md:text-5xl font-black text-brand tracking-tight mb-2"
                         >
-                            Destaques Profissionais
+                            Produtos em destaque
                         </motion.h2>
                         <p className="text-gray-500 text-sm md:text-base">
                             Equipamentos essenciais aprovados pelos nossos atletas de elite.
                         </p>
                     </div>
                     
-                    <Link href="/produtos" className="hidden md:flex items-center gap-2 text-brand-secondary font-bold hover:text-brand transition-colors">
+                    <Link href="/produtos" className="hidden md:flex items-center gap-2 text-brand-red-primary font-bold hover:text-brand transition-colors">
                         Ver loja completa
                         <ArrowRight className="w-5 h-5" />
                     </Link>

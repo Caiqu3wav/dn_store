@@ -19,7 +19,7 @@ export function Categories() {
                         <motion.span
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-background text-brand-primary font-bold transition-all hover:bg-brand-secondary hover:text-white hover:shadow-lg"
+                            className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-background text-brand-primary font-bold transition-all hover:bg-brand-red-primary hover:text-white hover:shadow-lg"
                         >
                             Todos os Produtos
                         </motion.span>
@@ -34,7 +34,7 @@ export function Categories() {
                                 transition={{ delay: index * 0.1 }}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-background text-brand-primary font-bold transition-all hover:bg-brand-secondary hover:text-white hover:shadow-lg"
+                                className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-background text-brand-primary font-bold transition-all hover:bg-brand-red-primary hover:text-white hover:shadow-lg"
                             >
                                 {category.name}
                             </motion.span>
