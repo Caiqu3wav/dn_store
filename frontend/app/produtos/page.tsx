@@ -14,7 +14,9 @@ export default function ProdutosPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<{ min: string; max: string }>({ min: '', max: '' });
   const [sortBy, setSortBy] = useState<SortOption>('relevance');
-
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
+  const [selectedSize, setSelectedSize] = useState('');
   // Prevent background scroll when mobile filters are open
   useEffect(() => {
     if (isMobileFiltersOpen) {
@@ -44,13 +46,25 @@ export default function ProdutosPage() {
     }
 
     // Categories
-    if (selectedCategories.length > 0) {
+  if (selectedCategory) {
+  result = result.filter(p => p.category === selectedCategory);
+  }
+   if (selectedCategories.length > 0) {
       result = result.filter(p => selectedCategories.includes(p.category));
     }
-
     // Price
     const minPrice = priceRange.min ? parseFloat(priceRange.min) : 0;
     const maxPrice = priceRange.max ? parseFloat(priceRange.max) : Infinity;
+
+    // Color
+if (selectedColor) {
+  result = result.filter(p => p.color === selectedColor);
+}
+
+// Size
+if (selectedSize) {
+  result = result.filter(p => p.size?.includes(selectedSize));
+}
 
     if (minPrice > 0 || maxPrice < Infinity) {
       result = result.filter(p => p.price >= minPrice && p.price <= maxPrice);
@@ -76,7 +90,7 @@ export default function ProdutosPage() {
     }
 
     return result;
-  }, [searchQuery, selectedCategories, priceRange, sortBy]);
+  }, [searchQuery, selectedCategories, selectedCategory, selectedColor, selectedSize, priceRange, sortBy]);
 
   const allCategoryNames = Array.from(new Set(FEATURED_PRODUCTS.map(p => p.category)));
 
@@ -190,10 +204,16 @@ export default function ProdutosPage() {
                       <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight">Categorias</h4>
                       <div className="space-y-2">
                         {allCategoryNames.map(category => (
-                          <label key={category} className="flex items-center gap-3 cursor-pointer group">
+                        <label
+                               key={category}
+                                  onClick={() => setSelectedCategory(category)}
+                                    className="flex items-center gap-3 cursor-pointer group"
+                                                                                          >
                             <div className={`
                               w-5 h-5 rounded border flex items-center justify-center transition-all duration-200
-                              ${selectedCategories.includes(category) ? 'bg-brand-secondary border-brand-secondary' : 'bg-white border-gray-300 group-hover:border-brand-secondary'}
+                              ${selectedCategory === category
+                            ? 'bg-brand-secondary border-brand-secondary'
+                            : 'bg-white border-gray-300 group-hover:border-brand-secondary'}
                             `}>
                               {selectedCategories.includes(category) && <X className="w-3 h-3 text-white" />}
                             </div>
