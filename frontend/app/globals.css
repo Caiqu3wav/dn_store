@@ -5,8 +5,8 @@
   --foreground: #1A1B1D;
   --brand-primary: #ffffff;
   --brand: #7c7c7c;
-  --brand-red: #c70808; /* brown/orange */
-  --brand-secondary: #c70808; /* brown/orange */
+  --brand-red-primary: #c70808; /* brown/orange */
+  --brand-red-secondary: #ff0000; /* brown/orange */
   --brand-highlight: #16A34A; /* nature green */
 }
 
@@ -18,7 +18,8 @@ button {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-brand-primary: var(--brand-primary);
-  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-red-primary: var(--brand-red-primary);
+  --color-brand-secondary: var(--brand-red-secondary);
   --color-brand-highlight: var(--brand-highlight);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular;
