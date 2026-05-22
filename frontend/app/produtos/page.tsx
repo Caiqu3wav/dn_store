@@ -99,7 +99,7 @@ if (selectedSize) {
       <div className="container mx-auto px-4 lg:px-8">
 
         {/* Header Section */}
-        <div className="mb-8 md:mb-12 mt-12">
+        <div className="mb-8 md:mb-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
               <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2">

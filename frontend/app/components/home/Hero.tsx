@@ -26,7 +26,7 @@ export function Hero({ images = [] }: HeroProps) {
     }, [safeImages.length]);
 
     return (
-        <section className="relative h-fit py-30 w-full flex items-center justify-center overflow-hidden">
+        <section className="relative h-full py-16 w-full flex items-center justify-center overflow-hidden">
             {/* Background Image Carousel */}
             <div className="absolute inset-0 z-0 bg-black">
                 <AnimatePresence mode="wait">
@@ -48,7 +48,7 @@ export function Hero({ images = [] }: HeroProps) {
                     </motion.div>
                 </AnimatePresence>
                 {/* Dark Overlay to make text and logo pop */}
-                <div className="absolute inset-0 bg-black/60 z-10" />
+                <div className="absolute inset-0 bg-black/40 z-10" />
             </div>
 
             <div className="relative z-20 flex flex-col items-center container mx-auto px-4 text-center text-white mt-16">
@@ -63,9 +63,9 @@ export function Hero({ images = [] }: HeroProps) {
                     <Image 
                         src="/assets/dnstore_logo_white.png" 
                         alt="DN Store" 
-                        width={400} 
-                        height={200} 
-                        className="object-contain mt-6 drop-shadow-lg"
+                        width={300} 
+                        height={150} 
+                        className="object-contain mt-12 drop-shadow-lg"
                     />
                 </motion.div>
 

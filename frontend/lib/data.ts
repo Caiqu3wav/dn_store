@@ -54,7 +54,7 @@ export const EVENTS = [
     name: '3ª Etapa - Lorena',
     date: '26 de Julho',
     location: 'Lorena - SP',
-    description: 'Trecho desafiante com subida íngreme e paisagem panorâmica do Pico do Itapeva.',
+    description: 'A etapa de Lorena vai testar seus limites — velocidade, resistência e coragem em uma experiência feita para quem nasceu para competir.',
     mapsLink: 'https://maps.google.com?q=Pindamonhangaba',
     image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&q=80&w=800'
   },
