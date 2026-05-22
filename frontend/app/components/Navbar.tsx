@@ -23,13 +23,13 @@ export function Navbar() {
     return (
         <header
             className={cn(
-                'fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b',
+                'sticky top-0 left-0 right-0 z-50 transition-all duration-300 border-b',
                 isScrolled 
                     ? 'bg-foreground/80 backdrop-blur-lg border-gray-200 py-3 shadow-sm' 
                     : 'bg-background border-transparent py-4'
             )}
         >
-           <div className="container mx-auto px-4 lg:px-8 relative flex items-center justify-between h-20">
+           <div className="container mx-auto px-4 lg:px-8 relative flex items-center justify-between h-12">
                 {/* 1. Logo */}
                 <Link href="/" className="flex items-center gap-2 shrink-0 ml-10">
                     <div className="relative w-15 h-15 overflow-hidden rounded-xl shadow-sm  flex items-center justify-center">
