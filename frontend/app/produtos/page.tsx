@@ -203,15 +203,15 @@ if (selectedSize) {
                     <div className="space-y-3">
                       <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight">Categorias</h4>
                       <div className="space-y-2">
-                        {allCategoryNames.map(category => (
+                        {['Todos', 'Camisa Poliamida', 'Camisas de Ciclismo', 'Bonés & Meias'].map(category => (
                         <label
                                key={category}
-                                  onClick={() => setSelectedCategory(category)}
+                                  onClick={() => setSelectedCategory(category === 'Todos' ? '' : category)}
                                     className="flex items-center gap-3 cursor-pointer group"
                                                                                           >
                             <div className={`
                               w-5 h-5 rounded border flex items-center justify-center transition-all duration-200
-                              ${selectedCategory === category
+                             ${(selectedCategory === '' && category === 'Todos') || selectedCategory === category
                             ? 'bg-brand-secondary border-brand-secondary'
                             : 'bg-white border-gray-300 group-hover:border-brand-secondary'}
                             `}>
@@ -224,6 +224,9 @@ if (selectedSize) {
                         ))}
                       </div>
                     </div>
+                     
+                
+ 
 
                     {/* Price Range */}
                     <div className="space-y-3">
@@ -246,6 +249,93 @@ if (selectedSize) {
                         />
                       </div>
                     </div>
+
+                    {/* Dynamic Filters */}
+{selectedCategory === 'Camisa Poliamida' && (
+  <div className="space-y-4">
+
+    <div>
+      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
+        Cor
+      </h4>
+
+      <select
+        value={selectedColor}
+        onChange={(e) => setSelectedColor(e.target.value)}
+        className="w-full border border-gray-200 rounded-xl p-3"
+      >
+        <option value="">Todas</option>
+        <option value="Cinza">Cinza</option>
+        <option value="Preta">Preta</option>
+        <option value="Azul">Azul</option>
+        <option value="Laranja">Laranja</option>
+        <option value="Rosa">Rosa</option>
+        <option value="Vermelha">Vermelho</option>
+        <option value="Marrom">Marrom</option>
+      </select>
+    </div>
+
+    <div>
+      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
+        Tamanho
+      </h4>
+
+      <select
+        value={selectedSize}
+        onChange={(e) => setSelectedSize(e.target.value)}
+        className="w-full border border-gray-200 rounded-xl p-3"
+      >
+        <option value="">Todos</option>
+        <option value="P">P</option>
+        <option value="M">M</option>
+        <option value="G">G</option>
+      </select>
+    </div>
+
+  </div>
+)}
+
+{selectedCategory === 'Bonés & Meias' && (
+  <div className="space-y-4">
+
+    <div>
+      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
+        Cor
+      </h4>
+
+      <select
+        value={selectedColor}
+        onChange={(e) => setSelectedColor(e.target.value)}
+        className="w-full border border-gray-200 rounded-xl p-3"
+      >
+        <option value="">Todas</option>
+        <option value="Preto e Vermelho">Preto e Vermelho</option>
+        <option value="Preto e Verde">Preto e Verde</option>
+      </select>
+    </div>
+
+    <div>
+      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
+        Tamanho
+      </h4>
+
+      <select
+        value={selectedSize}
+        onChange={(e) => setSelectedSize(e.target.value)}
+        className="w-full border border-gray-200 rounded-xl p-3"
+      >
+        <option value="">Todos</option>
+        <option value="35">35</option>
+        <option value="40">40</option>
+        <option value="42">42</option>
+      </select>
+    </div>
+
+  </div>
+)}
+
+
+
 
                     {/* Mobile Apply Button */}
                     <div className="pt-6 lg:hidden">

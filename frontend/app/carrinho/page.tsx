@@ -87,7 +87,7 @@ export default function CartPage() {
                             </div>
 
                             <Link href="/checkout">
-                                <Button className="w-full py-6 text-lg">
+                                <Button className="w-full py-6 text-lg text-white">
                                     Finalizar Compra <ArrowRight className="w-5 h-5 ml-2" />
                                 </Button>
                             </Link>
