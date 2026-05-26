@@ -200,30 +200,48 @@ if (selectedSize) {
                     </div>
 
                     {/* Categories */}
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight">Categorias</h4>
-                      <div className="space-y-2">
-                        {['Todos', 'Camisa Poliamida', 'Camisas de Ciclismo', 'Bonés & Meias'].map(category => (
-                        <label
-                               key={category}
-                                  onClick={() => setSelectedCategory(category === 'Todos' ? '' : category)}
-                                    className="flex items-center gap-3 cursor-pointer group"
-                                                                                          >
-                            <div className={`
-                              w-5 h-5 rounded border flex items-center justify-center transition-all duration-200
-                             ${(selectedCategory === '' && category === 'Todos') || selectedCategory === category
-                            ? 'bg-brand-secondary border-brand-secondary'
-                            : 'bg-white border-gray-300 group-hover:border-brand-secondary'}
-                            `}>
-                              {selectedCategories.includes(category) && <X className="w-3 h-3 text-white" />}
-                            </div>
-                            <span className={`text-sm transition-colors ${selectedCategories.includes(category) ? 'text-[#1A1B1D] font-medium' : 'text-gray-600 group-hover:text-[#1A1B1D]'}`}>
-                              {category}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
+                   <div className="space-y-3">
+  <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight">
+    Categorias
+  </h4>
+
+  <div className="space-y-2">
+    {['Todos', 'Camisa Poliamida', 'Camisas de Ciclismo', 'Bonés & Meias'].map(category => (
+      <label
+        key={category}
+        onClick={() => {
+          setSelectedCategory(category === 'Todos' ? '' : category);
+
+          // limpa filtros antigos
+          setSelectedColor('');
+          setSelectedSize('');
+        }}
+        className="flex items-center gap-3 cursor-pointer group"
+      >
+        <div
+          className={`
+            w-5 h-5 rounded border flex items-center justify-center transition-all duration-200
+            ${
+              (category === 'Todos' && selectedCategory === '') ||
+              selectedCategory === category
+                ? 'bg-brand-secondary border-brand-secondary'
+                : 'bg-white border-gray-300 group-hover:border-brand-secondary'
+            }
+          `}
+        >
+          {((category === 'Todos' && selectedCategory === '') ||
+            selectedCategory === category) && (
+            <X className="w-3 h-3 text-white" />
+          )}
+        </div>
+
+        <span className="text-sm text-gray-600 group-hover:text-[#1A1B1D]">
+          {category}
+        </span>
+      </label>
+    ))}
+  </div>
+</div>
                      
                 
  
@@ -294,6 +312,52 @@ if (selectedSize) {
 
   </div>
 )}
+
+{selectedCategory === 'Camisas de Ciclismo' && (
+  <div className="space-y-4">
+
+    <div>
+      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
+        Cor
+      </h4>
+
+      <select
+        value={selectedColor}
+        onChange={(e) => setSelectedColor(e.target.value)}
+        className="w-full border border-gray-200 rounded-xl p-3"
+      >
+        <option value="">Todas</option>
+        <option value="Azul">Azul</option>
+        <option value="Laranja">Laranja</option>
+        <option value="Marrom">Marrom</option>
+         <option value="Vermelha">Vermelha</option>
+          <option value="Preta">Preta</option>
+
+      </select>
+    </div>
+
+    <div>
+      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
+        Tamanho
+      </h4>
+
+      <select
+        value={selectedSize}
+        onChange={(e) => setSelectedSize(e.target.value)}
+        className="w-full border border-gray-200 rounded-xl p-3"
+      >
+        <option value="">Todos</option>
+        <option value="P">P</option>
+        <option value="M">M</option>
+        <option value="G">G</option>
+      </select>
+    </div>
+
+  </div>
+)}
+
+
+
 
 {selectedCategory === 'Bonés & Meias' && (
   <div className="space-y-4">
