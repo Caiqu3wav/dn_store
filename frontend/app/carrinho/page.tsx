@@ -92,7 +92,7 @@ export default function CartPage() {
                                 </Button>
                             </Link>
 
-                            <Link href="/loja">
+                            <Link href="/produtos">
                                 <Button variant="outline" className="w-full mt-4">
                                     Continuar Comprando
                                 </Button>
