@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/ui/Button';
 import { useRouter } from 'next/navigation';
-import { Trash2, CreditCard, QrCode } from 'lucide-react';
+import { Trash2, CreditCard, QrCode, Wallet } from 'lucide-react';
 
 export default function CheckoutPage() {
     const { items, removeItem, updateQuantity, total, clearCart } = useCart();
-    const [paymentMethod, setPaymentMethod] = useState<'credit' | 'pix'>('credit');
+    const [paymentMethod, setPaymentMethod] = useState<'credit' | 'debit' | 'pix'>('credit');
     const [isProcessing, setIsProcessing] = useState(false);
     const router = useRouter();
 
@@ -92,7 +92,40 @@ export default function CheckoutPage() {
                                 <input type="text" placeholder="Número" className="p-3 border rounded-md w-full" required />
                                 <input type="text" placeholder="Complemento" className="p-3 border rounded-md w-full" />
                                 <input type="text" placeholder="Cidade" className="p-3 border rounded-md w-full" required />
-                                <input type="text" placeholder="Estado" className="p-3 border rounded-md w-full" required />
+                                <select
+                                 className="p-3 border rounded-md w-full bg-white"
+                                 required
+                                        >
+                                <option value="">Selecione o Estado</option>
+
+                             <option value="AC">AC - Acre</option>
+                             <option value="AL">AL - Alagoas</option>
+                             <option value="AP">AP - Amapá</option>
+                             <option value="AM">AM - Amazonas</option>
+                            <option value="BA">BA - Bahia</option>
+                             <option value="CE">CE - Ceará</option>
+                            <option value="DF">DF - Distrito Federal</option>
+                         <option value="ES">ES - Espírito Santo</option>
+                             <option value="GO">GO - Goiás</option>
+                        <option value="MA">MA - Maranhão</option>
+                        <option value="MT">MT - Mato Grosso</option>
+                            <option value="MS">MS - Mato Grosso do Sul</option>
+                            <option value="MG">MG - Minas Gerais</option>
+                            <option value="PA">PA - Pará</option>
+                            <option value="PB">PB - Paraíba</option>
+                            <option value="PR">PR - Paraná</option>
+                            <option value="PE">PE - Pernambuco</option>
+                            <option value="PI">PI - Piauí</option>
+                         <option value="RJ">RJ - Rio de Janeiro</option>
+                        <option value="RN">RN - Rio Grande do Norte</option>
+                         <option value="RS">RS - Rio Grande do Sul</option>
+                        <option value="RO">RO - Rondônia</option>
+                          <option value="RR">RR - Roraima</option>
+                            <option value="SC">SC - Santa Catarina</option>
+                            <option value="SP">SP - São Paulo</option>
+                            <option value="SE">SE - Sergipe</option>
+                            <option value="TO">TO - Tocantins</option>
+                            </select>
                             </form>
                         </div>
                     </div>
@@ -111,6 +144,17 @@ export default function CheckoutPage() {
                                     <CreditCard className="w-5 h-5" />
                                     Cartão de Crédito
                                 </button>
+                                <button
+                                 onClick={() => setPaymentMethod('debit')}
+                                className={`w-full p-4 border rounded-lg flex items-center gap-3 transition-colors ${
+                             paymentMethod === 'debit'
+                                ? 'border-brand-red bg-red-50 text-brand-red'
+                                : 'hover:bg-gray-50'
+                                      }`}
+                        >
+    <Wallet className="w-5 h-5" />
+    Cartão de Débito
+</button>
                                 <button
                                     onClick={() => setPaymentMethod('pix')}
                                     className={`w-full p-4 border rounded-lg flex items-center gap-3 transition-colors ${paymentMethod === 'pix' ? 'border-brand-red bg-red-50 text-brand-red' : 'hover:bg-gray-50'
