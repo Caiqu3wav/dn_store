@@ -45,6 +45,7 @@ export function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
+    
     <div className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col h-full">
       
       {/* Image Container */}
@@ -94,17 +95,31 @@ export function ProductCard({ product }: ProductCardProps) {
           <span className="text-lg font-black text-[#1A1B1D]">
             R$ {product.price.toFixed(2).replace('.', ',')}
           </span>
-          <button 
-            onClick={handleAddToCart}
-            className={`py-3 px-5 text-white rounded-xl font-bold flex items-center justify-center transition-all outline-none focus:ring-2 focus:ring-offset-2 shrink-0 ${
-              addedToCart 
-                ? 'bg-green-500 hover:bg-green-600 focus:ring-green-500' 
-                : 'bg-brand-red-primary hover:bg-[#1A1B1D] hover:scale-105 focus:ring-brand-primary'
-            }`}
-          >
-            {addedToCart ? 'ADICIONADO' : 'COMPRAR'}
+          <button   onClick={() =>
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      quantity: 1,
+    })
+  }
+  className="bg-brand-red-primary w-fit py-3 px-5 text-white rounded-xl font-bold flex items-center justify-center hover:bg-[#1A1B1D] hover:scale-105 transition-all outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 shrink-0"
+>
+            COMPRAR
           </button>
-          <button className="w-10 h-10 bg-gray-100 text-[#1A1B1D] rounded-full flex items-center justify-center hover:bg-[#1A1B1D] hover:text-white hover:scale-105 transition-all outline-none focus:ring-2 focus:ring-brand-red-primary focus:ring-offset-2 shrink-0 group-hover:bg-brand-red-primary group-hover:text-white">
+          <button 
+  onClick={() =>
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      quantity: 1,
+    })
+  }
+  className="w-10 h-10 bg-gray-100 text-[#1A1B1D] rounded-full flex items-center justify-center hover:bg-[#1A1B1D] hover:text-white hover:scale-105 transition-all outline-none focus:ring-2 focus:ring-brand-red-primary focus:ring-offset-2 shrink-0 group-hover:bg-brand-red-primary group-hover:text-white"
+>
             <ShoppingCart className="w-4 h-4" />
           </button>
         </div>

@@ -25,13 +25,13 @@ export function Navbar() {
     return (
         <header
             className={cn(
-                'fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b',
+                'sticky top-0 left-0 right-0 z-50 transition-all duration-300 border-b',
                 isScrolled 
                     ? 'bg-foreground/80 backdrop-blur-lg border-gray-200 py-3 shadow-sm' 
                     : 'bg-background border-transparent py-4'
             )}
         >
-           <div className="container mx-auto px-4 lg:px-8 relative flex items-center justify-between h-20">
+           <div className="container mx-auto px-4 lg:px-8 relative flex items-center justify-between h-12">
                 {/* 1. Logo */}
                 <Link href="/" className="flex items-center gap-2 shrink-0 ml-10">
                     <div className="relative w-15 h-15 overflow-hidden rounded-xl shadow-sm  flex items-center justify-center">
@@ -77,7 +77,7 @@ export function Navbar() {
 
                     {/* Icons */}
                     <div className="flex items-center gap-4 text-white">
-                        <Link href='/auth' className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Conta">
+                        <Link href='/Auth' className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Conta">
                             <User className="w-5 h-5" />
                         </Link>
                         <Link href='/favoritos' className="hidden sm:block hover:text-brand-secondary transition-colors relative flex items-center" aria-label="Favoritos">
@@ -125,7 +125,7 @@ export function Navbar() {
                     <Link href="/sobre" className="text-gray-800 font-medium py-2 border-b border-gray-100">Sobre</Link>
                     
                     <div className="flex items-center justify-around pt-4 pb-2">
-                        <Link href="/auth" className="flex flex-col items-center gap-1 text-gray-600">
+                        <Link href="/Auth" className="flex flex-col items-center gap-1 text-gray-600">
                             <User className="w-5 h-5" />
                             <span className="text-xs">Conta</span>
                         </Link>

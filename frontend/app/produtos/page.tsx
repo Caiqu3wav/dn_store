@@ -14,7 +14,9 @@ export default function ProdutosPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<{ min: string; max: string }>({ min: '', max: '' });
   const [sortBy, setSortBy] = useState<SortOption>('relevance');
-
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
+  const [selectedSize, setSelectedSize] = useState('');
   // Prevent background scroll when mobile filters are open
   useEffect(() => {
     if (isMobileFiltersOpen) {
@@ -44,13 +46,25 @@ export default function ProdutosPage() {
     }
 
     // Categories
-    if (selectedCategories.length > 0) {
+  if (selectedCategory) {
+  result = result.filter(p => p.category === selectedCategory);
+  }
+   if (selectedCategories.length > 0) {
       result = result.filter(p => selectedCategories.includes(p.category));
     }
-
     // Price
     const minPrice = priceRange.min ? parseFloat(priceRange.min) : 0;
     const maxPrice = priceRange.max ? parseFloat(priceRange.max) : Infinity;
+
+    // Color
+if (selectedColor) {
+  result = result.filter(p => p.color === selectedColor);
+}
+
+// Size
+if (selectedSize) {
+  result = result.filter(p => p.size?.includes(selectedSize));
+}
 
     if (minPrice > 0 || maxPrice < Infinity) {
       result = result.filter(p => p.price >= minPrice && p.price <= maxPrice);
@@ -76,7 +90,7 @@ export default function ProdutosPage() {
     }
 
     return result;
-  }, [searchQuery, selectedCategories, priceRange, sortBy]);
+  }, [searchQuery, selectedCategories, selectedCategory, selectedColor, selectedSize, priceRange, sortBy]);
 
   const allCategoryNames = Array.from(new Set(FEATURED_PRODUCTS.map(p => p.category)));
 
@@ -85,7 +99,7 @@ export default function ProdutosPage() {
       <div className="container mx-auto px-4 lg:px-8">
 
         {/* Header Section */}
-        <div className="mb-8 md:mb-12 mt-12">
+        <div className="mb-8 md:mb-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
               <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2">
@@ -186,24 +200,51 @@ export default function ProdutosPage() {
                     </div>
 
                     {/* Categories */}
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight">Categorias</h4>
-                      <div className="space-y-2">
-                        {allCategoryNames.map(category => (
-                          <label key={category} className="flex items-center gap-3 cursor-pointer group">
-                            <div className={`
-                              w-5 h-5 rounded border flex items-center justify-center transition-all duration-200
-                              ${selectedCategories.includes(category) ? 'bg-brand-secondary border-brand-secondary' : 'bg-white border-gray-300 group-hover:border-brand-secondary'}
-                            `}>
-                              {selectedCategories.includes(category) && <X className="w-3 h-3 text-white" />}
-                            </div>
-                            <span className={`text-sm transition-colors ${selectedCategories.includes(category) ? 'text-[#1A1B1D] font-medium' : 'text-gray-600 group-hover:text-[#1A1B1D]'}`}>
-                              {category}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
+                   <div className="space-y-3">
+  <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight">
+    Categorias
+  </h4>
+
+  <div className="space-y-2">
+    {['Todos', 'Camisa Poliamida', 'Camisas de Ciclismo', 'Bonés & Meias'].map(category => (
+      <label
+        key={category}
+        onClick={() => {
+          setSelectedCategory(category === 'Todos' ? '' : category);
+
+          // limpa filtros antigos
+          setSelectedColor('');
+          setSelectedSize('');
+        }}
+        className="flex items-center gap-3 cursor-pointer group"
+      >
+        <div
+          className={`
+            w-5 h-5 rounded border flex items-center justify-center transition-all duration-200
+            ${
+              (category === 'Todos' && selectedCategory === '') ||
+              selectedCategory === category
+                ? 'bg-brand-secondary border-brand-secondary'
+                : 'bg-white border-gray-300 group-hover:border-brand-secondary'
+            }
+          `}
+        >
+          {((category === 'Todos' && selectedCategory === '') ||
+            selectedCategory === category) && (
+            <X className="w-3 h-3 text-white" />
+          )}
+        </div>
+
+        <span className="text-sm text-gray-600 group-hover:text-[#1A1B1D]">
+          {category}
+        </span>
+      </label>
+    ))}
+  </div>
+</div>
+                     
+                
+ 
 
                     {/* Price Range */}
                     <div className="space-y-3">
@@ -226,6 +267,139 @@ export default function ProdutosPage() {
                         />
                       </div>
                     </div>
+
+                    {/* Dynamic Filters */}
+{selectedCategory === 'Camisa Poliamida' && (
+  <div className="space-y-4">
+
+    <div>
+      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
+        Cor
+      </h4>
+
+      <select
+        value={selectedColor}
+        onChange={(e) => setSelectedColor(e.target.value)}
+        className="w-full border border-gray-200 rounded-xl p-3"
+      >
+        <option value="">Todas</option>
+        <option value="Cinza">Cinza</option>
+        <option value="Preta">Preta</option>
+        <option value="Azul">Azul</option>
+        <option value="Laranja">Laranja</option>
+        <option value="Rosa">Rosa</option>
+        <option value="Vermelha">Vermelho</option>
+        <option value="Marrom">Marrom</option>
+      </select>
+    </div>
+
+    <div>
+      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
+        Tamanho
+      </h4>
+
+      <select
+        value={selectedSize}
+        onChange={(e) => setSelectedSize(e.target.value)}
+        className="w-full border border-gray-200 rounded-xl p-3"
+      >
+        <option value="">Todos</option>
+        <option value="P">P</option>
+        <option value="M">M</option>
+        <option value="G">G</option>
+      </select>
+    </div>
+
+  </div>
+)}
+
+{selectedCategory === 'Camisas de Ciclismo' && (
+  <div className="space-y-4">
+
+    <div>
+      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
+        Cor
+      </h4>
+
+      <select
+        value={selectedColor}
+        onChange={(e) => setSelectedColor(e.target.value)}
+        className="w-full border border-gray-200 rounded-xl p-3"
+      >
+        <option value="">Todas</option>
+        <option value="Azul">Azul</option>
+        <option value="Laranja">Laranja</option>
+        <option value="Marrom">Marrom</option>
+         <option value="Vermelha">Vermelha</option>
+          <option value="Preta">Preta</option>
+
+      </select>
+    </div>
+
+    <div>
+      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
+        Tamanho
+      </h4>
+
+      <select
+        value={selectedSize}
+        onChange={(e) => setSelectedSize(e.target.value)}
+        className="w-full border border-gray-200 rounded-xl p-3"
+      >
+        <option value="">Todos</option>
+        <option value="P">P</option>
+        <option value="M">M</option>
+        <option value="G">G</option>
+      </select>
+    </div>
+
+  </div>
+)}
+
+
+
+
+{selectedCategory === 'Bonés & Meias' && (
+  <div className="space-y-4">
+
+    <div>
+      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
+        Cor
+      </h4>
+
+      <select
+        value={selectedColor}
+        onChange={(e) => setSelectedColor(e.target.value)}
+        className="w-full border border-gray-200 rounded-xl p-3"
+      >
+        <option value="">Todas</option>
+        <option value="Preto e Vermelho">Preto e Vermelho</option>
+        <option value="Preto e Verde">Preto e Verde</option>
+      </select>
+    </div>
+
+    <div>
+      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
+        Tamanho
+      </h4>
+
+      <select
+        value={selectedSize}
+        onChange={(e) => setSelectedSize(e.target.value)}
+        className="w-full border border-gray-200 rounded-xl p-3"
+      >
+        <option value="">Todos</option>
+        <option value="35">35</option>
+        <option value="40">40</option>
+        <option value="42">42</option>
+      </select>
+    </div>
+
+  </div>
+)}
+
+
+
 
                     {/* Mobile Apply Button */}
                     <div className="pt-6 lg:hidden">
