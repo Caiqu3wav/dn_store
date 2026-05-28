@@ -6,11 +6,13 @@ import { ShoppingCart, Menu, X, Search, User, Heart } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from './ui/Button';
 import { useCart } from '../context/CartContext';
+import { useFavorites } from '../context/FavoritesContext';
 
 export function Navbar() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const { itemCount } = useCart();
+    const { favoritesCount } = useFavorites();
 
     useEffect(() => {
         const handleScroll = () => {
@@ -64,6 +66,7 @@ export function Navbar() {
 
                 {/* Navigation & Icons */}
                     <div className="flex items-center gap-6 md:gap-8 ml-auto z-10">
+                        
                     {/* Desktop Links */}
                     <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-white">
                         <Link href="/" className="hover:text-brand-secondary transition-colors">Home</Link>
@@ -77,9 +80,14 @@ export function Navbar() {
                         <Link href='/auth' className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Conta">
                             <User className="w-5 h-5" />
                         </Link>
-                        <button className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Favoritos">
+                        <Link href='/favoritos' className="hidden sm:block hover:text-brand-secondary transition-colors relative flex items-center" aria-label="Favoritos">
                             <Heart className="w-5 h-5" />
-                        </button>
+                            {favoritesCount > 0 && (
+                                <span className="absolute -top-2 -right-2 bg-brand-secondary text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                                    {favoritesCount}
+                                </span>
+                            )}
+                        </Link>
                         <Link href="/carrinho" className="hover:text-brand-secondary transition-colors relative flex items-center" aria-label="Carrinho">
                             <ShoppingCart className="w-5 h-5" />
                             {itemCount > 0 && (
