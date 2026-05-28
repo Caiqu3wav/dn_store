@@ -21,7 +21,7 @@ frontend/
 │   ├── context/          ← Contextos React (ex: CartContext)
 │   ├── loja/page.tsx     ← Rota "/produtos"
 │   ├── carrinho/page.tsx ← Rota "/carrinho"
-│   └── produto/[id]/     ← Rota dinâmica "/produto/123"
+│   └── produtos/[id]/     ← Rota dinâmica "/produtos/123"
 ├── lib/                  ← Funções utilitárias e dados
 ├── public/               ← Arquivos estáticos (imagens, svgs)
 └── package.json
@@ -38,7 +38,7 @@ No Next.js com App Router, **cada pasta dentro de `app/` com um arquivo `page.ts
 | `app/page.tsx`                   | `/`                 |
 | `app/produtos/page.tsx`              | `/produtos`             |
 | `app/carrinho/page.tsx`          | `/carrinho`         |
-| `app/produto/[id]/page.tsx`      | `/produto/123`      |
+| `app/produtos/[id]/page.tsx`      | `/produtos/123`      |
 | `app/eventos/page.tsx`           | `/eventos`          |
 
 ### Criando uma nova página
@@ -62,7 +62,7 @@ export default function EventosPage() {
 ### Rota dinâmica (ex: produto por ID)
 
 ```tsx
-// app/produto/[id]/page.tsx  →  rota: /produto/qualquer-coisa
+// app/produtos/[id]/page.tsx  →  rota: /produtos/qualquer-coisa
 
 export default function ProdutoPage({ params }: { params: { id: string } }) {
   return <div>Produto: {params.id}</div>;
