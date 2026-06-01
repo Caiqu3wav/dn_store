@@ -7,36 +7,17 @@ export const Container = styled.div`
   padding: 20px;
   align-items: center;
   justify-content: center;
-  background: #dbdbdb;
-  background: linear-gradient(
-    180deg,
-    rgba(219, 219, 219, 1) 0%,
-    rgba(224, 224, 224, 1) 22%,
-    rgba(250, 250, 250, 1) 40%,
-    rgba(250, 250, 250, 1) 60%,
-    rgba(224, 224, 224, 1) 78%,
-    rgba(219, 219, 219, 1) 100%
-  );
-  animation: moveBackground 50s alternate infinite;
-
-  @keyframes moveBackground {
-    from {
-      background-position: 0 0;
-    }
-    to {
-      background-position: 0 10000px;
-    }
-  }
+  background: #ffffff;
 `;
 export const Login = styled.div`
-  background-color: #f9f9f9;
+  background-color: #f7f7f7;
   padding: 2rem;
   border-radius: 10%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
   width: 25%;
   animation: fadeIn 0.5s ease-in-out;
   @keyframes fadeIn {
@@ -47,17 +28,15 @@ export const Login = styled.div`
       opacity: 1;
     }
   }
-
 `;
 
 export const Logo = styled.div`
-  width: 200px;
+  width: 400px;
   height: 200px;
-  background-image: url("http://localhost:3000/_next/image?url=%2Fassets%2Fdn_store2.png&w=1920&q=75");
+  background-image: url("/assets/Logo.jpeg");
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
-  transform: rotate(17.7deg);
 `;
 
 export const Button = styled.button`
