@@ -28,8 +28,15 @@ export function ProductCard({ product }: ProductCardProps) {
     }
   };
 
+  const { items } = useCart();
+
+  const existsInCart = items.some(
+    (i) => i.id === product.id && (i.size ?? "") === (product.size?.[0] ?? "")
+  );
+
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
+    if (existsInCart) return;
 
     addItem({
       id: product.id,
@@ -37,38 +44,37 @@ export function ProductCard({ product }: ProductCardProps) {
       price: product.price,
       image: product.image,
       quantity: 1,
-      size: product.size[0] || '',
+      size: product.size?.[0] || '',
     });
 
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
   };
 
+
   return (
-    
     <div className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col h-full">
-      
       {/* Image Container */}
       <div className="relative aspect-square w-full overflow-hidden bg-gray-50">
-        <Image 
-          src={product.image} 
-          alt={product.name} 
+        <Image
+          src={product.image}
+          alt={product.name}
           fill
           sizes="(max-width: 768px) 100vw, 320px"
           className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
         />
-        
+
         {/* Floating Actions */}
         <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <button 
+          <button
             onClick={handleToggleFavorite}
             className={`w-9 h-9 rounded-full flex items-center justify-center hover:scale-110 transition-all shadow-sm ${
-              isFav 
-                ? 'bg-red-500 text-white' 
-                : 'bg-white/90 backdrop-blur-sm text-gray-600 hover:text-brand-secondary'
+              isFav
+                ? "bg-red-500 text-white"
+                : "bg-white/90 backdrop-blur-sm text-gray-600 hover:text-brand-secondary"
             }`}
           >
-            <Heart className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
+            <Heart className={`w-4 h-4 ${isFav ? "fill-current" : ""}`} />
           </button>
         </div>
 
@@ -90,36 +96,52 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.name}
           </Link>
         </h3>
-        
+
         <div className="mt-auto flex items-center justify-between gap-4 pt-3 border-t border-gray-50">
           <span className="text-lg font-black text-[#1A1B1D]">
-            R$ {product.price.toFixed(2).replace('.', ',')}
+            R$ {product.price.toFixed(2).replace(".", ",")}
           </span>
-          <button   onClick={() =>
-    addItem({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image: product.image,
-      quantity: 1,
-    })
-  }
-  className="bg-brand-red-primary w-fit py-3 px-5 text-white rounded-xl font-bold flex items-center justify-center hover:bg-[#1A1B1D] hover:scale-105 transition-all outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 shrink-0"
->
-            COMPRAR
+          <button
+            onClick={() => {
+              if (existsInCart) return;
+              addItem({
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                image: product.image,
+                quantity: 1,
+                size: product.size?.[0] || "",
+              });
+            }}
+            disabled={existsInCart}
+            className={`w-fit py-3 px-5 rounded-xl font-bold flex items-center justify-center transition-all outline-none shrink-0 ${
+              existsInCart
+                ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                : "bg-brand-red-primary text-white hover:bg-[#1A1B1D] hover:scale-105 focus:ring-2 focus:ring-brand-primary focus:ring-offset-2"
+            }`}
+          >
+            {existsInCart ? "No carrinho" : "COMPRAR"}
           </button>
-          <button 
-  onClick={() =>
-    addItem({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image: product.image,
-      quantity: 1,
-    })
-  }
-  className="w-10 h-10 bg-gray-100 text-[#1A1B1D] rounded-full flex items-center justify-center hover:bg-[#1A1B1D] hover:text-white hover:scale-105 transition-all outline-none focus:ring-2 focus:ring-brand-red-primary focus:ring-offset-2 shrink-0 group-hover:bg-brand-red-primary group-hover:text-white"
->
+
+          <button
+            onClick={() => {
+              if (existsInCart) return;
+              addItem({
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                image: product.image,
+                quantity: 1,
+                size: product.size?.[0] || "",
+              });
+            }}
+            disabled={existsInCart}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all outline-none shrink-0 ${
+              existsInCart
+                ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                : "bg-gray-100 text-[#1A1B1D] hover:bg-[#1A1B1D] hover:text-white hover:scale-105 focus:ring-2 focus:ring-brand-red-primary focus:ring-offset-2"
+            }`}
+          >
             <ShoppingCart className="w-4 h-4" />
           </button>
         </div>
