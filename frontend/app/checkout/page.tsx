@@ -138,7 +138,7 @@ export default function CheckoutPage() {
                             <div className="space-y-4 mb-8">
                                 <button
                                     onClick={() => setPaymentMethod('credit')}
-                                    className={`w-full p-4 border rounded-lg flex items-center gap-3 transition-colors ${paymentMethod === 'credit' ? 'border-brand-red bg-red-50 text-brand-red' : 'hover:bg-gray-50'
+                                    className={`w-full p-4 border rounded-lg flex items-center gap-3 transition-colors ${paymentMethod === 'credit' ? 'border-red-600 bg-red-100 text-red-700' : 'hover:bg-gray-50'
                                         }`}
                                 >
                                     <CreditCard className="w-5 h-5" />
@@ -148,7 +148,7 @@ export default function CheckoutPage() {
                                  onClick={() => setPaymentMethod('debit')}
                                 className={`w-full p-4 border rounded-lg flex items-center gap-3 transition-colors ${
                              paymentMethod === 'debit'
-                                ? 'border-brand-red bg-red-50 text-brand-red'
+                                ? 'border-red-600 bg-red-200 text-red-800'
                                 : 'hover:bg-gray-50'
                                       }`}
                         >
@@ -157,7 +157,7 @@ export default function CheckoutPage() {
 </button>
                                 <button
                                     onClick={() => setPaymentMethod('pix')}
-                                    className={`w-full p-4 border rounded-lg flex items-center gap-3 transition-colors ${paymentMethod === 'pix' ? 'border-brand-red bg-red-50 text-brand-red' : 'hover:bg-gray-50'
+                                    className={`w-full p-4 border rounded-lg flex items-center gap-3 transition-colors ${paymentMethod === 'pix' ? 'border-red-600 bg-red-100 text-red-700' : 'hover:bg-gray-50'
                                         }`}
                                 >
                                     <QrCode className="w-5 h-5" />
