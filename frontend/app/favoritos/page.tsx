@@ -15,7 +15,8 @@ export default function FavoritosPage() {
                 <div className="mb-12">
                     <div className="flex items-center gap-3 mb-4">
                         <Heart className="w-8 h-8 text-brand-secondary fill-brand-secondary" />
-                        <h1 className="text-4xl font-bold text-black">Meus Favoritos</h1>
+                        <h1 style={{ fontFamily: 'DN'  }}
+                        className="text-5xl text-black">Meus Favoritos</h1>
                     </div>
                     <p className="text-gray-400">
                         {favoritesCount} {favoritesCount === 1 ? 'item' : 'itens'} marcado{favoritesCount === 1 ? '' : 's'}

@@ -23,9 +23,12 @@ export function EventsTeaser() {
                             <Timer className="w-4 h-4" />
                             Próximos Desafios
                         </span>
-                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 leading-tight tracking-tight">
+                        <h2 style={{ fontFamily: 'DN'  }}
+                        className="text-4xl md:text-5xl lg:text-6xl  mb-6 leading-tight tracking-tight">
                             Ultrapasse seus <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-red-primary to-brand-highlight">Próprios Limites</span>
+                            <span style={{ fontFamily: 'DN'  }}
+                            className="text-brand-red-primary text-4xl md:text-5xl lg:text-6xl  mb-6 leading-tight tracking-tight">
+                                Próprios Limites</span>
                         </h2>
                         <p className="text-foreground text-lg mb-8 leading-relaxed max-w-xl">
                             A verdadeira adrenalina acontece nas trilhas. Participe do nosso circuito anual e conecte-se com ciclistas que compartilham da mesma paixão que você.

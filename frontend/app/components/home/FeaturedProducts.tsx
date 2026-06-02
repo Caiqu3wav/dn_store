@@ -47,7 +47,8 @@ export function FeaturedProducts() {
                             initial={{ opacity: 0, x: -20 }}
                             whileInView={{ opacity: 1, x: 0 }}
                             viewport={{ once: true }}
-                            className="text-3xl md:text-5xl font-black text-brand tracking-tight mb-2"
+                            style={{ fontFamily: 'DN'  }}
+                            className="text-3xl md:text-5xl text-brand tracking-tight mb-2"
                         >
                             Produtos em destaque
                         </motion.h2>

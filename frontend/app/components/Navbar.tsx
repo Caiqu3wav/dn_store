@@ -47,7 +47,9 @@ export function Navbar() {
                         DN
                     </span>
                     */}
-                    <span className="hidden sm:block text-xl font-bold tracking-tight text-brand-secondary">
+                    <span 
+                    style={{ fontFamily: 'DN'  }}
+                    className="hidden sm:block text-3xl tracking-tight text-outline text-brand-secondary">
                         STORE
                     </span>
                 </Link>
