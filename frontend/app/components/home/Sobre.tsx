@@ -90,7 +90,11 @@ export function Sobre({ images }: SobreProps) {
                         transition={{ duration: 0.8 }}
                         className='flex flex-col items-center'
                     >
-                        <span className="text-brand-secondary self-center font-bold tracking-widest uppercase text-4xl mb-4 block">Sobre a Marca</span>
+                        <span 
+                        style={{ fontFamily: 'DN'  }}
+                        className="text-brand-secondary text-outline self-center tracking-widest uppercase text-5xl mb-4 block"
+                        >Sobre a Marca
+                        </span>
                         <div className="relative w-90 h-90 overflow-hidden flex items-center justify-center">
                         <Image 
                             src="/assets/Images/novo-logotipo.png" 

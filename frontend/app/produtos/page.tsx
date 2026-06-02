@@ -102,7 +102,8 @@ if (selectedSize) {
         <div className="mb-8 md:mb-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2">
+              <h1 className="text-4xl md:text-5xl tracking-tight mb-2"
+              style={{ fontFamily: 'DN'  }}>
                  Produtos
               </h1>
               <p className="text-gray-600 text-sm md:text-base max-w-2xl">

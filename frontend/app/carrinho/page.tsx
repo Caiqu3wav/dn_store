@@ -23,7 +23,8 @@ export default function CartPage() {
     return (
         <div className="min-h-screen bg-gray-50 pt-24 pb-20">
             <div className="container mx-auto px-4">
-                <h1 className="text-3xl font-bold mb-8">Carrinho de Compras</h1>
+                <h1 style={{ fontFamily: 'DN'  }}
+                className="text-4xl  mb-8">Carrinho de Compras</h1>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-4">
