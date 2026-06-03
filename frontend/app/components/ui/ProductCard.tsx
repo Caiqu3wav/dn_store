@@ -56,13 +56,18 @@ export function ProductCard({ product }: ProductCardProps) {
     <div className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col h-full">
       {/* Image Container */}
       <div className="relative aspect-square w-full overflow-hidden bg-gray-50">
-        <Image
-          src={product.image}
-          alt={product.name}
-          fill
-          sizes="(max-width: 768px) 100vw, 320px"
-          className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-        />
+      <Link
+  href={`/produtos/${product.id}`}
+  className="relative aspect-square w-full overflow-hidden bg-gray-50 block"
+>
+  <Image
+    src={product.image}
+    alt={product.name}
+    fill
+    sizes="(max-width: 768px) 100vw, 320px"
+    className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+  />
+</Link>
 
         {/* Floating Actions */}
         <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -101,27 +106,12 @@ export function ProductCard({ product }: ProductCardProps) {
           <span className="text-lg font-black text-[#1A1B1D]">
             R$ {product.price.toFixed(2).replace(".", ",")}
           </span>
-          <button
-            onClick={() => {
-              if (existsInCart) return;
-              addItem({
-                id: product.id,
-                name: product.name,
-                price: product.price,
-                image: product.image,
-                quantity: 1,
-                size: product.size?.[0] || "",
-              });
-            }}
-            disabled={existsInCart}
-            className={`w-fit py-3 px-5 rounded-xl font-bold flex items-center justify-center transition-all outline-none shrink-0 ${
-              existsInCart
-                ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-                : "bg-brand-red-primary text-white hover:bg-[#1A1B1D] hover:scale-105 focus:ring-2 focus:ring-brand-primary focus:ring-offset-2"
-            }`}
-          >
-            {existsInCart ? "No carrinho" : "COMPRAR"}
-          </button>
+         <Link
+  href={`/produtos/${product.id}`}
+  className="w-fit py-3 px-5 rounded-xl font-bold flex items-center justify-center transition-all outline-none shrink-0 bg-brand-red-primary text-white hover:bg-[#1A1B1D] hover:scale-105"
+>
+  COMPRAR
+</Link>
 
           <button
             onClick={() => {
