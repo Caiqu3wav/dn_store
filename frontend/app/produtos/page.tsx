@@ -379,22 +379,7 @@ if (selectedSize) {
       </select>
     </div>
 
-    <div>
-      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
-        Tamanho
-      </h4>
-
-      <select
-        value={selectedSize}
-        onChange={(e) => setSelectedSize(e.target.value)}
-        className="w-full border border-gray-200 rounded-xl p-3"
-      >
-        <option value="">Todos</option>
-        <option value="35">35</option>
-        <option value="40">40</option>
-        <option value="42">42</option>
-      </select>
-    </div>
+   
 
   </div>
 )}
