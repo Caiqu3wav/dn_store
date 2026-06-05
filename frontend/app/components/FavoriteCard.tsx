@@ -27,7 +27,7 @@ export function FavoriteCard({ product }: FavoriteCardProps) {
             price: product.price,
             image: product.image,
             quantity: 1,
-            size: selectedSize,
+           category: product.category,
         });
         
         setIsAdded(true);
@@ -71,21 +71,7 @@ export function FavoriteCard({ product }: FavoriteCardProps) {
                 <p className="text-xs text-black mb-2">{product.category}</p>
                 <p className="text-xs text-black mb-3">Cor: {product.color}</p>
 
-                {/* Size Selection */}
-                <div className="mb-3">
-                    <label className="text-xs text-black block mb-2">Tamanho:</label>
-                    <select
-                        value={selectedSize}
-                        onChange={(e) => setSelectedSize(e.target.value)}
-                        className="w-full bg-white text-black text-xs py-2 px-2 rounded border border-gray-700 hover:border-brand-secondary transition-colors focus:outline-none focus:border-brand-secondary"
-                    >
-                        {product.size.map((size) => (
-                            <option key={size} value={size}>
-                                {size}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+               
 
                 {/* Price */}
                 <p className="text-lg font-bold text-black mb-3 mt-auto">

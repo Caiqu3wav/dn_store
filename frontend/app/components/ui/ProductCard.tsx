@@ -44,7 +44,8 @@ export function ProductCard({ product }: ProductCardProps) {
       price: product.price,
       image: product.image,
       quantity: 1,
-      size: product.size?.[0] || '',
+       size: "",
+      category: product.category,
     });
 
     setAddedToCart(true);
@@ -113,27 +114,22 @@ export function ProductCard({ product }: ProductCardProps) {
   COMPRAR
 </Link>
 
-          <button
-            onClick={() => {
-              if (existsInCart) return;
-              addItem({
-                id: product.id,
-                name: product.name,
-                price: product.price,
-                image: product.image,
-                quantity: 1,
-                size: product.size?.[0] || "",
-              });
-            }}
-            disabled={existsInCart}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all outline-none shrink-0 ${
-              existsInCart
-                ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-                : "bg-gray-100 text-[#1A1B1D] hover:bg-[#1A1B1D] hover:text-white hover:scale-105 focus:ring-2 focus:ring-brand-red-primary focus:ring-offset-2"
-            }`}
-          >
-            <ShoppingCart className="w-4 h-4" />
-          </button>
+         <button
+  onClick={() => {
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      quantity: 1,
+       size: "",
+      category: product.category,
+    });
+  }}
+  className="w-10 h-10 rounded-full flex items-center justify-center transition-all outline-none shrink-0 bg-gray-100 text-[#1A1B1D] hover:bg-[#1A1B1D] hover:text-white hover:scale-105 focus:ring-2 focus:ring-brand-red-primary focus:ring-offset-2"
+>
+  <ShoppingCart className="w-4 h-4" />
+</button>
         </div>
       </div>
     </div>
