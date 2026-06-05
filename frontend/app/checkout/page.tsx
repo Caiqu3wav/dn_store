@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Trash2, CreditCard, QrCode, Wallet } from 'lucide-react';
 
 export default function CheckoutPage() {
-    const { items, removeItem, updateQuantity, total, clearCart } = useCart();
+    const { items, removeItem, updateSize, total, clearCart } = useCart();
     const [paymentMethod, setPaymentMethod] = useState<'credit' | 'debit' | 'pix'>('credit');
     const [isProcessing, setIsProcessing] = useState(false);
     const router = useRouter();
@@ -49,13 +49,35 @@ export default function CheckoutPage() {
                                             className="w-20 h-20 bg-cover bg-center rounded-md bg-gray-100"
                                             style={{ backgroundImage: `url(${item.image})` }}
                                         />
-                                        <div className="flex-1">
-                                            <h3 className="font-bold">{item.name}</h3>
-                                            <p className="text-sm text-gray-500">Tamanho: {item.size}</p>
-                                            <p className="font-medium text-brand-red">
-                                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.price)}
-                                            </p>
-                                        </div>
+                                       <div className="flex-1">
+    <h3 className="font-bold">{item.name}</h3>
+    <p className="text-red-500">{item.category}</p>
+    {(
+        item.category === "Camisa Poliamida" ||
+        item.category === "Camisas de Ciclismo" ||
+        item.category === "Camisetas Poliamida"
+    ) && (
+        <select
+            value={item.size || ""}
+            onChange={(e) =>
+                updateSize(item.id, e.target.value)
+            }
+            className="mt-2 border rounded-md px-2 py-1 text-sm"
+        >
+            <option value="">Selecione o tamanho</option>
+            <option value="P">P</option>
+            <option value="M">M</option>
+            <option value="G">G</option>
+        </select>
+    )}
+
+    <p className="font-medium text-brand-red mt-2">
+        {new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(item.price)}
+    </p>
+</div>
                                         <div className="flex flex-col items-end justify-between">
                                             <button
                                                 onClick={() => removeItem(item.id)}
@@ -63,21 +85,7 @@ export default function CheckoutPage() {
                                             >
                                                 <Trash2 className="w-5 h-5" />
                                             </button>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                                    className="w-6 h-6 rounded-full border flex items-center justify-center hover:bg-gray-100"
-                                                >
-                                                    -
-                                                </button>
-                                                <span className="w-8 text-center">{item.quantity}</span>
-                                                <button
-                                                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                                    className="w-6 h-6 rounded-full border flex items-center justify-center hover:bg-gray-100"
-                                                >
-                                                    +
-                                                </button>
-                                            </div>
+                                            
                                         </div>
                                     </div>
                                 ))}
