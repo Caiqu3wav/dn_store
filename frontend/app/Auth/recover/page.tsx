@@ -15,7 +15,7 @@ export default function RecoverPasswordPage() {
           <label style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>Email</label>
           <input
             type="email"
-            placeholder="user@exemple.com"
+            placeholder="user@example.com"
             style={{ width: "100%", padding: 12, borderRadius: 6, border: "1px solid #ccc", outline: "none" }}
           />
 

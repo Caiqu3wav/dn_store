@@ -73,7 +73,7 @@ export function Navbar() {
                     <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-white">
                         <Link href="/" className="hover:text-brand-secondary transition-colors">Home</Link>
                         <Link href="/produtos" className="hover:text-brand-secondary transition-colors">Produtos</Link>
-                        <Link href="/eventos" className="hover:text-brand-secondary transition-colors">Eventos</Link>
+                        <Link href="/#eventos" className="hover:text-brand-secondary transition-colors">Eventos</Link>
                         <Link href="/sobre" className="hover:text-brand-secondary transition-colors">Sobre</Link>
                     </nav>
 
@@ -123,7 +123,7 @@ export function Navbar() {
                     </div>
                     <Link href="/" className="text-gray-800 font-medium py-2 border-b border-gray-100">Home</Link>
                     <Link href="/produtos" className="text-gray-800 font-medium py-2 border-b border-gray-100">Produtos</Link>
-                    <Link href="/eventos" className="text-gray-800 font-medium py-2 border-b border-gray-100">Eventos</Link>
+                    <Link href="/#eventos" className="text-gray-800 font-medium py-2 border-b border-gray-100">Eventos</Link>
                     <Link href="/sobre" className="text-gray-800 font-medium py-2 border-b border-gray-100">Sobre</Link>
                     
                     <div className="flex items-center justify-around pt-4 pb-2">
