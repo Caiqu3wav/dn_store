@@ -55,8 +55,7 @@ export const EVENTS = [
     date: '26 de Julho',
     location: 'Lorena - SP',
     description: 'A etapa de Lorena vai testar seus limites — velocidade, resistência e coragem em uma experiência feita para quem nasceu para competir.',
-    mapsLink: 'https://maps.google.com?q=Pindamonhangaba',
-    image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&q=80&w=800'
+    mapsLink: 'https://maps.app.goo.gl/PBagJ4RLe8K4WRH97',
   },
   {
     id: '4',

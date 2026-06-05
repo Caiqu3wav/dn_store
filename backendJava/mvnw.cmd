@@ -163,7 +163,7 @@ if ((Test-Path -Path $expectedPath -PathType Container) -and (Test-Path -Path $e
 if (!$actualDistributionDir) {
   Get-ChildItem -Path "$TMP_DOWNLOAD_DIR" -Directory | ForEach-Object {
     $testPath = Join-Path $_.FullName "bin/$MVN_CMD"
-    if (Test-Path -Path $testPath -PathType Leaf) {
+    if (Test-Path -Path $testPath -PathType ) {
       $actualDistributionDir = $_.Name
     }
   }

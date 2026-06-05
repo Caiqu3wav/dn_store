@@ -92,7 +92,7 @@ export const AuthForm = ({
         onChange={handleChange}
         name="email"
         type="email"
-        placeholder="user@exemple.com"
+        placeholder="user@example.com"
         label="Email"
       />
       <LabelInput

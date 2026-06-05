@@ -46,7 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
                 <div className="p-6 flex items-center justify-between border-b border-white/5">
                     <Link href="/admin" className="flex items-center gap-2">
-                        <span className="text-2xl font-bold text-white">DN<span className="text-brand-secondary">Admin</span></span>
+                        <span style={{ fontFamily: 'DN'  }} className="text-3xl text-outline text-white">DN<span style={{ fontFamily: 'DN'  }} className="text-brand-secondary text-outline"> Admin</span></span>
                     </Link>
                     <button 
                         className="lg:hidden text-gray-400 hover:text-white"

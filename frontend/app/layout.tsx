@@ -6,6 +6,9 @@ import { Footer } from "./components/Footer";
 import { CartProvider } from "./context/CartContext";
 import { FavoritesProvider } from "./context/FavoritesContext";
 
+<html lang="pt-BR" className="scroll-smooth"></html>
+
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
