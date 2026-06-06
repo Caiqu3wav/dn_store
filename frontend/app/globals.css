@@ -5,7 +5,7 @@
   --foreground: #1A1B1D;
   --brand-primary: #ffffff;
   --brand: #7c7c7c;
-  --brand-red-primary: #c70808; /* brown/orange */
+  --brand-red-primary: #c70808; 
   --brand-red-secondary: #ff0000; /* brown/orange */
   --brand-highlight: #16A34A; /* nature green */
 }
@@ -13,6 +13,12 @@
 button {
   cursor: pointer;
 }
+
+@font-face {
+  font-family: 'DN';
+  src: url('/fonts/juggerrockital.ttf') format('truetype');
+}
+
 
 @theme {
   --color-background: var(--background);
@@ -23,6 +29,8 @@ button {
   --color-brand-highlight: var(--brand-highlight);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular;
+  --font-dn: 'DN', sans-serif;
+
 }
 
 html {
@@ -44,4 +52,8 @@ body {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
+}
+
+.text-outline {
+  -webkit-text-stroke: 1px black;
 }
