@@ -12,9 +12,19 @@ CREATE TABLE products (
     description TEXT,
     price DECIMAL(10,2) NOT NULL,
     category_id VARCHAR(36),
+    product_type VARCHAR(50) DEFAULT 'physical',
     active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+CREATE TABLE physical_products (
+    id VARCHAR(36) PRIMARY KEY,
+    weight DOUBLE DEFAULT 0.0,
+    width DOUBLE DEFAULT 0.0,
+    height DOUBLE DEFAULT 0.0,
+    depth DOUBLE DEFAULT 0.0,
+    FOREIGN KEY (id) REFERENCES products(id) ON DELETE CASCADE
 );
 
 CREATE TABLE product_images (
@@ -44,6 +54,9 @@ CREATE TABLE users (
     email VARCHAR(150) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     phone VARCHAR(20),
+    role VARCHAR(20) DEFAULT 'USER',
+    reset_token VARCHAR(64),
+    reset_token_expiration TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -59,6 +72,16 @@ CREATE TABLE addresses (
     zip_code VARCHAR(10),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE favorites (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id VARCHAR(36) NOT NULL,
+    product_id VARCHAR(36) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_product (user_id, product_id)
 );
 
 CREATE TABLE carts (
