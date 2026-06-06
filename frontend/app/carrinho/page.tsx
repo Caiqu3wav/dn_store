@@ -23,7 +23,8 @@ export default function CartPage() {
     return (
         <div className="min-h-screen bg-gray-50 pt-24 pb-20">
             <div className="container mx-auto px-4">
-                <h1 className="text-3xl font-bold mb-8">Carrinho de Compras</h1>
+                <h1 style={{ fontFamily: 'DN'  }}
+                className="text-4xl  mb-8">Carrinho de Compras</h1>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-4">
@@ -48,19 +49,9 @@ export default function CartPage() {
                                         <Trash2 className="w-5 h-5" />
                                     </button>
                                     <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                            className="w-8 h-8 rounded-full border flex items-center justify-center hover:bg-gray-100"
-                                        >
-                                            -
-                                        </button>
-                                        <span className="w-8 text-center font-medium">{item.quantity}</span>
-                                        <button
-                                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                            className="w-8 h-8 rounded-full border flex items-center justify-center hover:bg-gray-100"
-                                        >
-                                            +
-                                        </button>
+                                       
+                                     
+                                       
                                     </div>
                                 </div>
                             </div>

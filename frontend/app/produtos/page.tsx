@@ -95,14 +95,15 @@ if (selectedSize) {
   const allCategoryNames = Array.from(new Set(FEATURED_PRODUCTS.map(p => p.category)));
 
   return (
-    <div className="min-h-screen bg-white pt-24 pb-16">
+    <div className="min-h-screen bg-white pt-8 pb-16">
       <div className="container mx-auto px-4 lg:px-8">
 
         {/* Header Section */}
         <div className="mb-8 md:mb-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2">
+              <h1 className="text-4xl md:text-5xl tracking-tight mb-2"
+              style={{ fontFamily: 'DN'  }}>
                  Produtos
               </h1>
               <p className="text-gray-600 text-sm md:text-base max-w-2xl">
@@ -378,22 +379,7 @@ if (selectedSize) {
       </select>
     </div>
 
-    <div>
-      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
-        Tamanho
-      </h4>
-
-      <select
-        value={selectedSize}
-        onChange={(e) => setSelectedSize(e.target.value)}
-        className="w-full border border-gray-200 rounded-xl p-3"
-      >
-        <option value="">Todos</option>
-        <option value="35">35</option>
-        <option value="40">40</option>
-        <option value="42">42</option>
-      </select>
-    </div>
+   
 
   </div>
 )}

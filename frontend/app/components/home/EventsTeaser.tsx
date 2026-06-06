@@ -8,7 +8,9 @@ import { EVENTS, NEXT_EVENT } from '../../../lib/data';
 
 export function EventsTeaser() {
     return (
-        <section className="py-24 bg-brand-primary  relative overflow-hidden">
+        <section
+         id="eventos"
+        className="py-24 bg-brand-primary relative overflow-hidden">
             <div className="container mx-auto px-4 lg:px-8 relative z-10">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
                     
@@ -23,9 +25,12 @@ export function EventsTeaser() {
                             <Timer className="w-4 h-4" />
                             Próximos Desafios
                         </span>
-                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 leading-tight tracking-tight">
+                        <h2 style={{ fontFamily: 'DN'  }}
+                        className="text-4xl md:text-5xl lg:text-6xl  mb-6 leading-tight tracking-tight">
                             Ultrapasse seus <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-red-primary to-brand-highlight">Próprios Limites</span>
+                            <span style={{ fontFamily: 'DN'  }}
+                            className="text-brand-red-primary text-4xl md:text-5xl lg:text-6xl  mb-6 leading-tight tracking-tight">
+                                Próprios Limites</span>
                         </h2>
                         <p className="text-foreground text-lg mb-8 leading-relaxed max-w-xl">
                             A verdadeira adrenalina acontece nas trilhas. Participe do nosso circuito anual e conecte-se com ciclistas que compartilham da mesma paixão que você.
@@ -79,34 +84,62 @@ export function EventsTeaser() {
                             </div>
                         </div>
 
-                        {/* Visual Map */}
-                        <div className="relative w-full h-40 sm:h-48 rounded-2xl overflow-hidden mb-8 border border-gray-200">
-                            {/* Stylized Google Maps fallback visual */}
-                            <Image 
-                                src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&q=80&w=800"
-                                alt="Mapa do Evento"
-                                fill
-                                className="object-cover saturate-50 contrast-125"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-center justify-center">
-                                <div className="w-12 h-12 bg-brand-primary rounded-full flex items-center justify-center shadow-lg transform -translate-y-4">
-                                    <MapPin className="w-6 h-6 " />
-                                </div>
-                            </div>
-                        </div>
+{/* Visual Map */}
+<div className="relative w-full h-40 sm:h-48 rounded-2xl overflow-hidden mb-8 border border-gray-200 group">
 
-                        <Link href={NEXT_EVENT.mapsLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full bg-brand-primary  font-bold py-4 rounded-xl hover:bg-brand-red-primary transition-colors outline-none focus:ring-4 focus:ring-brand-secondary/30">
-                            Abrir no Google Maps
-                            <ExternalLink className="w-5 h-5" />
-                        </Link>
-                        
-                        <button className="bg-brand-red-primary text-white font-black px-5 py-2 rounded-lg transition-colors hover:bg-foreground block mx-auto my-5">
-                    Inscreva-se
-                        </button>
-                        
-                    </motion.div>
-                </div>
+    {/* Google Maps */}
+    <iframe
+        src="https://www.google.com/maps/embed?pb=!4v1780628254951!6m8!1m7!1snAuHmHMTINLz-uPJu-z__g!2m2!1d-22.75262943589267!2d-45.10532564538919!3f86.66!4f-14.620000000000005!5f0.7820865974627469"
+        width="100%"
+        height="100%"
+        style={{ border: 0 }}
+        allowFullScreen
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        className="absolute inset-0"
+    />
+
+    {/* Capa */}
+    <div className="absolute inset-0 z-10 bg-white group-hover:hidden">
+        <Image
+            src="/assets/Images/local_dn_lorena.png"
+            alt="Local da etapa Lorena"
+            fill
+            className="object-cover"
+        />
+
+        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <div className="text-center text-white">
+                <MapPin className="w-8 h-8 mx-auto mb-2" />
+                <p className="font-bold">Passe o mouse para abrir o mapa</p>
             </div>
-        </section>
-    );
+        </div>
+    </div>
+
+</div>
+
+<Link
+    href={NEXT_EVENT.mapsLink}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="flex items-center justify-center gap-2 w-full bg-brand-primary font-bold py-4 rounded-xl hover:bg-brand-red-primary transition-colors outline-none focus:ring-4 focus:ring-brand-secondary/30"
+>
+    Abrir no Google Maps
+    <ExternalLink className="w-5 h-5" />
+</Link>
+
+<Link
+    href="https://desafionatureza.com.br"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="bg-brand-red-primary text-white font-black px-5 py-2 rounded-lg transition-colors hover:bg-foreground block mx-auto my-5 text-center"
+>
+    Inscreva-se
+</Link>
+
+</motion.div>
+</div>
+</div>
+</section>
+);
 }

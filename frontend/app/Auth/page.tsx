@@ -6,9 +6,7 @@ import { OnClickText } from '../components/ui/Text';
 
 
 function Auth() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+
   const [pagetype, setPagetype] = useState("login");
 
   interface pagetype {
@@ -28,20 +26,31 @@ function Auth() {
 
           <AuthForm title="Entrar" />
 
-          <p>Não tem conta? <OnClickText onClick={()=> setPagetype("register")}>Cadastrar</OnClickText></p>
-          <p><span>Esqueci minha senha</span></p>
+          <p>
+            Não tem conta? <OnClickText onClick={() => setPagetype("register")}>Cadastrar</OnClickText>
+          </p>
+          <p>
+            <a href="/Auth/recover" style={{ color: "#007bff", textDecoration: "none" }}>
+              Esqueci minha senha
+            </a>
+          </p>
         </Login>
       </Container>
     ) || (
-      <Container>
-        <Login>
-          <Logo />
-          <AuthForm  title="Cadastro" />
-          <p>Já tem conta? <OnClickText onClick={()=> setPagetype("login")}>Entrar</OnClickText></p>
-        </Login>
-      </Container>
+      pagetype === "register" && (
+        <Container>
+          <Login>
+            <Logo />
+            <AuthForm title="Cadastro" />
+            <p>
+              Já tem conta? <OnClickText onClick={() => setPagetype("login")}>Entrar</OnClickText>
+            </p>
+          </Login>
+        </Container>
+      )
     )
   )
 }
 
 export default Auth
+

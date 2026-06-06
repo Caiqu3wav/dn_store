@@ -10,26 +10,37 @@ import Link from 'next/link';
 const products = {
     '1': {
         id: '1',
-        name: 'Camisa Performance Trail',
-        price: 189.90,
-        description: 'Desenvolvida para os ciclistas mais exigentes, a Camisa Performance Trail oferece tecnologia de absorção de suor, proteção UV e um corte aerodinâmico que não prende seus movimentos. Ideal para longas pedaladas sob o sol.',
+        name: 'Camiseta DN Poliamida Cinza',
+        price: 59.99,
+        description: 'A Camiseta DN Poliamida Cinza combina conforto, leveza e desempenho para acompanhar você em qualquer desafio. Produzida em tecido respirável de secagem rápida, oferece excelente mobilidade e conforto durante treinos, pedaladas ou no dia a dia, com um visual moderno e versátil que combina com qualquer ocasião.',
         images: [
-            'https://images.unsplash.com/photo-1578632292335-df3abbb0d586?q=80&w=1974&auto=format&fit=crop',
+            '/assets/products/CaPoliCinza.jpeg',
             'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=2070&auto=format&fit=crop'
         ],
         sizes: ['P', 'M', 'G', 'GG'],
-        category: 'Roupas'
+        category: 'Camisetas Poliamida'
     },
     '2': {
         id: '2',
-        name: 'Capacete Enduro Pro',
-        price: 459.90,
-        description: 'Segurança máxima sem comprometer o conforto. O Capacete Enduro Pro possui sistema de ventilação avançado e proteção reforçada contra impactos multidirecionais.',
+        name: 'Camisa DN Ciclismo Laranja/Azul',
+        price: 199.99,
+        description: 'A Camisa DN Ciclismo Laranja/Azul foi desenvolvida para ciclistas que buscam performance e conforto em cada percurso. Confeccionada com tecido leve e respirável, oferece excelente ventilação e secagem rápida, enquanto seu design vibrante em laranja e azul garante estilo e visibilidade nas estradas e trilhas. Ideal para encarar qualquer desafio sobre duas rodas.',
         images: [
-            'https://images.unsplash.com/photo-1559348349-86f163cc8cef?q=80&w=2070&auto=format&fit=crop'
+            '/assets/products/CaCicliLaranja.jpeg'
         ],
-        sizes: ['M', 'G'],
-        category: 'Acessórios'
+        sizes: ['P', 'M', 'G', 'GG'],
+        category: 'Camisas de Ciclismo'
+    },
+    '3': {
+        id: '3',
+        name: 'Boné DN Preto/Vermelho',
+        price: 59.99,
+        description: 'O Boné DN Preto/Vermelho combina estilo, conforto e praticidade para o dia a dia. Com design moderno e ajuste confortável, é ideal para proteger do sol durante treinos, passeios ou momentos de lazer, trazendo a identidade da DN Store em uma combinação de cores marcante e versátil.',
+        images: [
+            '/assets/products/BoneDNPreto.jpeg'
+        ],
+        sizes: ['Único'],
+        category: 'Bonés e Meias',
     },
     // Fallback for other IDs
     'default': {

@@ -9,7 +9,8 @@ export function Categories() {
         <section className="py-12 bg-white pb-24">
             <div className="container mx-auto px-4 lg:px-8">
                 <div className="text-center mb-8">
-                    <h3 className="text-xl font-bold text-brand uppercase tracking-widest">
+                    <h3 style={{ fontFamily: 'DN'  }}
+                    className="text-3xl text-brand uppercase tracking-widest">
                         Navegue por Categoria
                     </h3>
                 </div>

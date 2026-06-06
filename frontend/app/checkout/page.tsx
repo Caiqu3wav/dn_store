@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/ui/Button';
 import { useRouter } from 'next/navigation';
-import { Trash2, CreditCard, QrCode } from 'lucide-react';
+import { Trash2, CreditCard, QrCode, Wallet } from 'lucide-react';
 
 export default function CheckoutPage() {
-    const { items, removeItem, updateQuantity, total, clearCart } = useCart();
-    const [paymentMethod, setPaymentMethod] = useState<'credit' | 'pix'>('credit');
+    const { items, removeItem, updateSize, total, clearCart } = useCart();
+    const [paymentMethod, setPaymentMethod] = useState<'credit' | 'debit' | 'pix'>('credit');
     const [isProcessing, setIsProcessing] = useState(false);
     const router = useRouter();
 
@@ -49,13 +49,35 @@ export default function CheckoutPage() {
                                             className="w-20 h-20 bg-cover bg-center rounded-md bg-gray-100"
                                             style={{ backgroundImage: `url(${item.image})` }}
                                         />
-                                        <div className="flex-1">
-                                            <h3 className="font-bold">{item.name}</h3>
-                                            <p className="text-sm text-gray-500">Tamanho: {item.size}</p>
-                                            <p className="font-medium text-brand-red">
-                                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.price)}
-                                            </p>
-                                        </div>
+                                       <div className="flex-1">
+    <h3 className="font-bold">{item.name}</h3>
+    <p className="text-red-500">{item.category}</p>
+    {(
+        item.category === "Camisa Poliamida" ||
+        item.category === "Camisas de Ciclismo" ||
+        item.category === "Camisetas Poliamida"
+    ) && (
+        <select
+            value={item.size || ""}
+            onChange={(e) =>
+                updateSize(item.id, e.target.value)
+            }
+            className="mt-2 border rounded-md px-2 py-1 text-sm"
+        >
+            <option value="">Selecione o tamanho</option>
+            <option value="P">P</option>
+            <option value="M">M</option>
+            <option value="G">G</option>
+        </select>
+    )}
+
+    <p className="font-medium text-brand-red mt-2">
+        {new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(item.price)}
+    </p>
+</div>
                                         <div className="flex flex-col items-end justify-between">
                                             <button
                                                 onClick={() => removeItem(item.id)}
@@ -63,21 +85,7 @@ export default function CheckoutPage() {
                                             >
                                                 <Trash2 className="w-5 h-5" />
                                             </button>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                                    className="w-6 h-6 rounded-full border flex items-center justify-center hover:bg-gray-100"
-                                                >
-                                                    -
-                                                </button>
-                                                <span className="w-8 text-center">{item.quantity}</span>
-                                                <button
-                                                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                                    className="w-6 h-6 rounded-full border flex items-center justify-center hover:bg-gray-100"
-                                                >
-                                                    +
-                                                </button>
-                                            </div>
+                                            
                                         </div>
                                     </div>
                                 ))}
@@ -92,7 +100,40 @@ export default function CheckoutPage() {
                                 <input type="text" placeholder="Número" className="p-3 border rounded-md w-full" required />
                                 <input type="text" placeholder="Complemento" className="p-3 border rounded-md w-full" />
                                 <input type="text" placeholder="Cidade" className="p-3 border rounded-md w-full" required />
-                                <input type="text" placeholder="Estado" className="p-3 border rounded-md w-full" required />
+                                <select
+                                 className="p-3 border rounded-md w-full bg-white"
+                                 required
+                                        >
+                                <option value="">Selecione o Estado</option>
+
+                             <option value="AC">AC - Acre</option>
+                             <option value="AL">AL - Alagoas</option>
+                             <option value="AP">AP - Amapá</option>
+                             <option value="AM">AM - Amazonas</option>
+                            <option value="BA">BA - Bahia</option>
+                             <option value="CE">CE - Ceará</option>
+                            <option value="DF">DF - Distrito Federal</option>
+                         <option value="ES">ES - Espírito Santo</option>
+                             <option value="GO">GO - Goiás</option>
+                        <option value="MA">MA - Maranhão</option>
+                        <option value="MT">MT - Mato Grosso</option>
+                            <option value="MS">MS - Mato Grosso do Sul</option>
+                            <option value="MG">MG - Minas Gerais</option>
+                            <option value="PA">PA - Pará</option>
+                            <option value="PB">PB - Paraíba</option>
+                            <option value="PR">PR - Paraná</option>
+                            <option value="PE">PE - Pernambuco</option>
+                            <option value="PI">PI - Piauí</option>
+                         <option value="RJ">RJ - Rio de Janeiro</option>
+                        <option value="RN">RN - Rio Grande do Norte</option>
+                         <option value="RS">RS - Rio Grande do Sul</option>
+                        <option value="RO">RO - Rondônia</option>
+                          <option value="RR">RR - Roraima</option>
+                            <option value="SC">SC - Santa Catarina</option>
+                            <option value="SP">SP - São Paulo</option>
+                            <option value="SE">SE - Sergipe</option>
+                            <option value="TO">TO - Tocantins</option>
+                            </select>
                             </form>
                         </div>
                     </div>
@@ -105,15 +146,26 @@ export default function CheckoutPage() {
                             <div className="space-y-4 mb-8">
                                 <button
                                     onClick={() => setPaymentMethod('credit')}
-                                    className={`w-full p-4 border rounded-lg flex items-center gap-3 transition-colors ${paymentMethod === 'credit' ? 'border-brand-red bg-red-50 text-brand-red' : 'hover:bg-gray-50'
+                                    className={`w-full p-4 border rounded-lg flex items-center gap-3 transition-colors ${paymentMethod === 'credit' ? 'border-red-600 bg-red-100 text-red-700' : 'hover:bg-gray-50'
                                         }`}
                                 >
                                     <CreditCard className="w-5 h-5" />
                                     Cartão de Crédito
                                 </button>
                                 <button
+                                 onClick={() => setPaymentMethod('debit')}
+                                className={`w-full p-4 border rounded-lg flex items-center gap-3 transition-colors ${
+                             paymentMethod === 'debit'
+                                ? 'border-red-600 bg-red-200 text-red-800'
+                                : 'hover:bg-gray-50'
+                                      }`}
+                        >
+    <Wallet className="w-5 h-5" />
+    Cartão de Débito
+</button>
+                                <button
                                     onClick={() => setPaymentMethod('pix')}
-                                    className={`w-full p-4 border rounded-lg flex items-center gap-3 transition-colors ${paymentMethod === 'pix' ? 'border-brand-red bg-red-50 text-brand-red' : 'hover:bg-gray-50'
+                                    className={`w-full p-4 border rounded-lg flex items-center gap-3 transition-colors ${paymentMethod === 'pix' ? 'border-red-600 bg-red-100 text-red-700' : 'hover:bg-gray-50'
                                         }`}
                                 >
                                     <QrCode className="w-5 h-5" />
