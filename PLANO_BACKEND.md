@@ -32,3 +32,10 @@ O painel administrativo no frontend precisa de dados reais de vendas e acessos.
 Como gateways reais (Mercado Pago, Asaas, Correios) não estão definidos:
 - **OrderService e DeliveryService**: Vamos garantir que a simulação funcione aceitando qualquer CEP e retornando um frete fixo fictício para aprovar a criação do `Order` no banco de dados.
 - O Status do pedido será definido diretamente como "CONFIRMADO" temporariamente para liberar o fluxo visual do usuário no frontend.
+
+## 7. Promoções, Descontos e Cupons
+Para suportar estratégias de vendas, o sistema lidará com descontos tanto a nível de produto quanto a nível de carrinho:
+- **Descontos em Produtos**: A entidade `Product.java` ganhará um campo `promotionalPrice` (preço promocional). Se preenchido e menor que o `price` original, o frontend exibirá o preço "de/por" (ex: "De R$ 100 por R$ 80").
+- **Sistema de Cupons**: Criaremos a entidade `Coupon.java` com código (ex: "BLACKFRIDAY10"), tipo de desconto (porcentagem ou valor fixo), valor mínimo do carrinho e data de expiração.
+- **Aplicação no Checkout**: A entidade `Order.java` ganhará referência ao cupom (`coupon_id`) e o campo `discountAmount` para registrar o desconto final concedido na hora do fechamento da compra.
+- **Endpoints**: `GET /api/coupons/validate?code={code}` para o frontend checar se o cupom é válido antes de fechar a compra.
