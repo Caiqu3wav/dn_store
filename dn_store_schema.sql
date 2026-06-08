@@ -11,6 +11,7 @@ CREATE TABLE products (
     name VARCHAR(150) NOT NULL,
     description TEXT,
     price DECIMAL(10,2) NOT NULL,
+    promotional_price DECIMAL(10,2),
     category_id VARCHAR(36),
     product_type VARCHAR(50) DEFAULT 'physical',
     active BOOLEAN DEFAULT TRUE,
@@ -100,15 +101,31 @@ CREATE TABLE cart_items (
     FOREIGN KEY (product_variant_id) REFERENCES product_variants(id)
 );
 
+CREATE TABLE coupons (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    code VARCHAR(50) UNIQUE NOT NULL,
+    discount_percentage DECIMAL(5,2),
+    discount_value DECIMAL(10,2),
+    min_cart_value DECIMAL(10,2),
+    max_usage INT,
+    current_usage INT DEFAULT 0,
+    expires_at TIMESTAMP,
+    active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE orders (
     id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
     user_id VARCHAR(36) NOT NULL,
     address_id VARCHAR(36) NOT NULL,
+    coupon_id VARCHAR(36),
+    discount_amount DECIMAL(10,2) DEFAULT 0.00,
     total DECIMAL(10,2) NOT NULL,
     status VARCHAR(50) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (address_id) REFERENCES addresses(id)
+    FOREIGN KEY (address_id) REFERENCES addresses(id),
+    FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE SET NULL
 );
 
 CREATE TABLE order_items (
