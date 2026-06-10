@@ -1,6 +1,5 @@
 export const CATEGORIES = [
-  { id: '0', name: 'Todos', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=500', slug: 'Todos' },
-  { id: '1', name: 'Camisa Poliamida', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=500', slug: 't-shirts' },
+  { id: '1', name: 'Camisas de Poliamida', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=500', slug: 't-shirts' },
   { id: '2', name: 'Camisas de Ciclismo', image: 'https://images.unsplash.com/photo-1534723452862-4c874018d66d?auto=format&fit=crop&q=80&w=500', slug: 'camisas-ciclismo' },
   { id: '3', name: 'Bonés & Meias', image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&q=80&w=500', slug: 'acessorios' },
 ];
