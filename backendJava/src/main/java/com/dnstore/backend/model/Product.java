@@ -2,8 +2,12 @@ package com.dnstore.backend.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
+
 import java.math.BigDecimal;
 import java.util.UUID;
 import java.util.ArrayList;
@@ -20,6 +24,8 @@ import java.util.List;
  * - Abstração: Define o modelo base.
  * - Encapsulamento: Atributos privados com Getters/Setters (via Lombok).
  */
+@Setter
+@Getter
 @Entity
 @Table(name = "products")
 @Inheritance(strategy = InheritanceType.JOINED)

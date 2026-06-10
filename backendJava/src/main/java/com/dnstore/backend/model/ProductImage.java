@@ -5,6 +5,8 @@ import lombok.*;
 
 import java.util.UUID;
 
+@Getter
+@Setter
 @Entity
 @Table(name = "product_images")
 @Data
