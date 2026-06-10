@@ -6,12 +6,15 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import java.math.BigDecimal;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 📦 Classe Product
  *
  * Representa um produto genérico no sistema.
- * Esta classe é uma entidade JPA e serve como base para produtos concretos (Físicos, Digitais).
+ * Esta classe é uma entidade JPA e serve como base para produtos concretos
+ * (Físicos, Digitais).
  *
  * Conceitos de POO:
  * - Abstração: Define o modelo base.
@@ -44,8 +47,16 @@ public abstract class Product {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    @Column(name = "promotional_price", precision = 10, scale = 2)
+    private BigDecimal promotionalPrice;
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProductImage> images = new ArrayList<>();
+
     /**
-     * Método abstrato que força as subclasses a definir como calcular o peso para frete.
+     * Método abstrato que força as subclasses a definir como calcular o peso para
+     * frete.
      * Isso demonstra Polimorfismo: cada tipo de produto se comporta de um jeito.
      */
     public abstract double getShippingWeight();
