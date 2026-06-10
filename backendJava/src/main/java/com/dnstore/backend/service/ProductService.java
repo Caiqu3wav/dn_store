@@ -5,6 +5,7 @@ import com.dnstore.backend.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,6 +46,54 @@ public class ProductService {
             // JPA faz o update automaticamente ao salvar/alterar entidade gerenciada
             return productRepository.save(existing);
         });
+    }
+
+    public List<Product> search(
+            String search,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            String sortBy) {
+
+        List<Product> products = productRepository.findAll();
+
+        if (search != null && !search.isBlank()) {
+            products = products.stream()
+                    .filter(p -> p.getName() != null &&
+                            p.getName().toLowerCase().contains(search.toLowerCase()))
+                    .toList();
+        }
+
+        if (minPrice != null) {
+            products = products.stream()
+                    .filter(p -> p.getPrice().compareTo(minPrice) >= 0)
+                    .toList();
+        }
+
+        if (maxPrice != null) {
+            products = products.stream()
+                    .filter(p -> p.getPrice().compareTo(maxPrice) <= 0)
+                    .toList();
+        }
+
+        if ("priceAsc".equalsIgnoreCase(sortBy)) {
+            products = products.stream()
+                    .sorted((a, b) -> a.getPrice().compareTo(b.getPrice()))
+                    .toList();
+        }
+
+        if ("priceDesc".equalsIgnoreCase(sortBy)) {
+            products = products.stream()
+                    .sorted((a, b) -> b.getPrice().compareTo(a.getPrice()))
+                    .toList();
+        }
+
+        if ("name".equalsIgnoreCase(sortBy)) {
+            products = products.stream()
+                    .sorted((a, b) -> a.getName().compareToIgnoreCase(b.getName()))
+                    .toList();
+        }
+
+        return products;
     }
 
     // --- D: Delete ---
