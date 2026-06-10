@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
@@ -16,7 +17,8 @@ import java.util.UUID;
  * 🛒 ProductController - REST Completo
  *
  * API para gerenciamento de catálogo.
- * Suporta GET (Lista/Detalhe), POST (Criar), PUT (Web Atualizar), DELETE (Remover).
+ * Suporta GET (Lista/Detalhe), POST (Criar), PUT (Web Atualizar), DELETE
+ * (Remover).
  */
 @RestController
 @RequestMapping("/api/products")
@@ -30,8 +32,13 @@ public class ProductController {
      * GET /api/products
      */
     @GetMapping
-    public ResponseEntity<List<Product>> listAll() {
-        return ResponseEntity.ok(productService.findAll());
+    public ResponseEntity<List<Product>> listAll(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) String sortBy) {
+        return ResponseEntity.ok(
+                productService.search(search, minPrice, maxPrice, sortBy));
     }
 
     /**
