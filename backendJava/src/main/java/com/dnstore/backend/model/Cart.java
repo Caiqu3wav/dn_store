@@ -2,7 +2,10 @@ package com.dnstore.backend.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -16,6 +19,8 @@ import java.util.UUID;
  * JPA Entity that manages a user's shopping cart items.
  * Each user has one cart, and carts contain cart items.
  */
+@Getter
+@Setter
 @Entity
 @Table(name = "carts")
 @Data
@@ -43,8 +48,8 @@ public class Cart {
 
     public void addItem(ProductVariant productVariant, int quantity) {
         Optional<CartItem> existing = items.stream()
-            .filter(i -> i.getProductVariant().getId().equals(productVariant.getId()))
-            .findFirst();
+                .filter(i -> i.getProductVariant().getId().equals(productVariant.getId()))
+                .findFirst();
 
         if (existing.isPresent()) {
             CartItem item = existing.get();
@@ -69,21 +74,21 @@ public class Cart {
         }
 
         items.stream()
-            .filter(item -> item.getProductVariant().getId().equals(productVariantId))
-            .findFirst()
-            .ifPresent(item -> item.setQuantity(quantity));
+                .filter(item -> item.getProductVariant().getId().equals(productVariantId))
+                .findFirst()
+                .ifPresent(item -> item.setQuantity(quantity));
     }
 
     public BigDecimal getTotalPrice() {
         return items.stream()
-            .map(CartItem::getSubtotal)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .map(CartItem::getSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     public double getTotalWeight() {
         return items.stream()
-            .mapToDouble(CartItem::getTotalWeight)
-            .sum();
+                .mapToDouble(CartItem::getTotalWeight)
+                .sum();
     }
 
     public void clear() {

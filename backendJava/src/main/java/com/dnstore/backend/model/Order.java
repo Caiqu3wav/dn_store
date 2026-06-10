@@ -2,7 +2,9 @@ package com.dnstore.backend.model;
 
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.AllArgsConstructor;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
@@ -10,6 +12,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+@Getter
+@Setter
 @Data
 @Builder
 @NoArgsConstructor
