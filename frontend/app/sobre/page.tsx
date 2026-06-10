@@ -53,7 +53,7 @@ Mais do que uma marca, somos uma extensão da comunidade Desafio Natureza. Cada 
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-white">Natureza</h4>
-                                        <p className="text-sm text-gray-400">Conectados às trilhas, paisagens e ao espírito de aventura.</p>
+                                        <p className="text-sm text-white">Conectados às trilhas, paisagens e ao espírito de aventura.</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-4">
@@ -62,7 +62,7 @@ Mais do que uma marca, somos uma extensão da comunidade Desafio Natureza. Cada 
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-white">Superação</h4>
-                                        <p className="text-sm text-gray-400">Inspirados por atletas que transformam desafios em conquistas.</p>
+                                        <p className="text-sm text-white">Inspirados por atletas que transformam desafios em conquistas.</p>
                                     </div>
                                 </div>
                             </div>

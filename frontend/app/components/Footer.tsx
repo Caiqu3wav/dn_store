@@ -14,18 +14,20 @@ export function Footer() {
                                 src="/assets/Images/novo-logotipo.png" 
                                 alt="DN Store Logo" 
                                 fill 
-                                className="object-contain object-left"
+                                className="object-contain object-center"
                             />
                         </div>
-                        <p className="text-gray-200 text-sm leading-relaxed">
-                           Inspirando aventura e conexão com a natureza. A Desafio Natureza acompanha você em cada desafio.
+                        <p className="text-gray-200 text-sm leading-relaxed mx-auto">
+                           Inspirando aventura e conexão com a natureza. 
+                        <br></br>   
+                           O Desafio Natureza acompanha você em cada desafio.
                         </p>
                         <div className="flex items-center gap-4">
-                            <a href="#" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-brand-secondary transition-colors text-white">
+                            <a href="https://www.instagram.com/lojadesafionatureza/" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-brand-secondary transition-colors text-white">
                                 <Instagram className="w-5 h-5" />
                             </a>
-                            <a href="#" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-brand-secondary transition-colors text-white">
-                                <Mail className="w-5 h-5" />
+                            <a href="https://www.instagram.com/desafionaturezamtb/" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-brand-secondary transition-colors text-white">
+                                <Instagram className="w-5 h-5" />
                             </a>
                         </div>
                     </div>
