@@ -26,14 +26,8 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/dashboard")
     public ResponseEntity<AdminDashboardDTO> dashboard() {
-        List<Order> orders = orderRepository.findAll();
-
-        BigDecimal totalRevenue = orders.stream()
-                .map(Order::getTotal)
-                .filter(total -> total != null)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        long totalOrders = orders.size();
+        long totalOrders = orderRepository.count();
+        BigDecimal totalRevenue = orderRepository.sumTotalRevenue();
 
         BigDecimal averageTicket = totalOrders == 0
                 ? BigDecimal.ZERO

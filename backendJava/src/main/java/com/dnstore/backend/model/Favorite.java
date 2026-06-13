@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
 
 @Getter
 @Setter
@@ -16,6 +17,7 @@ public class Favorite {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
+    @JdbcTypeCode(java.sql.Types.VARCHAR)
     private UUID id;
 
     @ManyToOne

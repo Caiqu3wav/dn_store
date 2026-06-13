@@ -2,8 +2,10 @@
 
 import { motion } from 'framer-motion';
 import { useRef, useState, useEffect } from 'react';
-import { FEATURED_PRODUCTS } from '../../../lib/data';
 import { ProductCard } from '../ui/ProductCard';
+import useSWR from 'swr';
+import { fetcher } from '@/services/productService';
+import { Product } from '@/types';
 import Link from 'next/link';
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -11,6 +13,14 @@ export function FeaturedProducts() {
     const scrollRef = useRef<HTMLDivElement>(null);
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
+
+    // Mouse drag scroll state
+    const [isDown, setIsDown] = useState(false);
+    const [startX, setStartX] = useState(0);
+    const [scrollLeftState, setScrollLeftState] = useState(0);
+
+    const { data: productsData } = useSWR<Product[]>('/products', fetcher);
+    const featuredProducts = productsData?.slice(0, 8) || [];
 
     const checkScroll = () => {
         if (scrollRef.current) {
@@ -25,7 +35,7 @@ export function FeaturedProducts() {
         const handleResize = () => checkScroll();
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
-    }, []);
+    }, [productsData, featuredProducts.length]);
 
     const scroll = (direction: 'left' | 'right') => {
         if (scrollRef.current) {
@@ -36,6 +46,29 @@ export function FeaturedProducts() {
                 behavior: 'smooth'
             });
         }
+    };
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (!scrollRef.current) return;
+        setIsDown(true);
+        setStartX(e.pageX - scrollRef.current.offsetLeft);
+        setScrollLeftState(scrollRef.current.scrollLeft);
+    };
+
+    const handleMouseLeave = () => {
+        setIsDown(false);
+    };
+
+    const handleMouseUp = () => {
+        setIsDown(false);
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDown || !scrollRef.current) return;
+        e.preventDefault();
+        const x = e.pageX - scrollRef.current.offsetLeft;
+        const walk = (x - startX) * 1.5; // scroll speed
+        scrollRef.current.scrollLeft = scrollLeftState - walk;
     };
 
     return (
@@ -68,10 +101,10 @@ export function FeaturedProducts() {
                     {canScrollLeft && (
                         <button
                             onClick={() => scroll('left')}
-                            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-background hover:bg-white hover:text-foreground shadow-lg rounded-full p-2 transition-all duration-200"
+                            className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white hover:bg-brand-secondary hover:text-white shadow-lg rounded-full p-2.5 transition-all duration-200 border border-gray-100 text-black"
                             aria-label="Scroll left"
                         >
-                            <ChevronLeft className="w-6 h-6 text-brand-primary" />
+                            <ChevronLeft className="w-6 h-6" />
                         </button>
                     )}
 
@@ -79,10 +112,10 @@ export function FeaturedProducts() {
                     {canScrollRight && (
                         <button
                             onClick={() => scroll('right')}
-                            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background hover:bg-white hover:text-foreground shadow-lg rounded-full p-2 transition-all duration-200"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white hover:bg-brand-secondary hover:text-white shadow-lg rounded-full p-2.5 transition-all duration-200 border border-gray-100 text-black"
                             aria-label="Scroll right"
                         >
-                            <ChevronRight className="w-6 h-6 text-brand-primary" />
+                            <ChevronRight className="w-6 h-6" />
                         </button>
                     )}
 
@@ -90,17 +123,23 @@ export function FeaturedProducts() {
                     <div
                         ref={scrollRef}
                         onScroll={checkScroll}
-                        className="flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth pb-4"
+                        onMouseDown={handleMouseDown}
+                        onMouseLeave={handleMouseLeave}
+                        onMouseUp={handleMouseUp}
+                        onMouseMove={handleMouseMove}
+                        className={`flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth pb-4 ${
+                            isDown ? 'cursor-grabbing select-none' : 'cursor-grab'
+                        }`}
                         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     >
-                        {FEATURED_PRODUCTS.map((product, index) => (
+                        {featuredProducts.map((product, index) => (
                             <motion.div
                                 key={product.id}
                                 initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ delay: index * 0.1 }}
-                                className="flex-shrink-0 w-80"
+                                className="flex-shrink-0 w-80 pointer-events-auto"
                             >
                                 <ProductCard product={product} />
                             </motion.div>

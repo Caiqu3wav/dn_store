@@ -1,8 +1,14 @@
 package com.dnstore.backend.service;
 
+import com.dnstore.backend.model.Category;
+import com.dnstore.backend.model.PhysicalProduct;
 import com.dnstore.backend.model.Product;
+import com.dnstore.backend.model.ProductImage;
+import com.dnstore.backend.repository.CategoryRepository;
 import com.dnstore.backend.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -21,6 +27,7 @@ import java.util.UUID;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final CategoryRepository categoryRepository;
 
     // --- R: Read ---
     public List<Product> findAll() {
@@ -33,6 +40,16 @@ public class ProductService {
 
     // --- C: Create ---
     public Product create(Product product) {
+        if (product.getCategory() != null && product.getCategory().getId() != null) {
+            Category cat = categoryRepository.findById(product.getCategory().getId())
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+            product.setCategory(cat);
+        }
+        if (product.getImages() != null) {
+            for (ProductImage img : product.getImages()) {
+                img.setProduct(product);
+            }
+        }
         return productRepository.save(product);
     }
 
@@ -41,59 +58,83 @@ public class ProductService {
         return productRepository.findById(id).map(existing -> {
             existing.setName(updatedData.getName());
             existing.setPrice(updatedData.getPrice());
-            existing.setImageUrl(updatedData.getImageUrl());
             existing.setDescription(updatedData.getDescription());
-            // JPA faz o update automaticamente ao salvar/alterar entidade gerenciada
+            existing.setPromotionalPrice(updatedData.getPromotionalPrice());
+            existing.setActive(updatedData.isActive());
+            existing.setColor(updatedData.getColor());
+
+            if (updatedData.getCategory() != null && updatedData.getCategory().getId() != null) {
+                Category cat = categoryRepository.findById(updatedData.getCategory().getId())
+                    .orElseThrow(() -> new RuntimeException("Category not found"));
+                existing.setCategory(cat);
+            } else {
+                existing.setCategory(null);
+            }
+
+            // Sync images
+            if (updatedData.getImages() != null) {
+                existing.getImages().clear();
+                for (ProductImage img : updatedData.getImages()) {
+                    img.setProduct(existing);
+                    existing.getImages().add(img);
+                }
+            }
+
+            if (existing instanceof PhysicalProduct && updatedData instanceof PhysicalProduct) {
+                PhysicalProduct existingPhysical = (PhysicalProduct) existing;
+                PhysicalProduct updatedPhysical = (PhysicalProduct) updatedData;
+                existingPhysical.setWeight(updatedPhysical.getWeight());
+                existingPhysical.setWidth(updatedPhysical.getWidth());
+                existingPhysical.setHeight(updatedPhysical.getHeight());
+                existingPhysical.setDepth(updatedPhysical.getDepth());
+            }
             return productRepository.save(existing);
         });
     }
 
     public List<Product> search(
             String search,
+            UUID categoryId,
             BigDecimal minPrice,
             BigDecimal maxPrice,
             String sortBy) {
 
-        List<Product> products = productRepository.findAll();
+        Specification<Product> spec = Specification.where(null);
 
         if (search != null && !search.isBlank()) {
-            products = products.stream()
-                    .filter(p -> p.getName() != null &&
-                            p.getName().toLowerCase().contains(search.toLowerCase()))
-                    .toList();
+            spec = spec.and((root, query, cb) ->
+                    cb.like(cb.lower(root.get("name")), "%" + search.toLowerCase() + "%")
+            );
+        }
+
+        if (categoryId != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("category").get("id"), categoryId)
+            );
         }
 
         if (minPrice != null) {
-            products = products.stream()
-                    .filter(p -> p.getPrice().compareTo(minPrice) >= 0)
-                    .toList();
+            spec = spec.and((root, query, cb) ->
+                    cb.greaterThanOrEqualTo(root.get("price"), minPrice)
+            );
         }
 
         if (maxPrice != null) {
-            products = products.stream()
-                    .filter(p -> p.getPrice().compareTo(maxPrice) <= 0)
-                    .toList();
+            spec = spec.and((root, query, cb) ->
+                    cb.lessThanOrEqualTo(root.get("price"), maxPrice)
+            );
         }
 
+        Sort sort = Sort.unsorted();
         if ("priceAsc".equalsIgnoreCase(sortBy)) {
-            products = products.stream()
-                    .sorted((a, b) -> a.getPrice().compareTo(b.getPrice()))
-                    .toList();
+            sort = Sort.by("price").ascending();
+        } else if ("priceDesc".equalsIgnoreCase(sortBy)) {
+            sort = Sort.by("price").descending();
+        } else if ("name".equalsIgnoreCase(sortBy)) {
+            sort = Sort.by("name").ascending();
         }
 
-        if ("priceDesc".equalsIgnoreCase(sortBy)) {
-            products = products.stream()
-                    .sorted((a, b) -> b.getPrice().compareTo(a.getPrice()))
-                    .toList();
-        }
-
-        if ("name".equalsIgnoreCase(sortBy)) {
-            products = products.stream()
-                    .sorted((a, b) -> a.getName().compareToIgnoreCase(b.getName()))
-                    .toList();
-        }
-
-        return products;
+        return productRepository.findAll(spec, sort);
     }
 
     // --- D: Delete ---

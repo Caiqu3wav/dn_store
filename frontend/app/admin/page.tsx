@@ -1,40 +1,43 @@
 'use client';
 
 import { DollarSign, ShoppingBag, Package, Users } from 'lucide-react';
-
-const stats = [
-    { title: 'Vendas do Mês', value: 'R$ 15.430', icon: DollarSign, trend: '+12%', isPositive: true },
-    { title: 'Pedidos Pendentes', value: '18', icon: ShoppingBag, trend: '-2%', isPositive: false },
-    { title: 'Produtos Ativos', value: '124', icon: Package, trend: '+5%', isPositive: true },
-    { title: 'Total Clientes', value: '892', icon: Users, trend: '+18%', isPositive: true },
-];
-
-const recentOrders = [
-    { id: '#1024', customer: 'João Silva', date: 'Hoje, 14:30', status: 'Processando', total: 'R$ 259,90' },
-    { id: '#1023', customer: 'Maria Oliveira', date: 'Hoje, 11:15', status: 'Enviado', total: 'R$ 129,90' },
-    { id: '#1022', customer: 'Carlos Santos', date: 'Ontem, 16:45', status: 'Entregue', total: 'R$ 389,70' },
-    { id: '#1021', customer: 'Ana Paula', date: 'Ontem, 09:20', status: 'Cancelado', total: 'R$ 89,90' },
-    { id: '#1020', customer: 'Lucas Mendes', date: '12 Maio, 18:10', status: 'Entregue', total: 'R$ 199,90' },
-];
-
-function StatusBadge({ status }: { status: string }) {
-    const colors: Record<string, string> = {
-        'Processando': 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
-        'Enviado': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-        'Entregue': 'bg-green-500/10 text-green-500 border-green-500/20',
-        'Cancelado': 'bg-red-500/10 text-red-500 border-red-500/20',
-    };
-
-    const colorClass = colors[status] || 'bg-gray-500/10 text-gray-400 border-gray-500/20';
-
-    return (
-        <span className={`px-2 py-1 text-xs font-medium rounded-full border ${colorClass}`}>
-            {status}
-        </span>
-    );
-}
+import { useEffect, useState } from 'react';
+import { adminService, AdminDashboardData } from '@/services/adminService';
+import { toast } from 'react-hot-toast';
 
 export default function AdminDashboard() {
+    const [dashboardData, setDashboardData] = useState<AdminDashboardData | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const loadDashboard = async () => {
+            try {
+                const data = await adminService.getDashboardData();
+                setDashboardData(data);
+            } catch (error) {
+                console.error("Erro ao carregar dashboard:", error);
+                toast.error("Erro ao carregar dados do dashboard.");
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadDashboard();
+    }, []);
+
+    const stats = dashboardData ? [
+        { title: 'Receita Total', value: `R$ ${dashboardData.totalRevenue.toFixed(2).replace('.', ',')}`, icon: DollarSign, trend: '', isPositive: true },
+        { title: 'Total de Pedidos', value: dashboardData.totalOrders.toString(), icon: ShoppingBag, trend: '', isPositive: true },
+        { title: 'Total de Produtos', value: dashboardData.totalProducts.toString(), icon: Package, trend: '', isPositive: true },
+        { title: 'Total Usuários', value: dashboardData.totalUsers.toString(), icon: Users, trend: '', isPositive: true },
+    ] : [
+        { title: 'Receita Total', value: 'R$ 0,00', icon: DollarSign, trend: '', isPositive: true },
+        { title: 'Total de Pedidos', value: '0', icon: ShoppingBag, trend: '', isPositive: true },
+        { title: 'Total de Produtos', value: '0', icon: Package, trend: '', isPositive: true },
+        { title: 'Total Usuários', value: '0', icon: Users, trend: '', isPositive: true },
+    ];
+
+    const recentOrders: any[] = []; // Removido mock temporariamente
+
     return (
         <div className="space-y-8 text-white">
             <div>
@@ -57,7 +60,9 @@ export default function AdminDashboard() {
                                 </span>
                             </div>
                             <h3 className="text-gray-400 text-sm font-medium">{stat.title}</h3>
-                            <p className="text-3xl font-bold mt-1 text-white">{stat.value}</p>
+                            <p className="text-3xl font-bold mt-1 text-white">
+                                {loading ? '...' : stat.value}
+                            </p>
                         </div>
                     );
                 })}
@@ -89,7 +94,11 @@ export default function AdminDashboard() {
                                     <td className="p-4 text-gray-300">{order.customer}</td>
                                     <td className="p-4 text-gray-400 text-sm">{order.date}</td>
                                     <td className="p-4">
-                                        <StatusBadge status={order.status} />
+                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full border ${
+                                            order.status === 'delivered' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                                        }`}>
+                                            {order.status}
+                                        </span>
                                     </td>
                                     <td className="p-4 font-medium text-white">{order.total}</td>
                                 </tr>
