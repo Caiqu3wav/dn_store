@@ -1,9 +1,11 @@
 package com.dnstore.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
 
 @Getter
 @Setter
@@ -16,8 +18,10 @@ public class ProductImage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
+    @JdbcTypeCode(java.sql.Types.VARCHAR)
     private UUID id;
 
+    @JsonBackReference
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;

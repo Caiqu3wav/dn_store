@@ -5,6 +5,7 @@ import com.dnstore.backend.model.Product;
 import com.dnstore.backend.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -34,11 +35,12 @@ public class ProductController {
     @GetMapping
     public ResponseEntity<List<Product>> listAll(
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(required = false) String sortBy) {
         return ResponseEntity.ok(
-                productService.search(search, minPrice, maxPrice, sortBy));
+                productService.search(search, categoryId, minPrice, maxPrice, sortBy));
     }
 
     /**
@@ -57,6 +59,7 @@ public class ProductController {
      * POST /api/products
      */
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Product> create(@RequestBody PhysicalProduct product) {
         Product created = productService.create(product);
 
@@ -74,6 +77,7 @@ public class ProductController {
      * PUT /api/products/{id}
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Product> update(@PathVariable UUID id, @RequestBody PhysicalProduct product) {
         return productService.update(id, product)
                 .map(ResponseEntity::ok)
@@ -85,6 +89,7 @@ public class ProductController {
      * DELETE /api/products/{id}
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         if (productService.delete(id)) {
             return ResponseEntity.noContent().build();

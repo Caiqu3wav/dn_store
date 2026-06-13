@@ -8,6 +8,7 @@ import lombok.Setter;
 import lombok.AllArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
 
 @Getter
 @Setter
@@ -20,6 +21,7 @@ public class ProductVariant {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
+    @JdbcTypeCode(java.sql.Types.VARCHAR)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)

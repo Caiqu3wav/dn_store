@@ -1,78 +1,77 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../../components/ui/Button';
 import { useCart } from '../../context/CartContext';
 import { ShoppingCart, Heart, Share2, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import { Product } from '../../../types';
+import { productService } from '../../../services/productService';
 
-// Mock data (would come from API/DB)
-const products = {
-    '1': {
-        id: '1',
-        name: 'Camiseta DN Poliamida Cinza',
-        price: 59.99,
-        description: 'A Camiseta DN Poliamida Cinza combina conforto, leveza e desempenho para acompanhar você em qualquer desafio. Produzida em tecido respirável de secagem rápida, oferece excelente mobilidade e conforto durante treinos, pedaladas ou no dia a dia, com um visual moderno e versátil que combina com qualquer ocasião.',
-        images: [
-            '/assets/products/CaPoliCinza.jpeg',
-            'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=2070&auto=format&fit=crop'
-        ],
-        sizes: ['P', 'M', 'G', 'GG'],
-        category: 'Camisetas Poliamida'
-    },
-    '2': {
-        id: '2',
-        name: 'Camisa DN Ciclismo Laranja/Azul',
-        price: 199.99,
-        description: 'A Camisa DN Ciclismo Laranja/Azul foi desenvolvida para ciclistas que buscam performance e conforto em cada percurso. Confeccionada com tecido leve e respirável, oferece excelente ventilação e secagem rápida, enquanto seu design vibrante em laranja e azul garante estilo e visibilidade nas estradas e trilhas. Ideal para encarar qualquer desafio sobre duas rodas.',
-        images: [
-            '/assets/products/CaCicliLaranja.jpeg'
-        ],
-        sizes: ['P', 'M', 'G', 'GG'],
-        category: 'Camisas de Ciclismo'
-    },
-    '3': {
-        id: '3',
-        name: 'Boné DN Preto/Vermelho',
-        price: 59.99,
-        description: 'O Boné DN Preto/Vermelho combina estilo, conforto e praticidade para o dia a dia. Com design moderno e ajuste confortável, é ideal para proteger do sol durante treinos, passeios ou momentos de lazer, trazendo a identidade da DN Store em uma combinação de cores marcante e versátil.',
-        images: [
-            '/assets/products/BoneDNPreto.jpeg'
-        ],
-        sizes: ['Único'],
-        category: 'Bonés e Meias',
-    },
-    // Fallback for other IDs
-    'default': {
-        id: '0',
-        name: 'Produto Exemplo',
-        price: 99.90,
-        description: 'Descrição do produto exemplo.',
-        images: ['https://images.unsplash.com/photo-1517649763962-0c623066013b?q=80&w=2070&auto=format&fit=crop'],
-        sizes: ['Único'],
-        category: 'Geral'
-    }
-};
-
-export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
-    const product = products[id as keyof typeof products] || products['default'];
-
-    const [selectedSize, setSelectedSize] = useState(product.sizes[0]);
+export default function ProductPage({ params }: { params: { id: string } }) {
+    const { id } = params;
+    const [product, setProduct] = useState<Product | null>(null);
+    const [selectedSize, setSelectedSize] = useState<string>('');
     const [currentImage, setCurrentImage] = useState(0);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const { addItem } = useCart();
 
+    useEffect(() => {
+        if (!id) return;
+
+        setIsLoading(true);
+        setError(null);
+
+        productService.getProductById(id)
+            .then((data) => {
+                setProduct(data);
+                const sizes = data.size && data.size.length ? data.size : ['Único'];
+                setSelectedSize(sizes[0]);
+                setCurrentImage(0);
+            })
+            .catch((err) => {
+                console.error('Failed to fetch product', err);
+                setError('Não foi possível carregar o produto.');
+            })
+            .finally(() => setIsLoading(false));
+    }, [id]);
+
+    const productImages = product?.images?.length
+        ? product.images.map((img) => (typeof img === 'string' ? img : img.imageUrl))
+        : ['/assets/products/placeholder.png'];
+
+    const sizes = product?.size?.length ? product.size : ['Único'];
+
     const handleAddToCart = () => {
+        if (!product) return;
+
         addItem({
             id: product.id,
             name: product.name,
             price: product.price,
-            image: product.images[0],
+            image: productImages[0] || '/assets/products/placeholder.png',
             quantity: 1,
             size: selectedSize
         });
         alert('Produto adicionado ao carrinho!');
     };
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-white text-black pt-24 pb-20 flex items-center justify-center">
+                <p className="text-lg text-gray-600">Carregando produto...</p>
+            </div>
+        );
+    }
+
+    if (error || !product) {
+        return (
+            <div className="min-h-screen bg-white text-black pt-24 pb-20 flex items-center justify-center">
+                <p className="text-lg text-red-600">{error || 'Produto não encontrado.'}</p>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-white text-black pt-24 pb-20">
@@ -92,15 +91,15 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                         <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden relative">
                             <div
                                 className="absolute inset-0 bg-cover bg-center"
-                                style={{ backgroundImage: `url(${product.images[currentImage]})` }}
+                                style={{ backgroundImage: `url(${productImages[currentImage]})` }}
                             />
                         </div>
                         <div className="flex gap-4 overflow-x-auto pb-2">
-                            {product.images.map((img, index) => (
+                            {productImages.map((img, index) => (
                                 <button
                                     key={index}
                                     onClick={() => setCurrentImage(index)}
-                                    className={`w-20 h-20 flex-shrink-0 rounded-md overflow-hidden border-2 ${currentImage === index ? 'border-brand-red' : 'border-transparent'
+                                    className={`w-20 h-20 shrink-0 rounded-md overflow-hidden border-2 ${currentImage === index ? 'border-brand-red' : 'border-transparent'
                                         }`}
                                 >
                                     <div
@@ -115,7 +114,9 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                     {/* Info */}
                     <div>
                         <span className="text-brand-red font-bold tracking-wider uppercase text-sm">
-                            {product.category}
+                            {typeof product.category === 'object' && product.category !== null 
+                                ? product.category.name 
+                                : (product.category || 'Geral')}
                         </span>
                         <h1 className="text-4xl font-bold mt-2 mb-4">{product.name}</h1>
                         <p className="text-3xl font-bold mb-6">
@@ -130,7 +131,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                         <div className="mb-8">
                             <h3 className="font-bold mb-3">Tamanho</h3>
                             <div className="flex gap-3">
-                                {product.sizes.map((size) => (
+                                {sizes.map((size) => (
                                     <button
                                         key={size}
                                         onClick={() => setSelectedSize(size)}
