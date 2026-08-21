@@ -13,38 +13,54 @@ Esta documentação descreve os endpoints disponíveis na API do backend Java da
 
 ### 1. Requisitos Prévios
 - **Java 17** ou superior instalado e configurado nas variáveis de ambiente (`JAVA_HOME`).
-- **Docker** e **Docker Compose** instalados e em execução.
+- Uma instância MySQL ativa no **Aiven**.
+- **MySQL Workbench** (opcional, recomendado para testar a conexão e consultar o banco).
+- O certificado CA (`ca.pem`) baixado na página de conexão do serviço Aiven.
 
 ---
 
-### 2. Executando o Banco de Dados (Docker)
-O projeto utiliza uma imagem do **MySQL 8.0** configurada no `docker-compose.yml` para desenvolvimento local.
+### 2. Conectando ao MySQL do Aiven pelo MySQL Workbench
+Na página do serviço MySQL no Aiven, abra **Connect** e copie os dados atuais de conexão. Não use host ou porta antigos salvos no projeto.
 
-Para iniciar o banco de dados:
-1. Abra o terminal WSL na pasta raiz do backend (`backendJava`).
-2. Execute o comando para iniciar o container em segundo plano:
-   ```bash
-   docker compose up -d
-   ```
-3. O banco de dados estará acessível em `localhost:3306` com as seguintes configurações/credenciais (já configuradas no arquivo `application.properties`):
-   - **Database**: `app_db`
-   - **User**: `app_user`
-   - **Password**: `app_pass`
-   - **Root Password**: `root`
+No MySQL Workbench, crie uma conexão com:
 
-Para parar e remover os containers do banco de dados quando terminar:
-```bash
-docker compose down
-```
+- **Connection Method**: `Standard (TCP/IP)`
+- **Hostname**: host exibido pelo Aiven
+- **Port**: porta exibida pelo Aiven
+- **Username**: usuário exibido pelo Aiven, normalmente `avnadmin`
+- **Password**: senha atual do usuário Aiven
+- **Default Schema**: banco exibido pelo Aiven, normalmente `defaultdb`
+
+Na aba **SSL**:
+
+1. Selecione **Use SSL** ou **Require**.
+2. Em **SSL CA File**, selecione o arquivo `ca.pem` baixado do Aiven.
+3. Salve a conexão e use **Test Connection**.
+
+O Workbench deve conectar usando exatamente o par **Hostname + Port** fornecido pelo Aiven. Se houver erro de DNS ou conexão recusada, atualize os dados no Aiven antes de alterar o código.
+
+O certificado `ca.pem` é usado pelo Workbench para validar o servidor. Ele não deve ser commitado no Git nem colocado dentro de `src/main/resources`.
 
 ---
 
 ### 3. Executando o Backend (Java / Spring Boot)
 
-Após garantir que o banco de dados no Docker está em execução, siga os passos abaixo para rodar o backend:
+Depois de testar a conexão no Workbench, configure o arquivo `backendJava/.env`. O Spring Boot importa esse arquivo quando o comando é executado a partir da pasta `backendJava`.
+
+Use a URL JDBC correspondente aos dados atuais do Aiven:
+
+```env
+DB_URL=jdbc:mysql://HOST_AIVEN:PORTA/defaultdb?ssl-mode=REQUIRED
+DB_USER=avnadmin
+DB_PASS=SENHA_ATUAL_DO_AIVEN
+DDL_AUTO=validate
+```
+
+Não coloque `DB_USER` ou `DB_PASS` dentro de `DB_URL`; eles são informados separadamente. O arquivo `.env` contém segredos e deve permanecer fora do Git.
+
+Para iniciar o backend, abra o terminal na pasta `backendJava`:
 
 #### Pelo Wrapper do Maven (Recomendado)
-Navegue até o diretório `backendJava` no seu prompt de comando ou terminal:
 
 - **No Windows (PowerShell ou CMD)**:
   ```powershell
@@ -54,6 +70,14 @@ Navegue até o diretório `backendJava` no seu prompt de comando ou terminal:
   ```bash
   ./mvnw spring-boot:run
   ```
+
+Na inicialização, o Flyway aplica as migrations pendentes e o Hibernate valida o schema. A aplicação só deve ser considerada pronta quando aparecer uma mensagem semelhante a:
+
+```text
+Started BackendApplication
+```
+
+Se aparecer `Connection refused`, `UnknownHostException` ou `Communications link failure`, confira o **Hostname**, **Port**, senha e o estado do serviço no Aiven. Se aparecer `Schema-validation: missing column`, verifique as migrations Flyway e não altere tabelas manualmente sem registrar uma nova migration.
 
 #### Empacotando e rodando o arquivo JAR diretamente
 Caso queira gerar o pacote compilado da aplicação e executá-lo diretamente:

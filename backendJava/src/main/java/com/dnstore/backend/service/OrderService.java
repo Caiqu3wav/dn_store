@@ -113,7 +113,7 @@ public class OrderService {
         // 4. Criar Entidade Pedido
         Order order = new Order();
         order.setCreatedAt(LocalDateTime.now());
-        order.setStatus("CONFIRMADO");
+        order.setStatus("PENDING_PAYMENT");
         order.setUser(user);
         order.setAddress(address);
         order.setCoupon(appliedCoupon);
