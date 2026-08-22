@@ -143,15 +143,32 @@ public class OrderService {
         return savedOrder;
     }
 
+    private static final java.util.Set<String> VALID_STATUSES = java.util.Set.of(
+            "PENDING_PAYMENT", "PAID", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "PAYMENT_FAILED"
+    );
+
     public java.util.Optional<Order> findById(UUID id) {
         return orderRepository.findById(id);
+    }
+
+    /** Busca pedido garantindo que pertence ao usuário — previne IDOR. */
+    public java.util.Optional<Order> findByIdAndUser(UUID id, UUID userId) {
+        return orderRepository.findById(id)
+                .filter(order -> order.getUser().getId().equals(userId));
     }
 
     public List<Order> findAll() {
         return orderRepository.findAll();
     }
 
+    public List<Order> findByUser(UUID userId) {
+        return orderRepository.findByUserId(userId);
+    }
+
     public java.util.Optional<Order> updateStatus(UUID id, String status) {
+        if (!VALID_STATUSES.contains(status)) {
+            throw new IllegalArgumentException("Status inválido: " + status);
+        }
         return orderRepository.findById(id).map(order -> {
             order.setStatus(status);
             return orderRepository.save(order);

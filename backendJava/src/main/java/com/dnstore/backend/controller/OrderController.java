@@ -1,8 +1,10 @@
 package com.dnstore.backend.controller;
 
 import com.dnstore.backend.model.Order;
+import com.dnstore.backend.model.Role;
 import com.dnstore.backend.model.User;
 import com.dnstore.backend.service.OrderService;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -50,13 +52,27 @@ public class OrderController {
 
     /**
      * GET /api/orders/{id}
-     * Busca um pedido pelo ID.
+     * Usuário só acessa o próprio pedido. ADMIN acessa qualquer um.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<?> getOrder(@PathVariable UUID id) {
-        return orderService.findById(id)
+    public ResponseEntity<?> getOrder(@PathVariable UUID id, @AuthenticationPrincipal User user) {
+        if (user.getRole() == Role.ADMIN) {
+            return orderService.findById(id)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        }
+        return orderService.findByIdAndUser(id, user.getId())
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * GET /api/orders/my
+     * Lista os pedidos do usuário logado.
+     */
+    @GetMapping("/my")
+    public ResponseEntity<List<Order>> myOrders(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(orderService.findByUser(user.getId()));
     }
 
     /**
@@ -77,12 +93,16 @@ public class OrderController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateStatus(@PathVariable UUID id, @RequestBody Map<String, String> body) {
         String status = body.get("status");
-        if (status == null) {
+        if (status == null || status.isBlank()) {
             return ResponseEntity.badRequest().body(new ErrorResponse("Status é obrigatório."));
         }
-        return orderService.updateStatus(id, status)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        try {
+            return orderService.updateStatus(id, status)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        }
     }
 
     // DTOs auxiliares

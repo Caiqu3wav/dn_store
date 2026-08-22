@@ -9,19 +9,9 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
-/**
- * Implementação do PaymentGateway para o Asaas.
- * Usa RestTemplate puro — sem SDK proprietário — para facilitar troca futura.
- *
- * Sandbox:  https://sandbox.asaas.com/api/v3
- * Produção: https://api.asaas.com/v3
- *
- * Chaves necessárias no .env:
- *   ASAAS_API_KEY   → $aact_... (token do sandbox ou produção)
- *   ASAAS_SANDBOX   → true | false
- */
 @Slf4j
 @Service("asaas")
 @RequiredArgsConstructor
@@ -52,7 +42,6 @@ public class AsaasGatewayService implements PaymentGateway {
 
     private String getOrCreateCustomer(String name, String email, String cpfCnpj) {
         try {
-            // Tenta buscar customer existente pelo CPF/CNPJ
             String searchUrl = baseUrl() + "/customers?cpfCnpj=" + cpfCnpj;
             ResponseEntity<Map> searchResp = restTemplate.exchange(
                     searchUrl, HttpMethod.GET, new HttpEntity<>(headers()), Map.class);
@@ -62,10 +51,9 @@ public class AsaasGatewayService implements PaymentGateway {
                 return (String) ((Map<?, ?>) data.get(0)).get("id");
             }
         } catch (Exception e) {
-            log.warn("Asaas: customer search failed, creating new one. {}", e.getMessage());
+            log.warn("Asaas: customer search failed, creating new one", e);
         }
 
-        // Cria novo customer
         Map<String, Object> body = new HashMap<>();
         body.put("name", name);
         body.put("email", email);
@@ -127,7 +115,7 @@ public class AsaasGatewayService implements PaymentGateway {
             );
             return parsePaymentResponse(resp.getBody());
         } catch (HttpClientErrorException e) {
-            log.error("Asaas createPayment error: {}", e.getResponseBodyAsString());
+            log.error("Asaas createPayment error: {}", e.getResponseBodyAsString(), e);
             throw new RuntimeException("Erro ao criar cobrança: " + e.getResponseBodyAsString());
         }
     }
@@ -137,7 +125,6 @@ public class AsaasGatewayService implements PaymentGateway {
     @Override
     @SuppressWarnings("unchecked")
     public WebhookResult processWebhook(String rawPayload, String signatureHeader) {
-        // Asaas envia JSON com { "event": "PAYMENT_RECEIVED", "payment": { "id": "...", "status": "..." } }
         try {
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             Map<String, Object> payload = mapper.readValue(rawPayload, Map.class);
@@ -148,7 +135,7 @@ public class AsaasGatewayService implements PaymentGateway {
 
             return new WebhookResult(externalId, normalizeStatus(asaasStatus));
         } catch (Exception e) {
-            log.error("Asaas webhook parse error: {}", e.getMessage());
+            log.error("Asaas webhook parse error", e);
             throw new RuntimeException("Webhook inválido");
         }
     }
@@ -165,7 +152,6 @@ public class AsaasGatewayService implements PaymentGateway {
         String boletoUrl = null;
         String boletoBarcode = null;
 
-        // Busca dados de Pix se for o caso
         if ("PIX".equals(body.get("billingType"))) {
             try {
                 ResponseEntity<Map> pixResp = restTemplate.exchange(
@@ -177,7 +163,7 @@ public class AsaasGatewayService implements PaymentGateway {
                 pixQrCode = (String) pixResp.getBody().get("encodedImage");
                 pixCopyPaste = (String) pixResp.getBody().get("payload");
             } catch (Exception e) {
-                log.warn("Asaas: could not fetch Pix QR code: {}", e.getMessage());
+                log.warn("Asaas: could not fetch Pix QR code", e);
             }
         }
 
@@ -190,7 +176,7 @@ public class AsaasGatewayService implements PaymentGateway {
     }
 
     private String asaasBillingType(String method) {
-        return switch (method.toUpperCase()) {
+        return switch (method.toUpperCase(Locale.ROOT)) {
             case "CREDIT_CARD" -> "CREDIT_CARD";
             case "DEBIT_CARD"  -> "DEBIT_CARD";
             case "PIX"         -> "PIX";
@@ -201,7 +187,7 @@ public class AsaasGatewayService implements PaymentGateway {
 
     private String normalizeStatus(String asaasStatus) {
         if (asaasStatus == null) return "PENDING";
-        return switch (asaasStatus.toUpperCase()) {
+        return switch (asaasStatus.toUpperCase(Locale.ROOT)) {
             case "RECEIVED", "CONFIRMED" -> "PAID";
             case "PENDING", "AWAITING_RISK_ANALYSIS" -> "PENDING";
             case "REFUNDED", "REFUND_REQUESTED" -> "REFUNDED";

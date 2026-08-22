@@ -33,9 +33,13 @@ public class PaymentService {
     }
 
     @Transactional
-    public Payment initPayment(UUID orderId, PaymentGateway.PaymentRequest request) {
+    public Payment initPayment(UUID orderId, UUID requestingUserId, PaymentGateway.PaymentRequest request) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Pedido não encontrado"));
+
+        if (!order.getUser().getId().equals(requestingUserId)) {
+            throw new IllegalArgumentException("Pedido não encontrado");
+        }
 
         if (!"PENDING_PAYMENT".equals(order.getStatus())) {
             throw new IllegalStateException("Pedido não está aguardando pagamento");
@@ -86,5 +90,14 @@ public class PaymentService {
     public Payment findByOrderId(UUID orderId) {
         return paymentRepository.findByOrder_Id(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Pagamento não encontrado para o pedido"));
+    }
+
+    /** Busca pagamento garantindo que o pedido pertence ao usuário — previne IDOR. */
+    public Payment findByOrderIdAndUser(UUID orderId, UUID userId) {
+        Payment payment = findByOrderId(orderId);
+        if (!payment.getOrder().getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("Pagamento não encontrado para o pedido");
+        }
+        return payment;
     }
 }
