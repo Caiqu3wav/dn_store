@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
-import { FEATURED_PRODUCTS, CATEGORIES } from '../../lib/data';
+import { Search, SlidersHorizontal, X, ChevronDown, Loader2 } from 'lucide-react';
 import { ProductCard } from '../components/ui/ProductCard';
+import useSWR from 'swr';
+import { fetcher } from '@/services/productService';
+import { Product, Category } from '@/types';
 
 type SortOption = 'relevance' | 'price-asc' | 'price-desc' | 'name-asc' | 'name-desc';
 
@@ -17,6 +19,7 @@ export default function ProdutosPage() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
+
   // Prevent background scroll when mobile filters are open
   useEffect(() => {
     if (isMobileFiltersOpen) {
@@ -26,73 +29,26 @@ export default function ProdutosPage() {
     }
   }, [isMobileFiltersOpen]);
 
-  const toggleCategory = (categoryName: string) => {
-    setSelectedCategories(prev =>
-      prev.includes(categoryName)
-        ? prev.filter(c => c !== categoryName)
-        : [...prev, categoryName]
-    );
-  };
+  const { data: categories } = useSWR<Category[]>('/categories', fetcher);
+  const selectedCategoryName = categories?.find(c => c.id === selectedCategory)?.name || '';
 
-  const filteredAndSortedProducts = useMemo(() => {
-    let result = [...FEATURED_PRODUCTS];
-
-    // Search
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      result = result.filter(
-        p => p.name.toLowerCase().includes(lowerQuery) || p.category.toLowerCase().includes(lowerQuery)
-      );
-    }
-
-    // Categories
+  // Monta a query URL baseada nos filtros
+  const queryParams = new URLSearchParams();
+  if (searchQuery) queryParams.append('search', searchQuery);
   if (selectedCategory) {
-  result = result.filter(p => p.category === selectedCategory);
+    queryParams.append('categoryId', selectedCategory);
   }
-   if (selectedCategories.length > 0) {
-      result = result.filter(p => selectedCategories.includes(p.category));
-    }
-    // Price
-    const minPrice = priceRange.min ? parseFloat(priceRange.min) : 0;
-    const maxPrice = priceRange.max ? parseFloat(priceRange.max) : Infinity;
+  if (priceRange.min) queryParams.append('minPrice', priceRange.min);
+  if (priceRange.max) queryParams.append('maxPrice', priceRange.max);
+  if (sortBy !== 'relevance') queryParams.append('sortBy', sortBy);
 
-    // Color
-if (selectedColor) {
-  result = result.filter(p => p.color === selectedColor);
-}
+  const { data: productsData, isLoading, error } = useSWR<Product[]>(
+    `/products?${queryParams.toString()}`,
+    fetcher
+  );
 
-// Size
-if (selectedSize) {
-  result = result.filter(p => p.size?.includes(selectedSize));
-}
+  const filteredAndSortedProducts = productsData || [];
 
-    if (minPrice > 0 || maxPrice < Infinity) {
-      result = result.filter(p => p.price >= minPrice && p.price <= maxPrice);
-    }
-
-    // Sorting
-    switch (sortBy) {
-      case 'price-asc':
-        result.sort((a, b) => a.price - b.price);
-        break;
-      case 'price-desc':
-        result.sort((a, b) => b.price - a.price);
-        break;
-      case 'name-asc':
-        result.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case 'name-desc':
-        result.sort((a, b) => b.name.localeCompare(a.name));
-        break;
-      default:
-        // relevance - keep original order
-        break;
-    }
-
-    return result;
-  }, [searchQuery, selectedCategories, selectedCategory, selectedColor, selectedSize, priceRange, sortBy]);
-
-  const allCategoryNames = Array.from(new Set(FEATURED_PRODUCTS.map(p => p.category)));
 
   return (
     <div className="min-h-screen bg-white pt-8 pb-16">
@@ -207,11 +163,11 @@ if (selectedSize) {
   </h4>
 
   <div className="space-y-2">
-    {['Todos', 'Camisa Poliamida', 'Camisas de Ciclismo', 'Bonés & Meias'].map(category => (
+    {[{ id: '', name: 'Todos' }, ...(categories || [])].map(cat => (
       <label
-        key={category}
+        key={cat.id || 'todos'}
         onClick={() => {
-          setSelectedCategory(category === 'Todos' ? '' : category);
+          setSelectedCategory(cat.id);
 
           // limpa filtros antigos
           setSelectedColor('');
@@ -223,21 +179,19 @@ if (selectedSize) {
           className={`
             w-5 h-5 rounded border flex items-center justify-center transition-all duration-200
             ${
-              (category === 'Todos' && selectedCategory === '') ||
-              selectedCategory === category
+              selectedCategory === cat.id
                 ? 'bg-brand-secondary border-brand-secondary'
                 : 'bg-white border-gray-300 group-hover:border-brand-secondary'
             }
           `}
         >
-          {((category === 'Todos' && selectedCategory === '') ||
-            selectedCategory === category) && (
+          {selectedCategory === cat.id && (
             <X className="w-3 h-3 text-white" />
           )}
         </div>
 
         <span className="text-sm text-gray-600 group-hover:text-[#1A1B1D]">
-          {category}
+          {cat.name}
         </span>
       </label>
     ))}
@@ -270,7 +224,7 @@ if (selectedSize) {
                     </div>
 
                     {/* Dynamic Filters */}
-{selectedCategory === 'Camisa Poliamida' && (
+{selectedCategoryName === 'Camisa Poliamida' && (
   <div className="space-y-4">
 
     <div>
@@ -314,7 +268,7 @@ if (selectedSize) {
   </div>
 )}
 
-{selectedCategory === 'Camisas de Ciclismo' && (
+{selectedCategoryName === 'Camisas de Ciclismo' && (
   <div className="space-y-4">
 
     <div>
@@ -360,7 +314,7 @@ if (selectedSize) {
 
 
 
-{selectedCategory === 'Bonés & Meias' && (
+{selectedCategoryName === 'Bonés & Meias' && (
   <div className="space-y-4">
 
     <div>

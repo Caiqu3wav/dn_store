@@ -28,6 +28,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@Table(name = "physical_products")
 @PrimaryKeyJoinColumn(name = "id")
 public class PhysicalProduct extends Product {
     private double weight;

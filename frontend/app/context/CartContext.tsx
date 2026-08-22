@@ -23,24 +23,27 @@ interface CartContextType {
     updateSize: (id: string, size: string) => void;
 }
 
-
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-    const [items, setItems] = useState<CartItem[]>(() => {
+    const [items, setItems] = useState<CartItem[]>([]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
         const savedCart = localStorage.getItem('cart');
-                if (savedCart) {
-                    try {
-                        return JSON.parse(savedCart);
-                    } catch (e) {
-                        console.error('Failed to parse cart', e);
-                    }
-                }
-                return [];
-    });
+        if (savedCart) {
+            try {
+                setItems(JSON.parse(savedCart));
+            } catch (e) {
+                console.error('Failed to parse cart', e);
+            }
+        }
+    }, []);
 
     // Save cart to localStorage whenever it changes
     useEffect(() => {
+        if (typeof window === 'undefined') return;
         localStorage.setItem('cart', JSON.stringify(items));
     }, [items]);
 
@@ -70,20 +73,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
 
     const updateSize = (id: string, size: string) => {
-    setItems((currentItems) =>
-        currentItems.map((item) =>
-            item.id === id
-                ? { ...item, size }
-                : item
-        )
-    );
-};
+        setItems((currentItems) =>
+            currentItems.map((item) =>
+                item.id === id
+                    ? { ...item, size }
+                    : item
+            )
+        );
+    };
 
-const clearCart = () => {
-    setItems([]);
-};
-
-  
+    const clearCart = () => {
+        setItems([]);
+    };
 
     const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);

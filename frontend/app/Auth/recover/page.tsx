@@ -27,7 +27,7 @@ export default function RecoverPasswordPage() {
           </button>
 
           <p style={{ marginTop: 14, textAlign: "center" }}>
-            <Link href="/Auth" style={{ color: "#007bff", textDecoration: "none" }}>
+            <Link href="/auth" style={{ color: "#007bff", textDecoration: "none" }}>
               Voltar
             </Link>
           </p>

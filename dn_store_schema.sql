@@ -162,11 +162,18 @@ CREATE TABLE shipment_tracking (
 
 CREATE TABLE payments (
     id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    order_id VARCHAR(36) NOT NULL,
-    method VARCHAR(50),
-    status VARCHAR(50),
-    transaction_id VARCHAR(150),
+    order_id VARCHAR(36) NOT NULL UNIQUE,
+    external_id VARCHAR(100),
+    payment_method VARCHAR(20) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    pix_qr_code TEXT,
+    pix_copy_paste TEXT,
+    boleto_url TEXT,
+    boleto_barcode TEXT,
+    installments INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    paid_at TIMESTAMP NULL DEFAULT NULL,
     FOREIGN KEY (order_id) REFERENCES orders(id)
 );
 
