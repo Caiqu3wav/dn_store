@@ -34,16 +34,30 @@ export default function NovoProdutoPage() {
     // Images
     const [files, setFiles] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+    const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const addImages = (selectedFiles: File[]) => {
+        const imageFiles = selectedFiles.filter(file => file.type.startsWith('image/'));
+
+        if (imageFiles.length === 0) return;
+
+        setFiles(prev => [...prev, ...imageFiles]);
+        const newPreviews = imageFiles.map(file => URL.createObjectURL(file));
+        setImagePreviews(prev => [...prev, ...newPreviews]);
+    };
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const newFiles = Array.from(e.target.files);
-            setFiles(prev => [...prev, ...newFiles]);
-            
-            const newPreviews = newFiles.map(file => URL.createObjectURL(file));
-            setImagePreviews(prev => [...prev, ...newPreviews]);
+        if (e.target.files) {
+            addImages(Array.from(e.target.files));
+            e.target.value = '';
         }
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDragging(false);
+        addImages(Array.from(e.dataTransfer.files));
     };
 
     const removeImage = (index: number) => {
@@ -286,7 +300,20 @@ export default function NovoProdutoPage() {
 
                     <div 
                         onClick={() => fileInputRef.current?.click()}
-                        className="border-2 border-dashed border-white/20 rounded-xl p-8 text-center hover:bg-white/[0.02] transition-colors cursor-pointer flex flex-col items-center justify-center gap-2"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDragEnter={(e) => {
+                            e.preventDefault();
+                            setIsDragging(true);
+                        }}
+                        onDragLeave={(e) => {
+                            if (e.currentTarget === e.target) setIsDragging(false);
+                        }}
+                        onDrop={handleDrop}
+                        className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer flex flex-col items-center justify-center gap-2 ${
+                            isDragging
+                                ? 'border-brand-secondary bg-brand-secondary/10'
+                                : 'border-white/20 hover:bg-white/[0.02]'
+                        }`}
                     >
                         <div className="p-4 bg-[#1A1B1D] rounded-full text-brand-secondary mb-2">
                             <ImageIcon className="w-8 h-8" />

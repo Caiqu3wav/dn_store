@@ -61,13 +61,13 @@ public class PaymentController {
                     cardData
             );
 
-            Payment payment = paymentService.initPayment(request.orderId(), gatewayRequest);
+            Payment payment = paymentService.initPayment(request.orderId(), user.getId(), gatewayRequest);
             return ResponseEntity.ok(PaymentResponse.from(payment));
 
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
         } catch (Exception e) {
-            log.error("Payment init error for order {}: {}", request.orderId(), e.getMessage());
+            log.error("Payment init error for order {}", request.orderId(), e);
             return ResponseEntity.internalServerError().body(new ErrorResponse("Erro ao processar pagamento."));
         }
     }
@@ -87,7 +87,7 @@ public class PaymentController {
             paymentService.handleWebhook(rawPayload, signature);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
-            log.error("Webhook processing error: {}", e.getMessage());
+            log.error("Webhook processing error", e);
             // Retorna 200 mesmo em erro para o Asaas não reenviar infinitamente
             return ResponseEntity.ok().build();
         }
@@ -95,12 +95,17 @@ public class PaymentController {
 
     /**
      * GET /api/payment/order/{orderId}
-     * Consulta o status do pagamento de um pedido (usado pelo frontend para polling).
+     * Usuário só acessa o pagamento do próprio pedido — previne IDOR.
      */
     @GetMapping("/order/{orderId}")
-    public ResponseEntity<?> getPaymentStatus(@PathVariable UUID orderId) {
+    public ResponseEntity<?> getPaymentStatus(
+            @PathVariable UUID orderId,
+            @AuthenticationPrincipal User user
+    ) {
         try {
-            Payment payment = paymentService.findByOrderId(orderId);
+            Payment payment = user.getRole() == com.dnstore.backend.model.Role.ADMIN
+                    ? paymentService.findByOrderId(orderId)
+                    : paymentService.findByOrderIdAndUser(orderId, user.getId());
             return ResponseEntity.ok(PaymentResponse.from(payment));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();

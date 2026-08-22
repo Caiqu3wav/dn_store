@@ -50,6 +50,6 @@ public class DeliveryService {
     private int getDistanceFromState(String uf) {
         // Se UF desconhecida, assume longa distância (Frete Nacional)
         if (uf == null) return 2000; 
-        return STATE_DISTANCES.getOrDefault(uf.toUpperCase(), 2000); 
+        return STATE_DISTANCES.getOrDefault(uf.toUpperCase(java.util.Locale.ROOT), 2000); 
     }
 }

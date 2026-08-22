@@ -103,7 +103,7 @@ public class ProductService {
 
         if (search != null && !search.isBlank()) {
             spec = spec.and((root, query, cb) ->
-                    cb.like(cb.lower(root.get("name")), "%" + search.toLowerCase() + "%")
+                    cb.like(cb.lower(root.get("name")), "%" + search.toLowerCase(java.util.Locale.ROOT) + "%")
             );
         }
 

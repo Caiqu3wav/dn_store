@@ -32,7 +32,7 @@ public class UserController {
             return ResponseEntity.badRequest().build();
         }
         try {
-            Role newRole = Role.valueOf(roleStr.toUpperCase());
+            Role newRole = Role.valueOf(roleStr.toUpperCase(java.util.Locale.ROOT));
             return userService.updateRole(id, newRole)
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.notFound().build());

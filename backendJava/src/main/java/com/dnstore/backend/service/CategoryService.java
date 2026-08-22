@@ -29,7 +29,7 @@ public class CategoryService {
             throw new RuntimeException("Category already exists with name: " + category.getName());
         });
         if (category.getSlug() == null || category.getSlug().isBlank()) {
-            category.setSlug(category.getName().toLowerCase()
+            category.setSlug(category.getName().toLowerCase(java.util.Locale.ROOT)
                 .replaceAll("[^a-z0-9\\s]", "")
                 .trim()
                 .replaceAll("\\s+", "-"));
@@ -49,7 +49,7 @@ public class CategoryService {
             if (updatedData.getSlug() != null && !updatedData.getSlug().isBlank()) {
                 existing.setSlug(updatedData.getSlug());
             } else {
-                existing.setSlug(updatedData.getName().toLowerCase()
+                existing.setSlug(updatedData.getName().toLowerCase(java.util.Locale.ROOT)
                     .replaceAll("[^a-z0-9\\s]", "")
                     .trim()
                     .replaceAll("\\s+", "-"));
