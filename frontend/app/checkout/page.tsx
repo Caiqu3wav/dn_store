@@ -1,201 +1,176 @@
 'use client';
 
 import { useState } from 'react';
-import { useCart } from '../context/CartContext';
-import { Button } from '../components/ui/Button';
 import { useRouter } from 'next/navigation';
-import { Trash2, CreditCard, QrCode, Wallet } from 'lucide-react';
+import { useCart } from '../context/CartContext';
+import { StepDelivery, DeliveryData } from './components/StepDelivery';
+import { StepPayment, PaymentData, PaymentMethod } from './components/StepPayment';
+import { StepConfirmation } from './components/StepConfirmation';
+import { OrderSummary } from './components/OrderSummary';
+import Link from 'next/link';
+
+type Step = 1 | 2 | 3;
+
+const EMPTY_DELIVERY: DeliveryData = {
+    zipCode: '', street: '', number: '', complement: '',
+    neighborhood: '', city: '', state: '',
+};
+
+const EMPTY_PAYMENT: PaymentData = {
+    method: 'CREDIT_CARD',
+    cpfCnpj: '',
+    installments: 1,
+    card: { holderName: '', number: '', expiryMonth: '', expiryYear: '', ccv: '' },
+};
+
+interface PaymentResult {
+    status: string;
+    pixQrCode?: string;
+    pixCopyPaste?: string;
+    boletoUrl?: string;
+    boletoBarcode?: string;
+}
+
+const STEP_LABELS = ['Entrega', 'Pagamento', 'Confirmação'];
 
 export default function CheckoutPage() {
-    const { items, removeItem, updateSize, total, clearCart } = useCart();
-    const [paymentMethod, setPaymentMethod] = useState<'credit' | 'debit' | 'pix'>('credit');
-    const [isProcessing, setIsProcessing] = useState(false);
+    const { items, total, clearCart } = useCart();
     const router = useRouter();
 
-    const handleCheckout = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsProcessing(true);
+    const [step, setStep] = useState<Step>(1);
+    const [delivery, setDelivery] = useState<DeliveryData>(EMPTY_DELIVERY);
+    const [payment, setPayment] = useState<PaymentData>(EMPTY_PAYMENT);
+    const [orderId, setOrderId] = useState<string>('');
+    const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
 
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        clearCart();
-        router.push('/checkout/sucesso');
-    };
-
-    if (items.length === 0) {
+    if (items.length === 0 && step !== 3) {
         return (
             <div className="min-h-screen bg-gray-50 pt-32 pb-20 text-center">
-                <h1 className="text-3xl font-bold mb-4">Seu carrinho está vazio</h1>
-                <Button onClick={() => router.push('/produtos')}>Voltar para a Loja</Button>
+                <h1 className="text-3xl font-bold mb-4 text-brand-primary">Seu carrinho está vazio</h1>
+                <Link href="/loja" className="inline-block bg-brand-primary text-white font-bold px-8 py-4 rounded-xl hover:bg-brand-secondary transition-colors">
+                    Ir para a Loja
+                </Link>
             </div>
         );
     }
 
+    const handleConfirmPayment = async (): Promise<PaymentResult | null> => {
+        const token = localStorage.getItem('token');
+
+        try {
+            // 1. Criar pedido
+            const orderRes = await fetch('/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                    zipCode: delivery.zipCode.replace(/\D/g, ''),
+                    shippingType: 'PAC',
+                }),
+            });
+
+            if (!orderRes.ok) throw new Error('Erro ao criar pedido');
+            const order = await orderRes.json();
+            setOrderId(order.id);
+
+            // 2. Iniciar pagamento
+            const paymentRes = await fetch('/api/payment/init', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                    orderId: order.id,
+                    amount: total,
+                    paymentMethod: payment.method,
+                    cpfCnpj: payment.cpfCnpj.replace(/\D/g, ''),
+                    installments: payment.installments,
+                    card: (payment.method === 'CREDIT_CARD' || payment.method === 'DEBIT_CARD')
+                        ? {
+                            holderName: payment.card.holderName,
+                            number: payment.card.number.replace(/\s/g, ''),
+                            expiryMonth: payment.card.expiryMonth,
+                            expiryYear: payment.card.expiryYear,
+                            ccv: payment.card.ccv,
+                        }
+                        : null,
+                }),
+            });
+
+            if (!paymentRes.ok) throw new Error('Erro ao processar pagamento');
+            const result: PaymentResult = await paymentRes.json();
+
+            if (result.status === 'PAID') clearCart();
+            return result;
+
+        } catch (e) {
+            console.error(e);
+            return null;
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 pt-24 pb-20">
-            <div className="container mx-auto px-4">
-                <h1 className="text-3xl font-bold mb-8">Finalizar Compra</h1>
+            <div className="container mx-auto px-4 max-w-5xl">
+
+                {/* Progress bar */}
+                <div className="flex items-center gap-2 mb-10">
+                    {STEP_LABELS.map((label, i) => {
+                        const n = (i + 1) as Step;
+                        const active = step === n;
+                        const done = step > n;
+                        return (
+                            <div key={label} className="flex items-center gap-2 flex-1">
+                                <div className={`flex items-center gap-2 ${active || done ? 'text-brand-primary' : 'text-gray-400'}`}>
+                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${
+                                        done ? 'bg-green-500 text-white' :
+                                        active ? 'bg-brand-primary text-white' :
+                                        'bg-gray-200 text-gray-400'
+                                    }`}>
+                                        {done ? '✓' : n}
+                                    </div>
+                                    <span className="text-sm font-semibold hidden sm:block">{label}</span>
+                                </div>
+                                {i < STEP_LABELS.length - 1 && (
+                                    <div className={`flex-1 h-0.5 mx-2 rounded transition-colors ${done ? 'bg-green-500' : 'bg-gray-200'}`} />
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Order Summary */}
-                    <div className="lg:col-span-2 space-y-6">
-                        <div className="bg-white p-6 rounded-lg shadow-sm">
-                            <h2 className="text-xl font-bold mb-4">Itens do Pedido</h2>
-                            <div className="space-y-4">
-                                {items.map((item) => (
-                                    <div key={`${item.id}-${item.size}`} className="flex gap-4 py-4 border-b last:border-0">
-                                        <div
-                                            className="w-20 h-20 bg-cover bg-center rounded-md bg-gray-100"
-                                            style={{ backgroundImage: `url(${item.image})` }}
-                                        />
-                                       <div className="flex-1">
-    <h3 className="font-bold">{item.name}</h3>
-    <p className="text-red-500">{item.category}</p>
-    {(
-        item.category === "Camisa Poliamida" ||
-        item.category === "Camisas de Ciclismo" ||
-        item.category === "Camisetas Poliamida"
-    ) && (
-        <select
-            value={item.size || ""}
-            onChange={(e) =>
-                updateSize(item.id, e.target.value)
-            }
-            className="mt-2 border rounded-md px-2 py-1 text-sm"
-        >
-            <option value="">Selecione o tamanho</option>
-            <option value="P">P</option>
-            <option value="M">M</option>
-            <option value="G">G</option>
-        </select>
-    )}
-
-    <p className="font-medium text-brand-red mt-2">
-        {new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(item.price)}
-    </p>
-</div>
-                                        <div className="flex flex-col items-end justify-between">
-                                            <button
-                                                onClick={() => removeItem(item.id)}
-                                                className="text-gray-400 hover:text-red-500"
-                                            >
-                                                <Trash2 className="w-5 h-5" />
-                                            </button>
-                                            
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="bg-white p-6 rounded-lg shadow-sm">
-                            <h2 className="text-xl font-bold mb-4">Dados de Entrega</h2>
-                            <form className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <input type="text" placeholder="CEP" className="p-3 border rounded-md w-full" required />
-                                <input type="text" placeholder="Rua" className="p-3 border rounded-md w-full md:col-span-2" required />
-                                <input type="text" placeholder="Número" className="p-3 border rounded-md w-full" required />
-                                <input type="text" placeholder="Complemento" className="p-3 border rounded-md w-full" />
-                                <input type="text" placeholder="Cidade" className="p-3 border rounded-md w-full" required />
-                                <select
-                                 className="p-3 border rounded-md w-full bg-white"
-                                 required
-                                        >
-                                <option value="">Selecione o Estado</option>
-
-                             <option value="AC">AC - Acre</option>
-                             <option value="AL">AL - Alagoas</option>
-                             <option value="AP">AP - Amapá</option>
-                             <option value="AM">AM - Amazonas</option>
-                            <option value="BA">BA - Bahia</option>
-                             <option value="CE">CE - Ceará</option>
-                            <option value="DF">DF - Distrito Federal</option>
-                         <option value="ES">ES - Espírito Santo</option>
-                             <option value="GO">GO - Goiás</option>
-                        <option value="MA">MA - Maranhão</option>
-                        <option value="MT">MT - Mato Grosso</option>
-                            <option value="MS">MS - Mato Grosso do Sul</option>
-                            <option value="MG">MG - Minas Gerais</option>
-                            <option value="PA">PA - Pará</option>
-                            <option value="PB">PB - Paraíba</option>
-                            <option value="PR">PR - Paraná</option>
-                            <option value="PE">PE - Pernambuco</option>
-                            <option value="PI">PI - Piauí</option>
-                         <option value="RJ">RJ - Rio de Janeiro</option>
-                        <option value="RN">RN - Rio Grande do Norte</option>
-                         <option value="RS">RS - Rio Grande do Sul</option>
-                        <option value="RO">RO - Rondônia</option>
-                          <option value="RR">RR - Roraima</option>
-                            <option value="SC">SC - Santa Catarina</option>
-                            <option value="SP">SP - São Paulo</option>
-                            <option value="SE">SE - Sergipe</option>
-                            <option value="TO">TO - Tocantins</option>
-                            </select>
-                            </form>
-                        </div>
+                    {/* Steps */}
+                    <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
+                        {step === 1 && (
+                            <StepDelivery
+                                data={delivery}
+                                onChange={setDelivery}
+                                onNext={() => setStep(2)}
+                            />
+                        )}
+                        {step === 2 && (
+                            <StepPayment
+                                data={payment}
+                                onChange={setPayment}
+                                total={total}
+                                onConfirm={handleConfirmPayment}
+                                onNext={(result) => {
+                                    setPaymentResult(result);
+                                    setStep(3);
+                                }}
+                                onBack={() => setStep(1)}
+                            />
+                        )}
+                        {step === 3 && paymentResult && (
+                            <StepConfirmation
+                                orderId={orderId}
+                                paymentMethod={payment.method}
+                                result={paymentResult}
+                            />
+                        )}
                     </div>
 
-                    {/* Payment */}
+                    {/* Sidebar */}
                     <div className="lg:col-span-1">
-                        <div className="bg-white p-6 rounded-lg shadow-sm sticky top-24">
-                            <h2 className="text-xl font-bold mb-6">Pagamento</h2>
-
-                            <div className="space-y-4 mb-8">
-                                <button
-                                    onClick={() => setPaymentMethod('credit')}
-                                    className={`w-full p-4 border rounded-lg flex items-center gap-3 transition-colors ${paymentMethod === 'credit' ? 'border-red-600 bg-red-100 text-red-700' : 'hover:bg-gray-50'
-                                        }`}
-                                >
-                                    <CreditCard className="w-5 h-5" />
-                                    Cartão de Crédito
-                                </button>
-                                <button
-                                 onClick={() => setPaymentMethod('debit')}
-                                className={`w-full p-4 border rounded-lg flex items-center gap-3 transition-colors ${
-                             paymentMethod === 'debit'
-                                ? 'border-red-600 bg-red-200 text-red-800'
-                                : 'hover:bg-gray-50'
-                                      }`}
-                        >
-    <Wallet className="w-5 h-5" />
-    Cartão de Débito
-</button>
-                                <button
-                                    onClick={() => setPaymentMethod('pix')}
-                                    className={`w-full p-4 border rounded-lg flex items-center gap-3 transition-colors ${paymentMethod === 'pix' ? 'border-red-600 bg-red-100 text-red-700' : 'hover:bg-gray-50'
-                                        }`}
-                                >
-                                    <QrCode className="w-5 h-5" />
-                                    Pix
-                                </button>
-                            </div>
-
-                            <div className="space-y-2 mb-6 text-sm">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-600">Subtotal</span>
-                                    <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-600">Frete</span>
-                                    <span className="text-green-600">Grátis</span>
-                                </div>
-                                <div className="flex justify-between font-bold text-lg pt-4 border-t">
-                                    <span>Total</span>
-                                    <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}</span>
-                                </div>
-                            </div>
-
-                            <Button
-                                onClick={handleCheckout}
-                                className="w-full py-6 text-lg"
-                                disabled={isProcessing}
-                            >
-                                {isProcessing ? 'Processando...' : 'Finalizar Compra'}
-                            </Button>
-                        </div>
+                        <OrderSummary items={items} total={total} />
                     </div>
                 </div>
             </div>

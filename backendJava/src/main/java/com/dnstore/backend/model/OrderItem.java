@@ -11,6 +11,7 @@ import org.hibernate.annotations.GenericGenerator;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
 
 @Getter
 @Setter
@@ -26,6 +27,7 @@ public class OrderItem {
     @GeneratedValue(generator = "UUID")
     @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
     @Column(updatable = false, nullable = false)
+    @JdbcTypeCode(java.sql.Types.VARCHAR)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)

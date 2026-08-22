@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
     LayoutDashboard, 
     Package, 
@@ -14,6 +14,8 @@ import {
     LogOut
 } from 'lucide-react';
 import { cn } from '../components/ui/Button';
+import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-hot-toast';
 
 const adminLinks = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -26,6 +28,28 @@ const adminLinks = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const pathname = usePathname();
+    const router = useRouter();
+    const { user, loading } = useAuth();
+
+    useEffect(() => {
+        if (!loading) {
+            if (!user) {
+                toast.error("Você precisa estar logado para acessar esta página.");
+                router.push('/auth');
+            } else if (user.role !== 'ADMIN') {
+                toast.error("Acesso negado. Apenas administradores podem acessar esta área.");
+                router.push('/');
+            }
+        }
+    }, [user, loading, router]);
+
+    if (loading || !user || user.role !== 'ADMIN') {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-brand-secondary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background text-foreground flex">

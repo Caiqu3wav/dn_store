@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
 
 /**
  * 🛒 Cart (Carrinho de Compras)
@@ -29,6 +30,7 @@ public class Cart {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
+    @JdbcTypeCode(java.sql.Types.VARCHAR)
     private UUID id;
 
     @OneToOne(fetch = FetchType.LAZY)

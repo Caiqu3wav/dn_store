@@ -1,11 +1,7 @@
 package com.dnstore.backend.controller;
 
 import com.dnstore.backend.model.Favorite;
-import com.dnstore.backend.model.Product;
-import com.dnstore.backend.model.User;
-import com.dnstore.backend.repository.FavoriteRepository;
-import com.dnstore.backend.repository.ProductRepository;
-import com.dnstore.backend.repository.UserRepository;
+import com.dnstore.backend.service.FavoriteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,38 +14,26 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FavoriteController {
 
-    private final FavoriteRepository favoriteRepository;
-    private final UserRepository userRepository;
-    private final ProductRepository productRepository;
+    private final FavoriteService favoriteService;
 
     @GetMapping
     public ResponseEntity<List<Favorite>> list(@RequestParam UUID userId) {
-        return ResponseEntity.ok(favoriteRepository.findByUserId(userId));
+        return ResponseEntity.ok(favoriteService.findByUser(userId));
     }
 
     @PostMapping("/{productId}")
-    public ResponseEntity<?> add(
+    public ResponseEntity<Favorite> add(
             @RequestParam UUID userId,
             @PathVariable UUID productId) {
-        if (favoriteRepository.findByUserIdAndProductId(userId, productId).isPresent()) {
-            return ResponseEntity.ok().build();
-        }
-
-        User user = userRepository.findById(userId).orElseThrow();
-        Product product = productRepository.findById(productId).orElseThrow();
-
-        Favorite favorite = new Favorite();
-        favorite.setUser(user);
-        favorite.setProduct(product);
-
-        return ResponseEntity.ok(favoriteRepository.save(favorite));
+        Favorite favorite = favoriteService.add(userId, productId);
+        return ResponseEntity.ok(favorite);
     }
 
     @DeleteMapping("/{productId}")
     public ResponseEntity<Void> remove(
             @RequestParam UUID userId,
             @PathVariable UUID productId) {
-        favoriteRepository.deleteByUserIdAndProductId(userId, productId);
+        favoriteService.remove(userId, productId);
         return ResponseEntity.noContent().build();
     }
 }
