@@ -31,10 +31,10 @@ export function Navbar() {
                     : 'bg-background border-transparent py-4'
             )}
         >
-           <div className="container mx-auto px-4 lg:px-8 relative flex items-center justify-between h-12">
+           <div className="container mx-auto px-4 lg:px-8 relative flex items-center justify-between gap-4 h-12">
                 {/* 1. Logo */}
-                <Link href="/" className="flex items-center gap-2 shrink-0 ml-10">
-                    <div className="relative w-15 h-15 overflow-hidden rounded-xl shadow-sm  flex items-center justify-center">
+                  <Link href="/" className="flex items-center gap-1 sm:gap-2 shrink-0">
+                      <div className="relative w-10 h-10 sm:w-15 sm:h-15 overflow-hidden rounded-xl shadow-sm flex items-center justify-center">
                         <Image 
                             src="/assets/Images/logo_transparente.png" 
                             alt="DN Store Logo" 
@@ -49,31 +49,31 @@ export function Navbar() {
                     */}
                     <span 
                     style={{ fontFamily: 'DN'  }}
-                    className="hidden sm:block text-3xl tracking-tight text-outline text-brand-secondary">
+                    className="block text-lg sm:text-3xl tracking-tight text-outline text-brand-secondary whitespace-nowrap">
                         STORE
                     </span>
                 </Link>
 
                 {/* Search Bar Centralizada */}
-                <div className="hidden md:flex absolute left-[50%] -translate-x-1/2 w-full max-w-md px-4">
+                <div className="flex flex-1 min-w-0 justify-center xl:absolute xl:left-1/2 xl:-translate-x-1/2 xl:w-full xl:max-w-md xl:px-4">
                     <div className="relative w-full">
                     <input 
                         type="text" 
                         placeholder="Buscar produtos..." 
-                        className="w-full bg-gray-100 border-transparent focus:bg-white focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20 rounded-full py-2.5 pl-11 pr-4 text-sm transition-all outline-none text-brand"
+                        className="w-full bg-gray-100 border-transparent focus:bg-white focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20 rounded-full py-2 sm:py-2.5 pl-9 sm:pl-11 pr-2 sm:pr-4 text-xs sm:text-sm transition-all outline-none text-brand"
                     />
-                     <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                     <Search className="w-4 h-4 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2" />
                     </div>
                 </div>
 
                 {/* Navigation & Icons */}
-                    <div className="flex items-center gap-6 md:gap-8 ml-auto z-10">
+                    <div className="flex items-center gap-4 xl:gap-6 ml-auto shrink-0">
                         
                     {/* Desktop Links */}
-                    <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-white">
+                    <nav className="hidden xl:flex items-center gap-6 text-sm font-medium text-white">
                         <Link href="/" className="hover:text-brand-secondary transition-colors">Home</Link>
                         <Link href="/produtos" className="hover:text-brand-secondary transition-colors">Produtos</Link>
-                        <Link href="/#eventos" className="hover:text-brand-secondary transition-colors">Eventos</Link>
+                        <Link href="/eventos" className="hover:text-brand-secondary transition-colors">Eventos</Link>
                         <Link href="/sobre" className="hover:text-brand-secondary transition-colors">Sobre</Link>
                     </nav>
 
@@ -82,7 +82,7 @@ export function Navbar() {
                         <Link href='/auth' className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Conta">
                             <User className="w-5 h-5" />
                         </Link>
-                        <Link href='/favoritos' className="hidden sm:block hover:text-brand-secondary transition-colors relative flex items-center" aria-label="Favoritos">
+                        <Link href='/favoritos' className="hidden sm:flex hover:text-brand-secondary transition-colors relative items-center" aria-label="Favoritos">
                             <Heart className="w-5 h-5" />
                             {favoritesCount > 0 && (
                                 <span className="absolute -top-2 -right-2 bg-brand-secondary text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
@@ -101,7 +101,7 @@ export function Navbar() {
 
                         {/* Mobile Menu Toggle */}
                         <button
-                            className="md:hidden p-1 hover:bg-gray-100 rounded-md transition-colors"
+                            className="xl:hidden p-1 hover:bg-gray-100 rounded-md transition-colors"
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                         >
                             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -112,7 +112,7 @@ export function Navbar() {
 
             {/* Mobile Menu Dropdown */}
             {isMobileMenuOpen && (
-                <div className="md:hidden absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-lg py-4 px-4 flex flex-col gap-4">
+                <div className="xl:hidden absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-lg py-4 px-4 flex flex-col gap-4">
                     <div className="relative w-full mb-2">
                         <input 
                             type="text" 
@@ -123,7 +123,7 @@ export function Navbar() {
                     </div>
                     <Link href="/" className="text-gray-800 font-medium py-2 border-b border-gray-100">Home</Link>
                     <Link href="/produtos" className="text-gray-800 font-medium py-2 border-b border-gray-100">Produtos</Link>
-                    <Link href="/#eventos" className="text-gray-800 font-medium py-2 border-b border-gray-100">Eventos</Link>
+                    <Link href="/eventos" className="text-gray-800 font-medium py-2 border-b border-gray-100">Eventos</Link>
                     <Link href="/sobre" className="text-gray-800 font-medium py-2 border-b border-gray-100">Sobre</Link>
                     
                     <div className="flex items-center justify-around pt-4 pb-2">
