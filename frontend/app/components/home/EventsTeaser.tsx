@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Calendar, MapPin, ExternalLink, Timer } from 'lucide-react';
+import { Calendar, MapPin, ExternalLink, Timer, ArrowRight } from 'lucide-react';
 import { EVENTS, NEXT_EVENT } from '../../../lib/data';
 
 export function EventsTeaser() {
@@ -49,6 +49,9 @@ export function EventsTeaser() {
                                 </div>
                             ))}
                         </div>
+                        <Link href="/eventos" className="inline-flex items-center gap-2 text-brand-red-primary font-bold hover:text-brand-secondary transition-colors mt-2 text-lg">
+                             Ver Todos os Eventos <ArrowRight className="w-5 h-5" />
+                        </Link>
                     </motion.div>
 
                     {/* Right: Event Card */}
