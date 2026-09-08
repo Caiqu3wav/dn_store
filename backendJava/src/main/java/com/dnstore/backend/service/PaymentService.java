@@ -7,7 +7,6 @@ import com.dnstore.backend.repository.PaymentRepository;
 import com.dnstore.backend.service.payment.PaymentGateway;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,31 +32,67 @@ public class PaymentService {
     }
 
     @Transactional
-    public Payment initPayment(UUID orderId, UUID requestingUserId, PaymentGateway.PaymentRequest request) {
+    public Payment initPayment(
+            UUID orderId,
+            UUID requestingUserId,
+            String cpfCnpj,
+            String paymentMethod,
+            Integer installments,
+            PaymentGateway.CardData cardData
+    ) {
+
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Pedido não encontrado"));
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Pedido não encontrado")
+                );
 
         if (!order.getUser().getId().equals(requestingUserId)) {
             throw new IllegalArgumentException("Pedido não encontrado");
         }
 
         if (!"PENDING_PAYMENT".equals(order.getStatus())) {
-            throw new IllegalStateException("Pedido não está aguardando pagamento");
+            throw new IllegalStateException(
+                    "Pedido não está aguardando pagamento"
+            );
         }
 
-        PaymentGateway.PaymentResult result = gateway.createPayment(request);
+        if (paymentRepository.findByOrder_Id(orderId).isPresent()) {
+            throw new IllegalStateException(
+                    "Já existe um pagamento iniciado para este pedido"
+            );
+        }
+
+        PaymentGateway.PaymentRequest gatewayRequest =
+                new PaymentGateway.PaymentRequest(
+                        order.getId(),
+                        order.getTotal(),
+                        order.getUser().getName(),
+                        order.getUser().getEmail(),
+                        cpfCnpj,
+                        "Pedido DN Store #" + order.getId(),
+                        paymentMethod,
+                        installments,
+                        cardData
+                );
+
+        PaymentGateway.PaymentResult result =
+                gateway.createPayment(gatewayRequest);
 
         Payment payment = new Payment();
+
         payment.setOrder(order);
         payment.setExternalId(result.externalId());
-        payment.setPaymentMethod(request.paymentMethod());
-        payment.setAmount(request.amount());
+        payment.setPaymentMethod(paymentMethod);
+
+        // O valor vem exclusivamente do banco
+        payment.setAmount(order.getTotal());
+
         payment.setStatus(result.status());
         payment.setPixQrCode(result.pixQrCode());
         payment.setPixCopyPaste(result.pixCopyPaste());
         payment.setBoletoUrl(result.boletoUrl());
         payment.setBoletoBarcode(result.boletoBarcode());
-        payment.setInstallments(request.installments());
+        payment.setInstallments(installments);
 
         return paymentRepository.save(payment);
     }
@@ -72,14 +107,16 @@ public class PaymentService {
                     return new IllegalArgumentException("Pagamento não encontrado");
                 });
 
-        payment.setStatus(result.normalizedStatus());
+        String status = result.normalizedStatus();
 
-        if ("PAID".equals(result.normalizedStatus())) {
+        payment.setStatus(status);
+
+        if ("PAID".equals(status)) {
             payment.setPaidAt(LocalDateTime.now());
             payment.getOrder().setStatus("PAID");
             orderRepository.save(payment.getOrder());
             log.info("Pedido {} marcado como PAID", payment.getOrder().getId());
-        } else if ("FAILED".equals(result.normalizedStatus())) {
+        } else if ("FAILED".equals(status)) {
             payment.getOrder().setStatus("PAYMENT_FAILED");
             orderRepository.save(payment.getOrder());
         }
