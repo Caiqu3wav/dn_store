@@ -3,24 +3,28 @@ import styled from "styled-components";
 import { Title } from "./Text";
 import { Button } from "../../Auth/page.style";
 import { LabelInput } from "./LabelInput";
+import { AddressForm } from "./AddressForm";
+import { addressFormsDataTypes } from "./AddressForm";
+
+interface FormData {
+  email: string;
+  password: string;
+  confirmPassword?: string;
+  zipCode: string;
+  addressFormsData: addressFormsDataTypes;
+}
+
 
 interface AuthFormProps {
   title: string;
   buttonLabel?: string;
-  onSubmit?: (email: string, password: string) => void;
+  onSubmit?: (email: string, password: string, zipCode: string, addressFormsData: addressFormsDataTypes) => void;
   onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
-}
-
-interface FormsDataTypes {
-  email: string;
-  password: string;
-  confirmPassword?: string;
 }
 
 const FormContainer = styled.form`
   background-color: #f7f7f7;
   width: 100%;
-  border-radius: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -35,11 +39,23 @@ export const AuthForm = ({
 }: AuthFormProps) => {
   const isRegister = title === "Cadastro";
 
-  const [formsData, setFormsData] = useState<FormsDataTypes>({
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
+  const [formsData, setFormsData] = useState<FormData>(
+    {
+      email: "",
+      password: "",
+      confirmPassword: "",
+      zipCode: "",
+      addressFormsData: {
+        city: "",
+        state: "",
+        neighborhood: "",
+        street: "", 
+        number: "",
+        complement: "",
+      },
+    }
+  );
+
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     onChange?.(event);
@@ -59,7 +75,7 @@ export const AuthForm = ({
 
     setError("");
 
-    const { email, password, confirmPassword } = formsData;
+    const { email, password, confirmPassword, zipCode, addressFormsData } = formsData;
 
     if (isRegister) {
       if (!confirmPassword) {
@@ -74,12 +90,11 @@ export const AuthForm = ({
     }
 
     if (onSubmit) {
-      onSubmit(email, password);
+      onSubmit(email, password, zipCode, addressFormsData);
     } else {
-      console.log({ email, password });
+      console.log({ email, password, zipCode, addressFormsData });
     }
   };
-
 
   // isRegister is now defined above
 
@@ -114,13 +129,22 @@ export const AuthForm = ({
         />
       )}
 
+      <LabelInput
+        value={formsData.zipCode}
+        onChange={handleChange}
+        name="zipCode"
+        type="text"
+        placeholder="CEP"
+        label="CEP"
+      />
+
+      <AddressForm addressFormsData={formsData.addressFormsData} onChange={handleChange} />
 
       {error && <p style={{ color: "#d00", marginTop: "1rem" }}>{error}</p>}
 
       <Button type="submit">
         {buttonLabel ?? (isRegister ? "Cadastrar" : "Acessar")}
       </Button>
-
     </FormContainer>
   );
 };
