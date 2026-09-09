@@ -12,13 +12,13 @@ export const Container = styled.div`
 export const Login = styled.div`
   background-color: #f7f7f7;
   padding: 2rem;
-  border-radius: 10%;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-  width: 25%;
+  width: 35%;
   animation: fadeIn 0.5s ease-in-out;
   @keyframes fadeIn {
     from {

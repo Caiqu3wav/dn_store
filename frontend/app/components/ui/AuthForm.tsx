@@ -3,24 +3,28 @@ import styled from "styled-components";
 import { Title } from "./Text";
 import { Button } from "../../auth/page.style";
 import { LabelInput } from "./LabelInput";
+import { AddressForm } from "./AddressForm";
+import { addressFormsDataTypes } from "./AddressForm";
+
+interface FormData {
+  email: string;
+  password: string;
+  confirmPassword?: string;
+  cpf: string;
+  addressFormsData: addressFormsDataTypes;
+}
+
 
 interface AuthFormProps {
   title: string;
   buttonLabel?: string;
-  onSubmit?: (email: string, password: string) => void;
+  onSubmit?: (email: string, password: string, zipCode: string, addressFormsData: addressFormsDataTypes) => void;
   onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
-}
-
-interface FormsDataTypes {
-  email: string;
-  password: string;
-  confirmPassword?: string;
 }
 
 const FormContainer = styled.form`
   background-color: #f7f7f7;
   width: 100%;
-  border-radius: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -35,21 +39,48 @@ export const AuthForm = ({
 }: AuthFormProps) => {
   const isRegister = title === "Cadastro";
 
-  const [formsData, setFormsData] = useState<FormsDataTypes>({
-    email: "",
-    password: "",
-    confirmPassword: "",
-  });
+  const [formsData, setFormsData] = useState<FormData>(
+    {
+      email: "",
+      password: "",
+      confirmPassword: "",
+      cpf: "",
+      addressFormsData: {
+        city: "",
+        state: "",
+        neighborhood: "",
+        street: "", 
+        number: "",
+        complement: "",
+        zipCode: "",
+      },
+    }
+  );
+
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     onChange?.(event);
 
     const { name, value } = event.target;
     if (!isRegister && name === "confirmPassword") return;
-    setFormsData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormsData((prev) => {
+      const addressField = name as keyof addressFormsDataTypes;
+
+      if (addressField in prev.addressFormsData) {
+        return {
+          ...prev,
+          addressFormsData: {
+            ...prev.addressFormsData,
+            [addressField]: value,
+          },
+        };
+      }
+
+      return {
+        ...prev,
+        [name]: value,
+      };
+    });
   };
 
   const [error, setError] = useState<string>("");
@@ -59,7 +90,7 @@ export const AuthForm = ({
 
     setError("");
 
-    const { email, password, confirmPassword } = formsData;
+    const { email, password, confirmPassword, cpf, addressFormsData } = formsData;
 
     if (isRegister) {
       if (!confirmPassword) {
@@ -71,15 +102,33 @@ export const AuthForm = ({
         setError("As senhas não conferem.");
         return;
       }
+
+      if (!cpf.trim()) {
+        setError("Informe o CPF.");
+        return;
+      }
+
+      const requiredAddressFields: (keyof addressFormsDataTypes)[] = [
+        "zipCode",
+        "state",
+        "city",
+        "neighborhood",
+        "street",
+        "number",
+      ];
+
+      if (requiredAddressFields.some((field) => !addressFormsData[field]?.trim())) {
+        setError("Preencha todos os campos obrigatórios do endereço.");
+        return;
+      }
     }
 
     if (onSubmit) {
-      onSubmit(email, password);
+      onSubmit(email, password, cpf, addressFormsData);
     } else {
-      console.log({ email, password });
+      console.log({ email, password, cpf, addressFormsData });
     }
   };
-
 
   // isRegister is now defined above
 
@@ -94,6 +143,7 @@ export const AuthForm = ({
         type="email"
         placeholder="user@example.com"
         label="Email"
+        required
       />
       <LabelInput
         value={formsData.password}
@@ -102,6 +152,7 @@ export const AuthForm = ({
         type="password"
         placeholder="Senha"
         label="Senha"
+        required
       />
       {isRegister && (
         <LabelInput
@@ -111,16 +162,33 @@ export const AuthForm = ({
           type="password"
           placeholder="Confirme a Senha"
           label="Confirmar a Senha"
+          required
         />
       )}
 
+      {isRegister && (
+        <LabelInput
+          value={formsData.cpf}
+          onChange={handleChange}
+          name="cpf"
+          type="text"
+          placeholder="CPF"
+          label="CPF"
+          required
+        />
+      )&&(
+        <AddressForm
+          addressFormsData={formsData.addressFormsData}
+          onChange={handleChange}
+
+        />
+      )}
 
       {error && <p style={{ color: "#d00", marginTop: "1rem" }}>{error}</p>}
 
       <Button type="submit">
         {buttonLabel ?? (isRegister ? "Cadastrar" : "Acessar")}
       </Button>
-
     </FormContainer>
   );
 };
