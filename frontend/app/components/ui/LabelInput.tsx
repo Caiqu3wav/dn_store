@@ -1,7 +1,9 @@
 import styled from "styled-components";
 
 interface LabelInputProps {
+  required?: boolean;
   width?: string;
+  max?: number;
   label: string;
   placeholder?: string;
   type?: string;
@@ -62,7 +64,6 @@ export function LabelInput({
           type={type}
           value={value}
           onChange={onChange}
-          required
         />
       </FieldContainer>
     </>

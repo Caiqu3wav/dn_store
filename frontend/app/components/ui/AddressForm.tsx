@@ -2,12 +2,14 @@ import styled from 'styled-components';
 import { LabelInput } from './LabelInput';
 
 export interface addressFormsDataTypes {
+    zipCode: string;
     city: string;
     state: string;
     neighborhood: string;
     street: string;
     number: string;
     complement?: string;
+    inputWidth?: string;
 }
 
 interface AddressFormProps {
@@ -42,67 +44,87 @@ const AddressFormRow = styled.div`
 export function AddressForm({
     addressFormsData,
     onChange,
+
 }: AddressFormProps
 ) {
   return (
     <AddressFormContainer>
       <AddressFormTitle>Endereço</AddressFormTitle>
-        <AddressFormRow>
-            <LabelInput
-            
-            label="Cidade"
-            name="city"
-            placeholder="Digite sua cidade"
-            type="text"
-            value={addressFormsData.city}
-            onChange={onChange}
-            />
+      <AddressFormRow>
+        <LabelInput
+          label="Cidade"
+          name="city"
+          placeholder="Digite sua cidade"
+          type="text"
+          value={addressFormsData.city}
+          onChange={onChange}
+          required
+        />
 
-            <LabelInput
-            label="Estado"
-            name="state"
-            placeholder="Digite seu estado"
-            type="text"
-            value={addressFormsData.state}
-            onChange={onChange}
-            />
-        </AddressFormRow>
+        <LabelInput
+          label="Estado"
+          name="state"
+          placeholder="Digite seu estado"
+          type="text"
+          value={addressFormsData.state}
+          onChange={onChange}
+          required
+        />
+      </AddressFormRow>
+
+      <LabelInput
+        width="25%"
+        value={addressFormsData.zipCode}
+        onChange={onChange}
+        name="zipCode"
+        type="text"
+        placeholder="CEP"
+        label="CEP"
+        required
+      />
 
       <LabelInput
         label="Bairro"
-        name="Bairro"
+        name="neighborhood"
         placeholder="Digite seu bairro"
         type="text"
         value={addressFormsData.neighborhood}
         onChange={onChange}
+        required
       />
 
       <LabelInput
         label="Rua"
-        name="Rua"
+        name="street"
         placeholder="Digite sua rua"
         type="text"
         value={addressFormsData.street}
         onChange={onChange}
+        required
       />
 
-      <LabelInput
-        label="Número"
-        name="Número"
-        placeholder="Digite o número da sua casa"
-        type="text"
-        value={addressFormsData.number}
-        onChange={onChange}
-      />
+      <AddressFormRow>
+        <LabelInput
+          width="31%"
+          label="Número"
+          name="number"
+          placeholder="XXX"
+          type="number"
+          max={10}
+          value={addressFormsData.number}
+          onChange={onChange}
+          required
+        />
 
-      <LabelInput
-        label="Complemento"
-        name="complementt"
-        placeholder="Digite o complemento"
-        type="text"
-        value={addressFormsData.complement ?? ""}
-        onChange={onChange}
-      />
+        <LabelInput
+          label="Complemento (opcional)"
+          name="complement"
+          placeholder="apartamento, bloco, etc..."
+          type="text"
+          value={addressFormsData.complement ?? ""}
+          onChange={onChange}
+        />
+      </AddressFormRow>
     </AddressFormContainer>
   );
 }
