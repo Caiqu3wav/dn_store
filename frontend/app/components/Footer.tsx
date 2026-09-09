@@ -77,7 +77,7 @@ export function Footer() {
 
 
             <div className="flex flex-col items-center gap-3 mb-6">
-    <p className="text-xl text-gray-400">Formas de pagamento</p>
+    <p className="text-xl text-white font-bold mb-6 text-lg tracking-wide uppercase text-sm">Formas de pagamento</p>
 
     <div className="flex items-center gap-6">
         <Image src="assets/pagamentos/pix.svg" alt="Pix" width={70} height={42} className="object-contain opacity-80 hover:opacity-100 transition"/>

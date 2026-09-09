@@ -125,7 +125,7 @@ export function EventsTeaser() {
     href={NEXT_EVENT.mapsLink}
     target="_blank"
     rel="noopener noreferrer"
-    className="flex items-center justify-center gap-2 w-full bg-brand-primary font-bold py-4 rounded-xl hover:bg-brand-red-primary transition-colors outline-none focus:ring-4 focus:ring-brand-secondary/30"
+    className="flex items-center justify-center gap-2 w-full bg-brand-primary font-bold py-4 rounded-xl hover:outline hover:outline-2 hover:outline-black transition-all focus:ring-4"
 >
     Abrir no Google Maps
     <ExternalLink className="w-5 h-5" />
