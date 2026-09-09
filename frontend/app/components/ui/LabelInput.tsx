@@ -29,7 +29,16 @@ const StyledLabel = styled.label`
   margin-top: 1rem;
   margin-bottom: 0.5rem;
   font-weight: bold;
+  
 `;
+
+const FieldContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-bottom: 1rem;
+
+  `
 
 export function LabelInput({
   label,
@@ -41,18 +50,20 @@ export function LabelInput({
 }: LabelInputProps) {
   return (
     <>
-      <StyledLabel aria-label={label} htmlFor={name}>
-        {label}
-      </StyledLabel>
-      <StyledInput
-        name={name}
-        id={name}
-        placeholder={placeholder}
-        type={type}
-        value={value}
-        onChange={onChange}
-        required
-      />
+      <FieldContainer>
+        <StyledLabel aria-label={label} htmlFor={name}>
+          {label}
+        </StyledLabel>
+        <StyledInput
+          name={name}
+          id={name}
+          placeholder={placeholder}
+          type={type}
+          value={value}
+          onChange={onChange}
+          required
+        />
+      </FieldContainer>
     </>
   );
 }
