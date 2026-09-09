@@ -53,27 +53,44 @@ export function Hero({ images = [] }: HeroProps) {
 
             <div className="relative z-20 flex flex-col items-center container mx-auto px-4 text-center text-white mt-16">
                 
-                {/* Logo Overlay */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.8 }}
-                    className="mb-8 opacity-90"
-                >
-                    <Image 
-                        src="/assets/dnstore_logo_white.png" 
-                        alt="DN Store" 
-                        width={300} 
-                        height={150} 
-                        className="object-contain mt-12 drop-shadow-lg"
-                    />
-                </motion.div>
+                {/* Logo + STORE */}
+<motion.div
+    initial={{ opacity: 0, scale: 0.9 }}
+    animate={{ opacity: 1, scale: 1 }}
+    transition={{ duration: 0.8 }}
+    className="mb-8 mt-12 flex flex-col items-center opacity-90"
+>
+    <Image
+        src="/assets/dnstore_logo_white.png"
+        alt="Desafio Natureza"
+        width={300}
+        height={150}
+        className="object-contain drop-shadow-lg"
+    />
+
+    <div
+        className="
+            -mt-19
+             ml-42
+            inline-block
+            text-brand-secondary
+            text-5xl
+            text-outline
+            tracking-[-0.06em]
+            drop-shadow-lg
+            rotate-[-18deg]
+        "
+        style={{ fontFamily: 'DN' }}
+    >
+        STORE
+    </div>
+</motion.div>
 
                 <motion.p
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.4 }}
-                    className="text-lg md:text-2xl font-light max-w-2xl mx-auto text-gray-200"
+                    className="text-lg md:text-2xl font-light mt-12 max-w-2xl mx-auto text-gray-200"
                 >
                     Equipamentos para quem vive o desafio.
                 </motion.p>
