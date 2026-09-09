@@ -125,11 +125,7 @@ public class PaymentController {
             @AuthenticationPrincipal User user
     ) {
         try {
-<<<<<<< HEAD
-            Payment payment = user.getRole() == com.dnstore.backend.model.enums.Role.ADMIN
-=======
             Payment payment = user.getRole() == Role.ADMIN
->>>>>>> 3236a767abd3766c30a064fdf86e3af730bffb9f
                     ? paymentService.findByOrderId(orderId)
                     : paymentService.findByOrderIdAndUser(
                     orderId,
