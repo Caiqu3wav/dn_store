@@ -103,7 +103,7 @@ public class PaymentController {
             @AuthenticationPrincipal User user
     ) {
         try {
-            Payment payment = user.getRole() == com.dnstore.backend.model.Role.ADMIN
+            Payment payment = user.getRole() == com.dnstore.backend.model.enums.Role.ADMIN
                     ? paymentService.findByOrderId(orderId)
                     : paymentService.findByOrderIdAndUser(orderId, user.getId());
             return ResponseEntity.ok(PaymentResponse.from(payment));

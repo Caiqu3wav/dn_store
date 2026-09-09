@@ -1,7 +1,7 @@
 package com.dnstore.backend.controller;
 
 import com.dnstore.backend.model.Order;
-import com.dnstore.backend.model.Role;
+import com.dnstore.backend.model.enums.Role;
 import com.dnstore.backend.model.User;
 import com.dnstore.backend.service.OrderService;
 import jakarta.validation.constraints.NotBlank;
