@@ -72,7 +72,7 @@ function Auth() {
               Não tem conta? <OnClickText onClick={() => setPagetype("register")}>Cadastrar</OnClickText>
             </p>
             <p className="mt-2">
-              <a href="/auth/recover" style={{ color: "#007bff", textDecoration: "none", fontSize: "0.9rem" }}>
+              <a href="/Auth/recover" style={{ color: "#007bff", textDecoration: "none", fontSize: "0.9rem" }}>
                 Esqueci minha senha
               </a>
             </p>
