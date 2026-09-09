@@ -10,8 +10,8 @@ export default function EventosPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden bg-foreground">
-        <div className="absolute inset-0 z-0 opacity-40">
+      <section className="relative pt-32 pb-20 lg:pt-28 lg:pb-32 overflow-hidden bg-foreground">
+        <div className="absolute inset-0 z-0 opacity-80">
            <Image 
             src="/assets/bg_hero.png" 
             alt="Eventos Hero" 
@@ -28,15 +28,11 @@ export default function EventosPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-red-primary/20 text-brand-red-secondary font-bold text-sm mb-6 border border-brand-red-primary/30 shadow-[0_0_15px_rgba(199,8,8,0.3)] backdrop-blur-md">
-              <Mountain className="w-4 h-4" />
-              Circuito Anual
-            </span>
             <h1 
               style={{ fontFamily: 'DN' }} 
-              className="text-5xl md:text-7xl lg:text-8xl text-white mb-6 tracking-wider uppercase text-outline drop-shadow-2xl"
+              className="text-4xl md:text-5xl lg:text-6xl text-white mb-6 tracking-wider uppercase text-outline drop-shadow-2xl"
             >
-              Nossos <span className="text-brand-red-primary">Eventos</span>
+              Nossos <span className="text-brand-secondary text-outline">Eventos</span>
             </h1>
             <p className="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
               Junte-se à maior comunidade de ciclistas. Supere seus limites, explore novas trilhas e viva a verdadeira adrenalina em nossas etapas anuais.
@@ -50,7 +46,7 @@ export default function EventosPage() {
         <div className="container mx-auto px-4 lg:px-8">
           <div className="mb-16 text-center">
             <h2 style={{ fontFamily: 'DN' }} className="text-4xl md:text-5xl text-foreground tracking-tight">
-              Próximo <span className="text-brand-red-primary">Desafio</span>
+              Próximo Desafio
             </h2>
             <div className="w-24 h-1 bg-brand-red-primary mx-auto mt-6 rounded-full" />
           </div>
@@ -65,7 +61,7 @@ export default function EventosPage() {
             >
               <div className="bg-white rounded-3xl p-8 md:p-12 shadow-2xl border border-gray-100 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-brand-red-primary/5 rounded-bl-full -z-10" />
-                <div className="absolute bottom-0 left-0 w-24 h-24 bg-brand-highlight/5 rounded-tr-full -z-10" />
+                <div className="absolute bottom-0 left-0 w-24 h-24 bg-brand-red-primary/5 rounded-tr-full -z-10" />
 
                 <span className="inline-flex items-center gap-2 text-brand-red-primary font-bold text-sm tracking-[0.2em] uppercase mb-4">
                   <Timer className="w-4 h-4" />
@@ -86,27 +82,27 @@ export default function EventosPage() {
                       <Calendar className="w-7 h-7 text-brand-red-primary" />
                     </div>
                     <div>
-                      <span className="block text-sm text-gray-400 font-bold uppercase tracking-wider mb-1">Data</span>
+                      <span className="block text-sm text-brand-red-primary font-bold uppercase tracking-wider mb-1">Data</span>
                       <span className="block text-lg font-bold text-foreground">{NEXT_EVENT.date}</span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center shrink-0 border border-gray-100 shadow-sm">
-                      <MapPin className="w-7 h-7 text-brand-highlight" />
+                      <MapPin className="w-7 h-7 text-brand-red-primary" />
                     </div>
                     <div>
-                      <span className="block text-sm text-gray-400 font-bold uppercase tracking-wider mb-1">Localização</span>
+                      <span className="block text-sm text-brand-red-primary font-bold uppercase tracking-wider mb-1">Localização</span>
                       <span className="block text-lg font-bold text-foreground">{NEXT_EVENT.location}</span>
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center shrink-0 border border-gray-100 shadow-sm">
-                      <Users className="w-7 h-7 text-brand" />
+                      <Users className="w-7 h-7 text-brand-red-primary" />
                     </div>
                     <div>
-                      <span className="block text-sm text-gray-400 font-bold uppercase tracking-wider mb-1">Vagas</span>
+                      <span className="block text-sm text-brand-red-primary font-bold uppercase tracking-wider mb-1">Vagas</span>
                       <span className="block text-lg font-bold text-foreground">Limitadas - Garanta a sua!</span>
                     </div>
                   </div>
@@ -136,8 +132,8 @@ export default function EventosPage() {
             >
               {/* Google Maps Embed */}
               <iframe
-                  src="https://www.google.com/maps/embed?pb=!4v1780628254951!6m8!1m7!1snAuHmHMTINLz-uPJu-z__g!2m2!1d-22.75262943589267!2d-45.10532564538919!3f86.66!4f-14.620000000000005!5f0.7820865974627469"
-                  width="100%"
+               src="https://www.google.com/maps/embed?pb=!4v1788907472206!6m8!1m7!1szNVlcQNcA-XjUiBCwG6p-Q!2m2!1d-22.38570114984845!2d-44.96615513345214!3f254.80728653522155!4f-5.488411998401389!5f0.7820865974627469"
+              width="100%"
                   height="100%"
                   style={{ border: 0 }}
                   allowFullScreen
@@ -157,7 +153,7 @@ export default function EventosPage() {
                     />
                   ) : (
                     <Image
-                        src="/assets/Images/local_dn_lorena.png"
+                        src="/assets/Images/local_dn_passa4.jpeg"
                         alt="Local da etapa"
                         fill
                         className="object-cover"
@@ -197,7 +193,7 @@ export default function EventosPage() {
         <div className="container mx-auto px-4 lg:px-8">
           <div className="text-center mb-16">
              <h2 style={{ fontFamily: 'DN' }} className="text-4xl md:text-5xl text-white tracking-tight">
-              Calendário <span className="text-brand-highlight">Anual</span>
+              Calendário <span className="text-brand-red-primary">Anual</span>
             </h2>
             <p className="text-gray-400 mt-4 max-w-2xl mx-auto text-lg">
               Programe-se para as próximas etapas do nosso circuito. Prepare sua bike e venha fazer história com a gente.
@@ -298,11 +294,11 @@ export default function EventosPage() {
                 transition={{ delay: 0.2 }}
                 className="text-center"
               >
-                <div className="w-20 h-20 mx-auto bg-brand-highlight/10 rounded-full flex items-center justify-center mb-6">
-                  <Mountain className="w-10 h-10 text-brand-highlight" />
+                <div className="w-20 h-20 mx-auto bg-brand-red-primary/10 rounded-full flex items-center justify-center mb-6">
+                  <Mountain className="w-10 h-10 text-brand-red-primary" />
                 </div>
                 <h4 className="text-2xl font-black text-foreground mb-3">Contato com a Natureza</h4>
-                <p className="text-gray-600">Explore paisagens incríveis, respire ar puro e conecte-se com o meio ambiente de forma sustentável.</p>
+                <p className="text-black">Explore paisagens incríveis, respire ar puro e conecte-se com o meio ambiente de forma sustentável.</p>
               </motion.div>
 
               <motion.div 
@@ -313,7 +309,7 @@ export default function EventosPage() {
                 className="text-center"
               >
                 <div className="w-20 h-20 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-6">
-                  <Users className="w-10 h-10 text-brand" />
+                  <Users className="w-10 h-10 text-brand-red-primary" />
                 </div>
                 <h4 className="text-2xl font-black text-foreground mb-3">Comunidade Unida</h4>
                 <p className="text-gray-600">Faça novas amizades, troque experiências e faça parte da família Desafio Natureza em cada etapa.</p>
