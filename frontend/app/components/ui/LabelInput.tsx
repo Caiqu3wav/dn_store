@@ -1,6 +1,7 @@
 import styled from "styled-components";
 
 interface LabelInputProps {
+  width?: string;
   label: string;
   placeholder?: string;
   type?: string;
@@ -29,18 +30,18 @@ const StyledLabel = styled.label`
   margin-top: 1rem;
   margin-bottom: 0.5rem;
   font-weight: bold;
-  
+
 `;
 
-const FieldContainer = styled.div`
+const FieldContainer = styled.div<{ inputWidth: string }>`
   display: flex;
   flex-direction: column;
-  width: 100%;
+  width: ${({ inputWidth }) => inputWidth};
   margin-bottom: 1rem;
-
-  `
+`;
 
 export function LabelInput({
+  width = "100%",
   label,
   placeholder,
   type,
@@ -50,7 +51,7 @@ export function LabelInput({
 }: LabelInputProps) {
   return (
     <>
-      <FieldContainer>
+      <FieldContainer inputWidth={width}>
         <StyledLabel aria-label={label} htmlFor={name}>
           {label}
         </StyledLabel>

@@ -129,16 +129,25 @@ export const AuthForm = ({
         />
       )}
 
-      <LabelInput
-        value={formsData.zipCode}
-        onChange={handleChange}
-        name="zipCode"
-        type="text"
-        placeholder="CEP"
-        label="CEP"
-      />
 
-      <AddressForm addressFormsData={formsData.addressFormsData} onChange={handleChange} />
+      {isRegister && (
+
+        <LabelInput
+          value={formsData.zipCode}
+          onChange={handleChange}
+          name="zipCode"
+          type="text"
+          placeholder="CEP"
+          label="CEP"
+        />
+      )&&(
+        <AddressForm
+          addressFormsData={formsData.addressFormsData}
+          onChange={handleChange}
+        />
+
+      )}
+      
 
       {error && <p style={{ color: "#d00", marginTop: "1rem" }}>{error}</p>}
 
