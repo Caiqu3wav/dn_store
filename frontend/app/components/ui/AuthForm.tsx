@@ -10,7 +10,7 @@ interface FormData {
   email: string;
   password: string;
   confirmPassword?: string;
-  zipCode: string;
+  cpf: string;
   addressFormsData: addressFormsDataTypes;
 }
 
@@ -44,7 +44,7 @@ export const AuthForm = ({
       email: "",
       password: "",
       confirmPassword: "",
-      zipCode: "",
+      cpf: "",
       addressFormsData: {
         city: "",
         state: "",
@@ -52,6 +52,7 @@ export const AuthForm = ({
         street: "", 
         number: "",
         complement: "",
+        zipCode: "",
       },
     }
   );
@@ -62,10 +63,24 @@ export const AuthForm = ({
 
     const { name, value } = event.target;
     if (!isRegister && name === "confirmPassword") return;
-    setFormsData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormsData((prev) => {
+      const addressField = name as keyof addressFormsDataTypes;
+
+      if (addressField in prev.addressFormsData) {
+        return {
+          ...prev,
+          addressFormsData: {
+            ...prev.addressFormsData,
+            [addressField]: value,
+          },
+        };
+      }
+
+      return {
+        ...prev,
+        [name]: value,
+      };
+    });
   };
 
   const [error, setError] = useState<string>("");
@@ -75,7 +90,7 @@ export const AuthForm = ({
 
     setError("");
 
-    const { email, password, confirmPassword, zipCode, addressFormsData } = formsData;
+    const { email, password, confirmPassword, cpf, addressFormsData } = formsData;
 
     if (isRegister) {
       if (!confirmPassword) {
@@ -87,12 +102,31 @@ export const AuthForm = ({
         setError("As senhas não conferem.");
         return;
       }
+
+      if (!cpf.trim()) {
+        setError("Informe o CPF.");
+        return;
+      }
+
+      const requiredAddressFields: (keyof addressFormsDataTypes)[] = [
+        "zipCode",
+        "state",
+        "city",
+        "neighborhood",
+        "street",
+        "number",
+      ];
+
+      if (requiredAddressFields.some((field) => !addressFormsData[field]?.trim())) {
+        setError("Preencha todos os campos obrigatórios do endereço.");
+        return;
+      }
     }
 
     if (onSubmit) {
-      onSubmit(email, password, zipCode, addressFormsData);
+      onSubmit(email, password, cpf, addressFormsData);
     } else {
-      console.log({ email, password, zipCode, addressFormsData });
+      console.log({ email, password, cpf, addressFormsData });
     }
   };
 
@@ -109,6 +143,7 @@ export const AuthForm = ({
         type="email"
         placeholder="user@exemple.com"
         label="Email"
+        required
       />
       <LabelInput
         value={formsData.password}
@@ -117,6 +152,7 @@ export const AuthForm = ({
         type="password"
         placeholder="Senha"
         label="Senha"
+        required
       />
       {isRegister && (
         <LabelInput
@@ -126,28 +162,27 @@ export const AuthForm = ({
           type="password"
           placeholder="Confirme a Senha"
           label="Confirmar a Senha"
+          required
         />
       )}
 
-
       {isRegister && (
-
         <LabelInput
-          value={formsData.zipCode}
+          value={formsData.cpf}
           onChange={handleChange}
-          name="zipCode"
+          name="cpf"
           type="text"
-          placeholder="CEP"
-          label="CEP"
+          placeholder="CPF"
+          label="CPF"
+          required
         />
       )&&(
         <AddressForm
           addressFormsData={formsData.addressFormsData}
           onChange={handleChange}
-        />
 
+        />
       )}
-      
 
       {error && <p style={{ color: "#d00", marginTop: "1rem" }}>{error}</p>}
 
