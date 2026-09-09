@@ -60,9 +60,16 @@ export const EVENTS = [
     id: '4',
     name: '4ª Etapa - Passa Quatro',
     date: '20 de Setembro',
+<<<<<<< Updated upstream
     location: 'Praça Jardim dos Leões, Centro, Passa Quatro - MG',
     description: 'Passa Quatro nos espera. E você, está pronto para o próximo desafio?',
     mapsLink: 'https://maps.app.goo.gl/3rQrvDW23DKR18iE9',
+=======
+    location: 'Passa Quatro - MG',
+    description: 'Passa Quatro nos espera. E você, está pronto para o próximo desafio?',
+    mapsLink: 'https://maps.google.com?q=Taubate',
+    image: 'https://images.unsplash.com/photo-1508609349937-5ec4ae374ebf?auto=format&fit=crop&q=80&w=800'
+>>>>>>> Stashed changes
   }
 ];
 
