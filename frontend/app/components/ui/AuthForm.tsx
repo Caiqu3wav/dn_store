@@ -6,6 +6,7 @@ import { LabelInput } from "./LabelInput";
 import { AddressForm } from "./AddressForm";
 import { addressFormsDataTypes } from "./AddressForm";
 
+
 interface FormData {
   email: string;
   password: string;
@@ -37,7 +38,8 @@ export const AuthForm = ({
   onSubmit,
   onChange,
 }: AuthFormProps) => {
-  const isRegister = title === "Cadastro";
+
+  const isRegister = title.toLowerCase().includes("cadastro");
 
   const [formsData, setFormsData] = useState<FormData>(
     {
@@ -130,7 +132,7 @@ export const AuthForm = ({
     }
   };
 
-  // isRegister is now defined above
+
 
   return (
     <FormContainer onSubmit={handleSubmit}>
@@ -155,33 +157,30 @@ export const AuthForm = ({
         required
       />
       {isRegister && (
-        <LabelInput
-          value={formsData.confirmPassword ?? ""}
-          onChange={handleChange}
-          name="confirmPassword"
-          type="password"
-          placeholder="Confirme a Senha"
-          label="Confirmar a Senha"
-          required
-        />
-      )}
-
-      {isRegister && (
-        <LabelInput
-          value={formsData.cpf}
-          onChange={handleChange}
-          name="cpf"
-          type="text"
-          placeholder="CPF"
-          label="CPF"
-          required
-        />
-      )&&(
-        <AddressForm
-          addressFormsData={formsData.addressFormsData}
-          onChange={handleChange}
-
-        />
+        <>
+          <LabelInput
+            value={formsData.confirmPassword ?? ""}
+            onChange={handleChange}
+            name="confirmPassword"
+            type="password"
+            placeholder="Confirme a Senha"
+            label="Confirmar a Senha"
+            required
+          />
+          <LabelInput
+            value={formsData.cpf}
+            onChange={handleChange}
+            name="cpf"
+            type="text"
+            placeholder="CPF"
+            label="CPF"
+            required
+          />
+          <AddressForm
+            addressFormsData={formsData.addressFormsData}
+            onChange={handleChange}
+          />
+        </>
       )}
 
       {error && <p style={{ color: "#d00", marginTop: "1rem" }}>{error}</p>}

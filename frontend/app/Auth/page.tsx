@@ -3,11 +3,15 @@ import { useState } from "react"
 import { Container, Login, Logo } from "./page.style"
 import { AuthForm } from "../components/ui/AuthForm"
 import { OnClickText } from '../components/ui/Text';
-
+import { useSearchParams } from "next/navigation";
 
 function Auth() {
 
-  const [pagetype, setPagetype] = useState("login");
+  const searchParams = useSearchParams();
+
+  const [pagetype, setPagetype] = useState(
+    searchParams.get("mode") === "register" ? "register" : "login"
+  );
 
   interface pagetype {
     login: string;

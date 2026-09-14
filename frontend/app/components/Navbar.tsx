@@ -1,141 +1,229 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import Image from 'next/image';
-import { ShoppingCart, Menu, X, Search, User, Heart } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { cn } from './ui/Button';
-import { useCart } from '../context/CartContext';
-import { useFavorites } from '../context/FavoritesContext';
+import Link from "next/link";
+import Image from "next/image";
+import { ShoppingCart, Menu, X, Search, User, Heart } from "lucide-react";
+import { useState, useEffect } from "react";
+import { cn } from "./ui/Button";
+import { useCart } from "../context/CartContext";
+import { useFavorites } from "../context/FavoritesContext";
+import { Col, Container, Dropdown, Row } from 'react-bootstrap';
 
 export function Navbar() {
-    const [isScrolled, setIsScrolled] = useState(false);
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const { itemCount } = useCart();
-    const { favoritesCount } = useFavorites();
+    const [user, setUser] = useState(null);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { itemCount } = useCart();
+  const { favoritesCount } = useFavorites();
 
-    useEffect(() => {
-        const handleScroll = () => {
-            setIsScrolled(window.scrollY > 20);
-        };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
 
-    return (
-        <header
-            className={cn(
-                'sticky top-0 left-0 right-0 z-50 transition-all duration-300 border-b',
-                isScrolled 
-                    ? 'bg-foreground/80 backdrop-blur-lg border-gray-200 py-3 shadow-sm' 
-                    : 'bg-background border-transparent py-4'
-            )}
-        >
-           <div className="container mx-auto px-4 lg:px-8 relative flex items-center justify-between h-12">
-                {/* 1. Logo */}
-                <Link href="/" className="flex items-center gap-2 shrink-0 ml-10">
-                    <div className="relative w-15 h-15 overflow-hidden rounded-xl shadow-sm  flex items-center justify-center">
-                        <Image 
-                            src="/assets/Images/logo_transparente.png" 
-                            alt="DN Store Logo" 
-                            fill 
-                            className="object-contain "
-                        />
-                    </div>
-                    {/*  
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  return (
+    <header
+      className={cn(
+        "sticky top-0 left-0 right-0 z-50 transition-all duration-300 border-b",
+        isScrolled
+          ? "bg-foreground/80 backdrop-blur-lg border-gray-200 py-3 shadow-sm"
+          : "bg-background border-transparent py-4"
+      )}
+    >
+      <div className="container mx-auto px-4 lg:px-8 relative flex items-center justify-between h-12">
+        {/* 1. Logo */}
+        <Link href="/" className="flex items-center gap-2 shrink-0 ml-10">
+          <div className="relative w-15 h-15 overflow-hidden rounded-xl shadow-sm  flex items-center justify-center">
+            <Image
+              src="/assets/Images/logo_transparente.png"
+              alt="DN Store Logo"
+              fill
+              className="object-contain "
+            />
+          </div>
+          {/*  
                     <span className="hidden sm:block text-xl font-bold tracking-tight text-brand-primary">
                         DN
                     </span>
                     */}
-                    <span className="hidden sm:block text-xl font-bold tracking-tight text-brand-secondary">
-                        STORE
-                    </span>
-                </Link>
+          <span className="hidden sm:block text-xl font-bold tracking-tight text-brand-secondary">
+            STORE
+          </span>
+        </Link>
 
-                {/* Search Bar Centralizada */}
-                <div className="hidden md:flex absolute left-[50%] -translate-x-1/2 w-full max-w-md px-4">
-                    <div className="relative w-full">
-                    <input 
-                        type="text" 
-                        placeholder="Buscar produtos..." 
-                        className="w-full bg-gray-100 border-transparent focus:bg-white focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20 rounded-full py-2.5 pl-11 pr-4 text-sm transition-all outline-none text-brand"
-                    />
-                     <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                    </div>
-                </div>
+        {/* Search Bar Centralizada */}
+        <div className="hidden md:flex absolute left-[50%] -translate-x-1/2 w-full max-w-md px-4">
+          <div className="relative w-full">
+            <input
+              type="text"
+              placeholder="Buscar produtos..."
+              className="w-full bg-gray-100 border-transparent focus:bg-white focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20 rounded-full py-2.5 pl-11 pr-4 text-sm transition-all outline-none text-brand"
+            />
+            <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+          </div>
+        </div>
 
-                {/* Navigation & Icons */}
-                    <div className="flex items-center gap-6 md:gap-8 ml-auto z-10">
-                        
-                    {/* Desktop Links */}
-                    <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-white">
-                        <Link href="/" className="hover:text-brand-secondary transition-colors">Home</Link>
-                        <Link href="/produtos" className="hover:text-brand-secondary transition-colors">Produtos</Link>
-                        <Link href="/eventos" className="hover:text-brand-secondary transition-colors">Eventos</Link>
-                        <Link href="/sobre" className="hover:text-brand-secondary transition-colors">Sobre</Link>
-                    </nav>
+        {/* Navigation & Icons */}
+        <div className="flex items-center gap-6 md:gap-8 ml-auto z-10">
+          {/* Desktop Links */}
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-white">
+            <Link
+              href="/"
+              className="hover:text-brand-secondary transition-colors"
+            >
+              Home
+            </Link>
+            <Link
+              href="/produtos"
+              className="hover:text-brand-secondary transition-colors"
+            >
+              Produtos
+            </Link>
+            <Link
+              href="/eventos"
+              className="hover:text-brand-secondary transition-colors"
+            >
+              Eventos
+            </Link>
+            <Link
+              href="/sobre"
+              className="hover:text-brand-secondary transition-colors"
+            >
+              Sobre
+            </Link>
+          </nav>
 
-                    {/* Icons */}
-                    <div className="flex items-center gap-4 text-white">
-                        <Link href='/Auth' className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Conta">
-                            <User className="w-5 h-5" />
-                        </Link>
-                        <Link href='/favoritos' className="hidden sm:block hover:text-brand-secondary transition-colors relative flex items-center" aria-label="Favoritos">
-                            <Heart className="w-5 h-5" />
-                            {favoritesCount > 0 && (
-                                <span className="absolute -top-2 -right-2 bg-brand-secondary text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                                    {favoritesCount}
-                                </span>
-                            )}
-                        </Link>
-                        <Link href="/carrinho" className="hover:text-brand-secondary transition-colors relative flex items-center" aria-label="Carrinho">
-                            <ShoppingCart className="w-5 h-5" />
-                            {itemCount > 0 && (
-                                <span className="absolute -top-2 -right-2 bg-brand-secondary text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                                    {itemCount}
-                                </span>
-                            )}
-                        </Link>
+          {/* Icons */}
+          <Container className="flex items-center gap-4 text-white">
+            <Dropdown className="relative">
+              <Dropdown.Toggle
+                className="hidden sm:block hover:text-brand-secondary transition-colors"
+                variant="success"
+                id="dropdown-basic"
+              >
+                <User className="w-5 h-5 " />
+              </Dropdown.Toggle>
+              <Col>
+                <Dropdown.Menu
+                  variant="success"
+                  className="bg-black text-white rounded-md shadow-lg mt-2 w-40"
+                >
+                  <Row className="px-4 py-2 text-sm text-gray-400 hover:bg-gray-700 hover:text-white">
+                    {" "}
+                    <Dropdown.Item href="/perfil">Perfil</Dropdown.Item>
+                  </Row>
+                  {/* condição temporaria */}
+                  {/* {user ? ( */}
+                    <Row className="px-4 py-2 text-sm text-gray-400 hover:bg-gray-700 hover:text-white">
+                      {" "}
+                      <Dropdown.Item href="/">Sair</Dropdown.Item>
+                    </Row>
+                  {/* ) : ( */}
+                    <Row className="px-4 py-2 text-sm text-gray-400 hover:bg-gray-700 hover:text-white">
+                      {" "}
+                      <Dropdown.Item href="/Auth?mode=register">Cadastrar</Dropdown.Item>
+                    </Row>
+                  {/* )} */}
+                </Dropdown.Menu>
+              </Col>
+            </Dropdown>
 
-                        {/* Mobile Menu Toggle */}
-                        <button
-                            className="md:hidden p-1 hover:bg-gray-100 rounded-md transition-colors"
-                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                        >
-                            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <Link
+              href="/favoritos"
+              className="hidden sm:block hover:text-brand-secondary transition-colors relative flex items-center"
+              aria-label="Favoritos"
+            >
+              <Heart className="w-5 h-5" />
+              {favoritesCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-brand-secondary text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {favoritesCount}
+                </span>
+              )}
+            </Link>
+            <Link
+              href="/carrinho"
+              className="hover:text-brand-secondary transition-colors relative flex items-center"
+              aria-label="Carrinho"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {itemCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-brand-secondary text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {itemCount}
+                </span>
+              )}
+            </Link>
 
-            {/* Mobile Menu Dropdown */}
-            {isMobileMenuOpen && (
-                <div className="md:hidden absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-lg py-4 px-4 flex flex-col gap-4">
-                    <div className="relative w-full mb-2">
-                        <input 
-                            type="text" 
-                            placeholder="Buscar produtos..." 
-                            className="w-full bg-gray-100 rounded-full py-2.5 pl-11 pr-4 text-sm outline-none"
-                        />
-                        <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                    </div>
-                    <Link href="/" className="text-gray-800 font-medium py-2 border-b border-gray-100">Home</Link>
-                    <Link href="/produtos" className="text-gray-800 font-medium py-2 border-b border-gray-100">Produtos</Link>
-                    <Link href="/eventos" className="text-gray-800 font-medium py-2 border-b border-gray-100">Eventos</Link>
-                    <Link href="/sobre" className="text-gray-800 font-medium py-2 border-b border-gray-100">Sobre</Link>
-                    
-                    <div className="flex items-center justify-around pt-4 pb-2">
-                        <Link href="/Auth" className="flex flex-col items-center gap-1 text-gray-600">
-                            <User className="w-5 h-5" />
-                            <span className="text-xs">Conta</span>
-                        </Link>
-                        <button className="flex flex-col items-center gap-1 text-gray-600">
-                            <Heart className="w-5 h-5" />
-                            <span className="text-xs">Favoritos</span>
-                        </button>
-                    </div>
-                </div>
-            )}
-        </header>
-    );
+            {/* Mobile Menu Toggle */}
+            <button
+              className="md:hidden p-1 hover:bg-gray-100 rounded-md transition-colors"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              {isMobileMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
+            </button>
+          </Container>
+        </div>
+      </div>
+
+      {/* Mobile Menu Dropdown */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-lg py-4 px-4 flex flex-col gap-4">
+          <div className="relative w-full mb-2">
+            <input
+              type="text"
+              placeholder="Buscar produtos..."
+              className="w-full bg-gray-100 rounded-full py-2.5 pl-11 pr-4 text-sm outline-none"
+            />
+            <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+          </div>
+          <Link
+            href="/"
+            className="text-gray-800 font-medium py-2 border-b border-gray-100"
+          >
+            Home
+          </Link>
+          <Link
+            href="/produtos"
+            className="text-gray-800 font-medium py-2 border-b border-gray-100"
+          >
+            Produtos
+          </Link>
+          <Link
+            href="/eventos"
+            className="text-gray-800 font-medium py-2 border-b border-gray-100"
+          >
+            Eventos
+          </Link>
+          <Link
+            href="/sobre"
+            className="text-gray-800 font-medium py-2 border-b border-gray-100"
+          >
+            Sobre
+          </Link>
+
+          <div className="flex items-center justify-around pt-4 pb-2">
+            <Link
+              href="/Auth"
+              className="flex flex-col items-center gap-1 text-gray-600"
+            >
+              <User className="w-5 h-5" />
+              <span className="text-xs">Conta</span>
+            </Link>
+            <button className="flex flex-col items-center gap-1 text-gray-600">
+              <Heart className="w-5 h-5" />
+              <span className="text-xs">Favoritos</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </header>
+  );
 }
