@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -18,11 +21,14 @@ import java.util.UUID;
  * - Herança: 'extends Product'
  * - Polimorfismo: Sobrescrita (@Override) do método getShippingWeight().
  */
+@Getter
+@Setter
 @Data
 @EqualsAndHashCode(callSuper = true)
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@Table(name = "physical_products")
 @PrimaryKeyJoinColumn(name = "id")
 public class PhysicalProduct extends Product {
     private double weight;

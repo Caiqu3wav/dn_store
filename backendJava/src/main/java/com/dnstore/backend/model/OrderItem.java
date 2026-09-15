@@ -3,23 +3,31 @@ package com.dnstore.backend.model;
 import jakarta.persistence.*;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
 import lombok.Getter;
 import org.hibernate.annotations.GenericGenerator;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
 
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@Data
 @Entity
 @Table(name = "order_items")
 public class OrderItem {
 
     @Id
     @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name="UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
     @Column(updatable = false, nullable = false)
+    @JdbcTypeCode(java.sql.Types.VARCHAR)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -46,7 +54,7 @@ public class OrderItem {
 
     public Double getTotalWeight() {
         if (productVariant != null && productVariant.getProduct() instanceof PhysicalProduct) {
-             return ((PhysicalProduct) productVariant.getProduct()).getWeight() * quantity;
+            return ((PhysicalProduct) productVariant.getProduct()).getWeight() * quantity;
         }
         return 0.0;
     }

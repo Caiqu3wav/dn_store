@@ -1,87 +1,49 @@
 "use client";
-import { useState } from "react"
-import { Container, Login, Logo } from "./page.style"
-import { AuthForm } from "../components/ui/AuthForm"
-import { OnClickText } from '../components/ui/Text';
-import { useSearchParams } from "next/navigation";
-import { Row } from "react-bootstrap";
-import Link from "next/link";
-
-function Auth() {
-
-  const searchParams = useSearchParams();
-
-  const [pagetype, setPagetype] = useState(
-    searchParams.get("mode") === "register" ? "register" : "login"
-  );
-
-  interface pagetype {
-    login: string;
-    register: string;
-  }
-
-  
-
 
   return (
-    (pagetype === "login" && (
-      <Container>
-        <Login>
-          <Logo />
-
-          <AuthForm title="Entrar" />
-
-          <p>
-            Não tem conta?{" "}
-            <OnClickText onClick={() => setPagetype("register")}>
-              Cadastrar
-            </OnClickText>
-          </p>
-          <Row>
-            <Link
-              href="/Auth/recover"
-              style={{ color: "#007bff" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.textDecoration = "underline";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.textDecoration = "none";
-              }}
-            >
-              Esqueci minha senha
-            </Link>
-            <span style={{ margin: 10 }}>|</span>
-          </Row>
-        </Login>
-      </Container>
-    )) ||
-    (pagetype === "register" && (
-      <Container>
-        <Login>
-          <Logo />
-          <AuthForm title="Cadastro" />
-          <Row
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              marginTop: 10,
-            }}
-          >
-            <span>
+    <Container>
+      <Login>
+        <Logo />
+        {errorMsg && (
+          <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded-lg text-sm text-center mb-4 w-full max-w-sm">
+            {errorMsg}
+          </div>
+        )}
+        {pagetype === "login" ? (
+          <>
+            <AuthForm title="Entrar" onSubmit={handleLoginSubmit} />
+            <p className="mt-4 text-gray-400">
+              Não tem conta?{" "}
+              <OnClickText onClick={() => setPagetype("register")}>
+                Cadastrar
+              </OnClickText>
+            </p>
+            <p className="mt-2">
+              <a href="/Auth/recover" style={{ color: "#007bff", textDecoration: "none", fontSize: "0.9rem" }}>
+                Esqueci minha senha
+              </a>
+            </p>
+          </>
+        ) : (
+          <>
+            <AuthForm title="Cadastro" onSubmit={handleRegisterSubmit} />
+            <p className="mt-4 text-gray-400">
               Já tem conta?{" "}
               <OnClickText onClick={() => setPagetype("login")}>
                 Entrar
               </OnClickText>
-            </span>
-            <span style={{ margin: 10 }}>|</span>
-            
-          </Row>
-        </Login>
-      </Container>
-    ))
+            </p>
+          </>
+        )}
+      </Login>
+    </Container>
+  );
+            </p>
+          </>
+        )}
+      </Login>
+    </Container>
   );
 }
 
-export default Auth
-
+export default Auth;

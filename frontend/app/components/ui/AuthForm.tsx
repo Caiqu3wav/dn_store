@@ -1,7 +1,7 @@
 import { useState } from "react";
 import styled from "styled-components";
 import { Title } from "./Text";
-import { Button } from "../../Auth/page.style";
+import { Button } from "../../auth/page.style";
 import { LabelInput } from "./LabelInput";
 import { AddressForm } from "./AddressForm";
 import { addressFormsDataTypes } from "./AddressForm";
@@ -143,7 +143,7 @@ export const AuthForm = ({
         onChange={handleChange}
         name="email"
         type="email"
-        placeholder="user@exemple.com"
+        placeholder="user@example.com"
         label="Email"
         required
       />

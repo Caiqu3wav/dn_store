@@ -1,67 +1,77 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../../components/ui/Button';
 import { useCart } from '../../context/CartContext';
 import { ShoppingCart, Heart, Share2, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import { Product } from '../../../types';
+import { productService } from '../../../services/productService';
 
-// Mock data (would come from API/DB)
-const products = {
-    '1': {
-        id: '1',
-        name: 'Camisa Performance Trail',
-        price: 189.90,
-        description: 'Desenvolvida para os ciclistas mais exigentes, a Camisa Performance Trail oferece tecnologia de absorção de suor, proteção UV e um corte aerodinâmico que não prende seus movimentos. Ideal para longas pedaladas sob o sol.',
-        images: [
-            'https://images.unsplash.com/photo-1578632292335-df3abbb0d586?q=80&w=1974&auto=format&fit=crop',
-            'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?q=80&w=2070&auto=format&fit=crop'
-        ],
-        sizes: ['P', 'M', 'G', 'GG'],
-        category: 'Roupas'
-    },
-    '2': {
-        id: '2',
-        name: 'Capacete Enduro Pro',
-        price: 459.90,
-        description: 'Segurança máxima sem comprometer o conforto. O Capacete Enduro Pro possui sistema de ventilação avançado e proteção reforçada contra impactos multidirecionais.',
-        images: [
-            'https://images.unsplash.com/photo-1559348349-86f163cc8cef?q=80&w=2070&auto=format&fit=crop'
-        ],
-        sizes: ['M', 'G'],
-        category: 'Acessórios'
-    },
-    // Fallback for other IDs
-    'default': {
-        id: '0',
-        name: 'Produto Exemplo',
-        price: 99.90,
-        description: 'Descrição do produto exemplo.',
-        images: ['https://images.unsplash.com/photo-1517649763962-0c623066013b?q=80&w=2070&auto=format&fit=crop'],
-        sizes: ['Único'],
-        category: 'Geral'
-    }
-};
-
-export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
-    const product = products[id as keyof typeof products] || products['default'];
-
-    const [selectedSize, setSelectedSize] = useState(product.sizes[0]);
+export default function ProductPage({ params }: { params: { id: string } }) {
+    const { id } = params;
+    const [product, setProduct] = useState<Product | null>(null);
+    const [selectedSize, setSelectedSize] = useState<string>('');
     const [currentImage, setCurrentImage] = useState(0);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const { addItem } = useCart();
 
+    useEffect(() => {
+        if (!id) return;
+
+        setIsLoading(true);
+        setError(null);
+
+        productService.getProductById(id)
+            .then((data) => {
+                setProduct(data);
+                const sizes = data.size && data.size.length ? data.size : ['Único'];
+                setSelectedSize(sizes[0]);
+                setCurrentImage(0);
+            })
+            .catch((err) => {
+                console.error('Failed to fetch product', err);
+                setError('Não foi possível carregar o produto.');
+            })
+            .finally(() => setIsLoading(false));
+    }, [id]);
+
+    const productImages = product?.images?.length
+        ? product.images.map((img) => (typeof img === 'string' ? img : img.imageUrl))
+        : ['/assets/products/placeholder.png'];
+
+    const sizes = product?.size?.length ? product.size : ['Único'];
+
     const handleAddToCart = () => {
+        if (!product) return;
+
         addItem({
             id: product.id,
             name: product.name,
             price: product.price,
-            image: product.images[0],
+            image: productImages[0] || '/assets/products/placeholder.png',
             quantity: 1,
             size: selectedSize
         });
         alert('Produto adicionado ao carrinho!');
     };
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-white text-black pt-24 pb-20 flex items-center justify-center">
+                <p className="text-lg text-gray-600">Carregando produto...</p>
+            </div>
+        );
+    }
+
+    if (error || !product) {
+        return (
+            <div className="min-h-screen bg-white text-black pt-24 pb-20 flex items-center justify-center">
+                <p className="text-lg text-red-600">{error || 'Produto não encontrado.'}</p>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-white text-black pt-24 pb-20">
@@ -81,15 +91,15 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                         <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden relative">
                             <div
                                 className="absolute inset-0 bg-cover bg-center"
-                                style={{ backgroundImage: `url(${product.images[currentImage]})` }}
+                                style={{ backgroundImage: `url(${productImages[currentImage]})` }}
                             />
                         </div>
                         <div className="flex gap-4 overflow-x-auto pb-2">
-                            {product.images.map((img, index) => (
+                            {productImages.map((img, index) => (
                                 <button
                                     key={index}
                                     onClick={() => setCurrentImage(index)}
-                                    className={`w-20 h-20 flex-shrink-0 rounded-md overflow-hidden border-2 ${currentImage === index ? 'border-brand-red' : 'border-transparent'
+                                    className={`w-20 h-20 shrink-0 rounded-md overflow-hidden border-2 ${currentImage === index ? 'border-brand-red' : 'border-transparent'
                                         }`}
                                 >
                                     <div
@@ -104,7 +114,9 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                     {/* Info */}
                     <div>
                         <span className="text-brand-red font-bold tracking-wider uppercase text-sm">
-                            {product.category}
+                            {typeof product.category === 'object' && product.category !== null 
+                                ? product.category.name 
+                                : (product.category || 'Geral')}
                         </span>
                         <h1 className="text-4xl font-bold mt-2 mb-4">{product.name}</h1>
                         <p className="text-3xl font-bold mb-6">
@@ -119,7 +131,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                         <div className="mb-8">
                             <h3 className="font-bold mb-3">Tamanho</h3>
                             <div className="flex gap-3">
-                                {product.sizes.map((size) => (
+                                {sizes.map((size) => (
                                     <button
                                         key={size}
                                         onClick={() => setSelectedSize(size)}

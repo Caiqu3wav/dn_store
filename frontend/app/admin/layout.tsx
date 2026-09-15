@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
     LayoutDashboard, 
     Package, 
@@ -14,6 +14,8 @@ import {
     LogOut
 } from 'lucide-react';
 import { cn } from '../components/ui/Button';
+import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-hot-toast';
 
 const adminLinks = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -26,6 +28,28 @@ const adminLinks = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const pathname = usePathname();
+    const router = useRouter();
+    const { user, loading } = useAuth();
+
+    useEffect(() => {
+        if (!loading) {
+            if (!user) {
+                toast.error("Você precisa estar logado para acessar esta página.");
+                router.push('/auth');
+            } else if (user.role !== 'ADMIN') {
+                toast.error("Acesso negado. Apenas administradores podem acessar esta área.");
+                router.push('/');
+            }
+        }
+    }, [user, loading, router]);
+
+    if (loading || !user || user.role !== 'ADMIN') {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-brand-secondary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background text-foreground flex">
@@ -46,7 +70,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
                 <div className="p-6 flex items-center justify-between border-b border-white/5">
                     <Link href="/admin" className="flex items-center gap-2">
-                        <span className="text-2xl font-bold text-white">DN<span className="text-brand-secondary">Admin</span></span>
+                        <span style={{ fontFamily: 'DN'  }} className="text-3xl text-outline text-white">DN<span style={{ fontFamily: 'DN'  }} className="text-brand-secondary text-outline"> Admin</span></span>
                     </Link>
                     <button 
                         className="lg:hidden text-gray-400 hover:text-white"

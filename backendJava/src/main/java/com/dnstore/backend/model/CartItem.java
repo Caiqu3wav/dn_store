@@ -3,9 +3,13 @@ package com.dnstore.backend.model;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.math.BigDecimal;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
 
 /**
  * 🛒 CartItem (Item do Carrinho)
@@ -13,6 +17,8 @@ import java.util.UUID;
  * JPA Entity representing an item in a shopping cart.
  * Associates a product variant with quantity and belongs to a cart.
  */
+@Getter
+@Setter
 @Entity
 @Table(name = "cart_items")
 @Data
@@ -22,6 +28,7 @@ public class CartItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
+    @JdbcTypeCode(java.sql.Types.VARCHAR)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -39,12 +46,14 @@ public class CartItem {
      * Encapsula a lógica de cálculo do subtotal.
      */
     public BigDecimal getSubtotal() {
-        if (productVariant == null || productVariant.getProduct() == null) return BigDecimal.ZERO;
+        if (productVariant == null || productVariant.getProduct() == null)
+            return BigDecimal.ZERO;
         return productVariant.getProduct().getPrice().multiply(new BigDecimal(quantity));
     }
 
     public double getTotalWeight() {
-        if (productVariant == null || productVariant.getProduct() == null) return 0.0;
+        if (productVariant == null || productVariant.getProduct() == null)
+            return 0.0;
         return productVariant.getProduct().getShippingWeight() * quantity;
     }
 }

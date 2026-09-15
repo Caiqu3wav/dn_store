@@ -3,21 +3,35 @@
 import Link from 'next/link';
 import { Plus, Search, Edit, Trash2, Filter } from 'lucide-react';
 import { useState } from 'react';
-
-const mockProducts = [
-    { id: '1', name: 'Camiseta Classic DN', category: 'Vestuário', price: 129.90, stock: 45, status: 'Ativo' },
-    { id: '2', name: 'Jaqueta Corta-Vento Trail', category: 'Vestuário', price: 299.90, stock: 12, status: 'Ativo' },
-    { id: '3', name: 'Calça Cargo Explorer', category: 'Vestuário', price: 199.90, stock: 0, status: 'Esgotado' },
-    { id: '4', name: 'Boné Signature', category: 'Acessórios', price: 89.90, stock: 80, status: 'Ativo' },
-    { id: '5', name: 'Mochila Trekking 40L', category: 'Equipamentos', price: 459.90, stock: 5, status: 'Ativo' },
-];
+import useSWR from 'swr';
+import { fetcher, productService } from '@/services/productService';
+import { Product } from '@/types';
 
 export default function AdminProductsPage() {
     const [searchTerm, setSearchTerm] = useState('');
 
-    const filteredProducts = mockProducts.filter(p => 
-        p.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const { data: productsData, mutate } = useSWR<Product[]>(
+        `/products?search=${searchTerm}`,
+        fetcher
     );
+
+    console.log(productsData);
+console.log(Array.isArray(productsData));
+console.log(typeof productsData);
+
+    const filteredProducts = productsData || [];
+
+    const handleDelete = async (id: string) => {
+        if (confirm('Tem certeza que deseja remover este produto?')) {
+            try {
+                await productService.deleteProduct(id);
+                mutate();
+            } catch (error) {
+                console.error("Erro ao deletar", error);
+                alert('Erro ao deletar produto.');
+            }
+        }
+    };
 
     return (
         <div className="space-y-6 text-white">
@@ -71,20 +85,25 @@ export default function AdminProductsPage() {
                             {filteredProducts.map((product) => (
                                 <tr key={product.id} className="hover:bg-white/[0.02] transition-colors group">
                                     <td className="p-4 font-medium text-white">{product.name}</td>
-                                    <td className="p-4 text-gray-400">{product.category}</td>
+                                    <td className="p-4 text-gray-400">
+                                        {typeof product.category === 'object' && product.category !== null 
+                                            ? product.category.name 
+                                            : (product.category || 'Geral')}
+                                    </td>
                                     <td className="p-4 text-white">
                                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
                                     </td>
                                     <td className="p-4 text-gray-300">
-                                        {product.stock} un.
+                                        {/* TODO: Estoque ainda não está no Product frontend model, colocar fallback */}
+                                        {100} un.
                                     </td>
                                     <td className="p-4">
                                         <span className={`px-2 py-1 text-xs font-medium rounded-full border ${
-                                            product.status === 'Ativo' 
+                                            product.active 
                                                 ? 'bg-green-500/10 text-green-500 border-green-500/20' 
                                                 : 'bg-red-500/10 text-red-500 border-red-500/20'
                                         }`}>
-                                            {product.status}
+                                            {product.active ? 'Ativo' : 'Inativo'}
                                         </span>
                                     </td>
                                     <td className="p-4 text-right">
@@ -95,7 +114,10 @@ export default function AdminProductsPage() {
                                             >
                                                 <Edit className="w-4 h-4" />
                                             </Link>
-                                            <button className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors">
+                                            <button 
+                                                onClick={() => handleDelete(product.id)}
+                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                            >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
                                         </div>

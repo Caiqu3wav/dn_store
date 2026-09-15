@@ -11,10 +11,21 @@ CREATE TABLE products (
     name VARCHAR(150) NOT NULL,
     description TEXT,
     price DECIMAL(10,2) NOT NULL,
+    promotional_price DECIMAL(10,2),
     category_id VARCHAR(36),
+    product_type VARCHAR(50) DEFAULT 'physical',
     active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+CREATE TABLE physical_products (
+    id VARCHAR(36) PRIMARY KEY,
+    weight DOUBLE DEFAULT 0.0,
+    width DOUBLE DEFAULT 0.0,
+    height DOUBLE DEFAULT 0.0,
+    depth DOUBLE DEFAULT 0.0,
+    FOREIGN KEY (id) REFERENCES products(id) ON DELETE CASCADE
 );
 
 CREATE TABLE product_images (
@@ -44,6 +55,9 @@ CREATE TABLE users (
     email VARCHAR(150) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     phone VARCHAR(20),
+    role VARCHAR(20) DEFAULT 'USER',
+    reset_token VARCHAR(64),
+    reset_token_expiration TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -59,6 +73,16 @@ CREATE TABLE addresses (
     zip_code VARCHAR(10),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE favorites (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    user_id VARCHAR(36) NOT NULL,
+    product_id VARCHAR(36) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_product (user_id, product_id)
 );
 
 CREATE TABLE carts (
@@ -77,15 +101,31 @@ CREATE TABLE cart_items (
     FOREIGN KEY (product_variant_id) REFERENCES product_variants(id)
 );
 
+CREATE TABLE coupons (
+    id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    code VARCHAR(50) UNIQUE NOT NULL,
+    discount_percentage DECIMAL(5,2),
+    discount_value DECIMAL(10,2),
+    min_cart_value DECIMAL(10,2),
+    max_usage INT,
+    current_usage INT DEFAULT 0,
+    expires_at TIMESTAMP,
+    active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE orders (
     id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
     user_id VARCHAR(36) NOT NULL,
     address_id VARCHAR(36) NOT NULL,
+    coupon_id VARCHAR(36),
+    discount_amount DECIMAL(10,2) DEFAULT 0.00,
     total DECIMAL(10,2) NOT NULL,
     status VARCHAR(50) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (address_id) REFERENCES addresses(id)
+    FOREIGN KEY (address_id) REFERENCES addresses(id),
+    FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE SET NULL
 );
 
 CREATE TABLE order_items (
@@ -122,11 +162,18 @@ CREATE TABLE shipment_tracking (
 
 CREATE TABLE payments (
     id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    order_id VARCHAR(36) NOT NULL,
-    method VARCHAR(50),
-    status VARCHAR(50),
-    transaction_id VARCHAR(150),
+    order_id VARCHAR(36) NOT NULL UNIQUE,
+    external_id VARCHAR(100),
+    payment_method VARCHAR(20) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    pix_qr_code TEXT,
+    pix_copy_paste TEXT,
+    boleto_url TEXT,
+    boleto_barcode TEXT,
+    installments INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    paid_at TIMESTAMP NULL DEFAULT NULL,
     FOREIGN KEY (order_id) REFERENCES orders(id)
 );
 

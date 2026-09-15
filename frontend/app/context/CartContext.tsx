@@ -9,6 +9,7 @@ export interface CartItem {
     image: string;
     quantity: number;
     size?: string;
+    category?: string;
 }
 
 interface CartContextType {
@@ -19,25 +20,30 @@ interface CartContextType {
     clearCart: () => void;
     total: number;
     itemCount: number;
+    updateSize: (id: string, size: string) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-    const [items, setItems] = useState<CartItem[]>(() => {
+    const [items, setItems] = useState<CartItem[]>([]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
         const savedCart = localStorage.getItem('cart');
-                if (savedCart) {
-                    try {
-                        return JSON.parse(savedCart);
-                    } catch (e) {
-                        console.error('Failed to parse cart', e);
-                    }
-                }
-                return [];
-    });
+        if (savedCart) {
+            try {
+                setItems(JSON.parse(savedCart));
+            } catch (e) {
+                console.error('Failed to parse cart', e);
+            }
+        }
+    }, []);
 
     // Save cart to localStorage whenever it changes
     useEffect(() => {
+        if (typeof window === 'undefined') return;
         localStorage.setItem('cart', JSON.stringify(items));
     }, [items]);
 
@@ -66,6 +72,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
         );
     };
 
+    const updateSize = (id: string, size: string) => {
+        setItems((currentItems) =>
+            currentItems.map((item) =>
+                item.id === id
+                    ? { ...item, size }
+                    : item
+            )
+        );
+    };
+
     const clearCart = () => {
         setItems([]);
     };
@@ -74,7 +90,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
     return (
-        <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, total, itemCount }}>
+        <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, updateSize, clearCart, total, itemCount }}>
             {children}
         </CartContext.Provider>
     );

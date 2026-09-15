@@ -1,6 +1,5 @@
 export const CATEGORIES = [
-  { id: '0', name: 'Todos', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=500', slug: 'Todos' },
-  { id: '1', name: 'Camisa Poliamida', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=500', slug: 't-shirts' },
+  { id: '1', name: 'Camisas de Poliamida', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=500', slug: 't-shirts' },
   { id: '2', name: 'Camisas de Ciclismo', image: 'https://images.unsplash.com/photo-1534723452862-4c874018d66d?auto=format&fit=crop&q=80&w=500', slug: 'camisas-ciclismo' },
   { id: '3', name: 'Bonés & Meias', image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&q=80&w=500', slug: 'acessorios' },
 ];
@@ -36,7 +35,7 @@ export const EVENTS = [
     name: '1ª Etapa - Roseira',
     date: '22 de Fevereiro',
     location: 'Roseira - SP',
-    description: 'Uma jornada desafiadora com subidas técnicas e descidas rápidas nas montanhas.',
+    description: 'Prepare-se para encarar as trilhas e superar seus limites em Roseira.',
     mapsLink: 'https://maps.google.com?q=Campos+do+Jordao',
     image: 'https://images.unsplash.com/photo-1604677657548-4ced0c4f40c6?auto=format&fit=crop&w=800&q=80'
   },
@@ -45,7 +44,7 @@ export const EVENTS = [
     name: '2ª Etapa - Lagoinha',
     date: '26 de Abril',
     location: 'Lagoinha - SP',
-    description: 'Percurso urbano e trilhas leves, ideal para ciclistas de todos os níveis.',
+    description: 'Lagoinha é o cenário para mais uma jornada de superação.',
     mapsLink: 'https://maps.google.com?q=São+José+dos+Campos',
     image: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&q=80&w=800'
   },
@@ -54,19 +53,18 @@ export const EVENTS = [
     name: '3ª Etapa - Lorena',
     date: '26 de Julho',
     location: 'Lorena - SP',
-    description: 'A etapa de Lorena vai testar seus limites — velocidade, resistência e coragem em uma experiência feita para quem nasceu para competir.',
-    mapsLink: 'https://maps.google.com?q=Pindamonhangaba',
-    image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&q=80&w=800'
+    description: 'A etapa de Lorena vai testar seus limites.',
+    mapsLink: 'https://maps.app.goo.gl/PBagJ4RLe8K4WRH97',
   },
   {
     id: '4',
     name: '4ª Etapa - Passa Quatro',
-    date: '20 de Setembro',
-    location: 'Passa Quatro - MG',
-    description: 'Passeio clássico pela Estrada Velha com paradas para fotos e troca de experiência.',
-    mapsLink: 'https://maps.google.com?q=Taubate',
-    image: 'https://images.unsplash.com/photo-1508609349937-5ec4ae374ebf?auto=format&fit=crop&q=80&w=800'
+    date: '22 de Novembro',
+    location: 'Praça Jardim dos Leões, Centro, Passa Quatro - MG',
+    description: 'Passa Quatro nos espera. E você, está pronto para o próximo desafio?',
+    mapsLink: 'https://maps.app.goo.gl/3rQrvDW23DKR18iE9',
+
   }
 ];
 
-export const NEXT_EVENT = EVENTS[2];
+export const NEXT_EVENT = EVENTS[3];
