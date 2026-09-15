@@ -52,13 +52,12 @@ public class OrderService {
         DeliveryResult shipping = deliveryService.calculateShipping(
                 zipCode,
                 cart.getTotalWeight(),
-                shippingType
-        );
+                shippingType);
 
         // 2. Resolver Endereço
         Address address;
         if (addressId != null) {
-            address = addressRepository.findById(addressId)
+            address = addressRepository.findByIdAndUser_Id(addressId, user.getId())
                     .orElseThrow(() -> new IllegalArgumentException("Endereço não encontrado."));
         } else {
             List<Address> userAddresses = addressRepository.findByUser_Id(user.getId());
@@ -87,10 +86,12 @@ public class OrderService {
 
             BigDecimal cartTotal = cart.getTotalPrice();
             if (coupon.getMinCartValue() != null && cartTotal.compareTo(coupon.getMinCartValue()) < 0) {
-                throw new IllegalArgumentException("O valor mínimo do carrinho para usar este cupom é R$ " + coupon.getMinCartValue());
+                throw new IllegalArgumentException(
+                        "O valor mínimo do carrinho para usar este cupom é R$ " + coupon.getMinCartValue());
             }
 
-            if (coupon.getMaxUsage() != null && coupon.getCurrentUsage() != null && coupon.getCurrentUsage() >= coupon.getMaxUsage()) {
+            if (coupon.getMaxUsage() != null && coupon.getCurrentUsage() != null
+                    && coupon.getCurrentUsage() >= coupon.getMaxUsage()) {
                 throw new IllegalArgumentException("Este cupom já atingiu o limite máximo de uso.");
             }
 
@@ -121,7 +122,8 @@ public class OrderService {
 
         // Mapear CartItems para OrderItems (Entidades JPA)
         List<OrderItem> orderItems = cart.getItems().stream()
-                .map(cartItem -> new OrderItem(order, cartItem.getProductVariant(), cartItem.getQuantity(), cartItem.getSubtotal()))
+                .map(cartItem -> new OrderItem(order, cartItem.getProductVariant(), cartItem.getQuantity(),
+                        cartItem.getSubtotal()))
                 .collect(Collectors.toList());
 
         order.setItems(orderItems);
@@ -144,8 +146,7 @@ public class OrderService {
     }
 
     private static final java.util.Set<String> VALID_STATUSES = java.util.Set.of(
-            "PENDING_PAYMENT", "PAID", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "PAYMENT_FAILED"
-    );
+            "PENDING_PAYMENT", "PAID", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "PAYMENT_FAILED");
 
     public java.util.Optional<Order> findById(UUID id) {
         return orderRepository.findById(id);
