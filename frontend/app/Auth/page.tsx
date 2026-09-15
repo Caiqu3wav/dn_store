@@ -51,18 +51,6 @@ function Auth() {
               Esqueci minha senha
             </Link>
             <span style={{ margin: 10 }}>|</span>
-            <Link
-              href="/"
-              style={{ color: "#007bff" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.textDecoration = "underline";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.textDecoration = "none";
-              }}
-            >
-              Entrar como visitante
-            </Link>
           </Row>
         </Login>
       </Container>
@@ -87,18 +75,7 @@ function Auth() {
               </OnClickText>
             </span>
             <span style={{ margin: 10 }}>|</span>
-            <Link
-              href="/"
-              style={{ color: "#007bff" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.textDecoration = "underline";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.textDecoration = "none";
-              }}
-            >
-              Entrar como visitante
-            </Link>
+            
           </Row>
         </Login>
       </Container>

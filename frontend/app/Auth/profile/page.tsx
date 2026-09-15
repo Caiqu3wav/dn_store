@@ -1,6 +1,7 @@
 "use client";
 
 import { LabelInput } from "@/app/components/ui/LabelInput";
+import { useState } from "react";
 import { Col, Container, Row } from "react-bootstrap";
 import styled from "styled-components";
 
@@ -40,12 +41,35 @@ export const EditButton = styled.button`
   color: #fff;
   border: none;
   border-radius: 5px;
+
 `;
 
 export default function ProfilePage() {
-  const temporaryUser = {
+  type ProfileField = "name" | "email";
+
+  const [user, setUser] = useState({
     name: "Usuário de Teste",
     email: "usuario.teste@example.com",
+  });
+  const [editingField, setEditingField] = useState<ProfileField | null>(null);
+  const [draftValue, setDraftValue] = useState("");
+
+  const handleEdit = (field: ProfileField) => {
+    if (editingField === field) {
+      const value = draftValue.trim();
+
+      if (!value) {
+        return;
+      }
+
+      setUser((currentUser) => ({ ...currentUser, [field]: value }));
+      setEditingField(null);
+      setDraftValue("");
+      return;
+    }
+
+    setEditingField(field);
+    setDraftValue(user[field]);
   };
 
   return (
@@ -70,30 +94,38 @@ export default function ProfilePage() {
         <FieldRow className="d-flex justify-content-center align-items-center mb-3">
           <Col className="d-flex justify-content-center align-items-center mb-3">
             <LabelInput
+              width="30rem"
               label="Nome"
               name="name"
               type="text"
-              value={temporaryUser.name}
-              noOutline={true}
-              disabled
+              value={editingField === "name" ? draftValue : user.name}
+              noOutline={editingField !== "name"}
+              disabled={editingField !== "name"}
+              onChange={(event) => setDraftValue(event.target.value)}
             />
           </Col>
           <Col className="d-flex justify-content-center align-items-center mb-3">
-            <EditButton>Editar</EditButton>
+            <EditButton onClick={() => handleEdit("name")}>
+              {editingField === "name" ? "Salvar" : "Editar"}
+            </EditButton>
           </Col>
         </FieldRow>
 
         <hr style={{ width: "100%", marginBottom: 20 }} />
         <FieldRow className="d-flex justify-content-center align-items-center mb-3">
           <LabelInput
+            width="30rem"
             label="Email"
             name="email"
             type="email"
-            value={temporaryUser.email}
-            noOutline={true}
-            disabled
+            value={editingField === "email" ? draftValue : user.email}
+            noOutline={editingField !== "email"}
+            disabled={editingField !== "email"}
+            onChange={(event) => setDraftValue(event.target.value)}
           />
-          <EditButton>Editar</EditButton>
+          <EditButton onClick={() => handleEdit("email")}>
+            {editingField === "email" ? "Salvar" : "Editar"}
+          </EditButton>
         </FieldRow>
         <hr style={{ width: "100%", marginBottom: 20 }} />
       </Profile>
