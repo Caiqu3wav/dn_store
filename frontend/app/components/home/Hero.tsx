@@ -92,7 +92,7 @@ export function Hero({ images = [] }: HeroProps) {
                     transition={{ duration: 0.8, delay: 0.4 }}
                     className="text-lg md:text-2xl font-light mt-12 max-w-2xl mx-auto text-gray-200"
                 >
-                    Equipamentos para quem vive o desafio.
+                    Vista o desafio. Viva a aventura.
                 </motion.p>
                 
                 {/* Carousel Indicators (Optional visual cue) */}
