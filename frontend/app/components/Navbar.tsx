@@ -10,7 +10,7 @@ import { useFavorites } from "../context/FavoritesContext";
 import { Col, Container, Dropdown, Row } from 'react-bootstrap';
 
 export function Navbar() {
-    const [user, setUser] = useState(null);
+
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { itemCount } = useCart();
@@ -115,13 +115,13 @@ export function Navbar() {
                 >
                   <Row className="px-4 py-2 text-sm text-gray-400 hover:bg-gray-700 hover:text-white">
                     {" "}
-                    <Dropdown.Item href="/perfil">Perfil</Dropdown.Item>
+                    <Dropdown.Item href="/Auth/profile">Perfil</Dropdown.Item>
                   </Row>
                   {/* condição temporaria */}
                   {/* {user ? ( */}
                     <Row className="px-4 py-2 text-sm text-gray-400 hover:bg-gray-700 hover:text-white">
                       {" "}
-                      <Dropdown.Item href="/">Sair</Dropdown.Item>
+                      <Dropdown.Item href="/Auth">Sair</Dropdown.Item>
                     </Row>
                   {/* ) : ( */}
                     <Row className="px-4 py-2 text-sm text-gray-400 hover:bg-gray-700 hover:text-white">

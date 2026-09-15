@@ -4,6 +4,8 @@ import { Container, Login, Logo } from "./page.style"
 import { AuthForm } from "../components/ui/AuthForm"
 import { OnClickText } from '../components/ui/Text';
 import { useSearchParams } from "next/navigation";
+import { Row } from "react-bootstrap";
+import Link from "next/link";
 
 function Auth() {
 
@@ -22,38 +24,86 @@ function Auth() {
 
 
   return (
-    (pagetype === "login") && (
+    (pagetype === "login" && (
       <Container>
         <Login>
-
           <Logo />
 
           <AuthForm title="Entrar" />
 
           <p>
-            Não tem conta? <OnClickText onClick={() => setPagetype("register")}>Cadastrar</OnClickText>
+            Não tem conta?{" "}
+            <OnClickText onClick={() => setPagetype("register")}>
+              Cadastrar
+            </OnClickText>
           </p>
-          <p>
-            <a href="/Auth/recover" style={{ color: "#007bff", textDecoration: "none" }}>
+          <Row>
+            <Link
+              href="/Auth/recover"
+              style={{ color: "#007bff" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.textDecoration = "underline";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.textDecoration = "none";
+              }}
+            >
               Esqueci minha senha
-            </a>
-          </p>
+            </Link>
+            <span style={{ margin: 10 }}>|</span>
+            <Link
+              href="/"
+              style={{ color: "#007bff" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.textDecoration = "underline";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.textDecoration = "none";
+              }}
+            >
+              Entrar como visitante
+            </Link>
+          </Row>
         </Login>
       </Container>
-    ) || (
-      pagetype === "register" && (
-        <Container>
-          <Login>
-            <Logo />
-            <AuthForm title="Cadastro" />
-            <p>
-              Já tem conta? <OnClickText onClick={() => setPagetype("login")}>Entrar</OnClickText>
-            </p>
-          </Login>
-        </Container>
-      )
-    )
-  )
+    )) ||
+    (pagetype === "register" && (
+      <Container>
+        <Login>
+          <Logo />
+          <AuthForm title="Cadastro" />
+          <Row
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              marginTop: 10,
+            }}
+          >
+            <span>
+              Já tem conta?{" "}
+              <OnClickText onClick={() => setPagetype("login")}>
+                Entrar
+              </OnClickText>
+            </span>
+            <span style={{ margin: 10 }}>|</span>
+            <Link
+              href="/"
+              style={{ color: "#007bff" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.textDecoration = "underline";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.textDecoration = "none";
+              }}
+            >
+              Entrar como visitante
+            </Link>
+          </Row>
+        </Login>
+      </Container>
+    ))
+  );
 }
 
 export default Auth

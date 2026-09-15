@@ -1,6 +1,8 @@
 import styled from "styled-components";
 
 interface LabelInputProps {
+  disabled?: boolean;
+  noOutline?: boolean;
   required?: boolean;
   width?: string;
   max?: number;
@@ -12,9 +14,9 @@ interface LabelInputProps {
   onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-const StyledInput = styled.input`
+const StyledInput = styled.input<{ noOutline?: boolean }>`
   padding: 0.5rem;
-  border: 1px solid #ccc;
+  border: ${({ noOutline }) => (!noOutline ? "1px solid #ccc" : "none")};
   border-radius: 0.25rem;
   font-size: 1rem;
   outline: none;
@@ -32,7 +34,6 @@ const StyledLabel = styled.label`
   margin-top: 1rem;
   margin-bottom: 0.5rem;
   font-weight: bold;
-
 `;
 
 const FieldContainer = styled.div<{ inputWidth: string }>`
@@ -43,6 +44,9 @@ const FieldContainer = styled.div<{ inputWidth: string }>`
 `;
 
 export function LabelInput({
+  disabled = false,
+  required = false,
+  noOutline = false,
   width = "100%",
   label,
   placeholder,
@@ -64,9 +68,11 @@ export function LabelInput({
           type={type}
           value={value}
           onChange={onChange}
+          noOutline={noOutline}
+          required={required}
+          disabled={disabled}
         />
       </FieldContainer>
     </>
   );
 }
-
