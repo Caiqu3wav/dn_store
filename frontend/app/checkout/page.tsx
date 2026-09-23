@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../context/CartContext';
 import { StepDelivery, DeliveryData } from './components/StepDelivery';
@@ -8,6 +8,8 @@ import { StepPayment, PaymentData, PaymentMethod } from './components/StepPaymen
 import { StepConfirmation } from './components/StepConfirmation';
 import { OrderSummary } from './components/OrderSummary';
 import Link from 'next/link';
+import { useAuth } from '../context/AuthContext';
+import api from '@/lib/axios';
 
 type Step = 1 | 2 | 3;
 
@@ -35,6 +37,7 @@ const STEP_LABELS = ['Entrega', 'Pagamento', 'Confirmação'];
 
 export default function CheckoutPage() {
     const { items, total, clearCart } = useCart();
+    const { user, loading: authLoading } = useAuth();
     const router = useRouter();
 
     const [step, setStep] = useState<Step>(1);
@@ -43,11 +46,25 @@ export default function CheckoutPage() {
     const [orderId, setOrderId] = useState<string>('');
     const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
 
+    useEffect(() => {
+        if (!authLoading && !user) {
+            router.replace('/auth?next=/checkout');
+        }
+    }, [authLoading, router, user]);
+
+    if (authLoading || !user) {
+        return (
+            <div className="min-h-screen bg-gray-50 pt-32 text-center text-gray-600">
+                Verificando sua sessão...
+            </div>
+        );
+    }
+
     if (items.length === 0 && step !== 3) {
         return (
             <div className="min-h-screen bg-gray-50 pt-32 pb-20 text-center">
                 <h1 className="text-3xl font-bold mb-4 text-brand-primary">Seu carrinho está vazio</h1>
-                <Link href="/loja" className="inline-block bg-brand-primary text-white font-bold px-8 py-4 rounded-xl hover:bg-brand-secondary transition-colors">
+                <Link href="/produtos" className="inline-block bg-brand-primary text-white font-bold px-8 py-4 rounded-xl hover:bg-brand-secondary transition-colors">
                     Ir para a Loja
                 </Link>
             </div>
@@ -55,54 +72,50 @@ export default function CheckoutPage() {
     }
 
     const handleConfirmPayment = async (): Promise<PaymentResult | null> => {
-        const token = localStorage.getItem('token');
-
         try {
-            // 1. Criar pedido
-            const orderRes = await fetch('/api/orders', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({
-                    zipCode: delivery.zipCode.replace(/\D/g, ''),
-                    shippingType: 'PAC',
-                }),
-            });
+            for (const item of items) {
+                await api.post('/cart/items', {
+                    productId: item.id,
+                    size: item.size,
+                    quantity: item.quantity,
+                });
+            }
 
-            if (!orderRes.ok) throw new Error('Erro ao criar pedido');
-            const order = await orderRes.json();
+            const orderRes = await api.post('/orders', {
+                zipCode: delivery.zipCode.replace(/\D/g, ''),
+                street: delivery.street,
+                number: delivery.number,
+                complement: delivery.complement,
+                neighborhood: delivery.neighborhood,
+                city: delivery.city,
+                state: delivery.state,
+                shippingType: 'PAC',
+            });
+            const order = orderRes.data;
             setOrderId(order.id);
 
-            // 2. Iniciar pagamento
-            const paymentRes = await fetch('/api/payment/init', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({
-                    orderId: order.id,
-                    amount: total,
-                    paymentMethod: payment.method,
-                    cpfCnpj: payment.cpfCnpj.replace(/\D/g, ''),
-                    installments: payment.installments,
-                    card: (payment.method === 'CREDIT_CARD' || payment.method === 'DEBIT_CARD')
-                        ? {
-                            holderName: payment.card.holderName,
-                            number: payment.card.number.replace(/\s/g, ''),
-                            expiryMonth: payment.card.expiryMonth,
-                            expiryYear: payment.card.expiryYear,
-                            ccv: payment.card.ccv,
-                        }
-                        : null,
-                }),
+            const paymentRes = await api.post('/payment/init', {
+                orderId: order.id,
+                paymentMethod: payment.method,
+                cpfCnpj: payment.cpfCnpj.replace(/\D/g, ''),
+                installments: payment.installments,
+                card: (payment.method === 'CREDIT_CARD' || payment.method === 'DEBIT_CARD')
+                    ? {
+                        holderName: payment.card.holderName,
+                        number: payment.card.number.replace(/\s/g, ''),
+                        expiryMonth: payment.card.expiryMonth,
+                        expiryYear: payment.card.expiryYear,
+                        ccv: payment.card.ccv,
+                    }
+                    : null,
             });
 
-            if (!paymentRes.ok) throw new Error('Erro ao processar pagamento');
-            const result: PaymentResult = await paymentRes.json();
-
-            if (result.status === 'PAID') clearCart();
-            return result;
-
-        } catch (e) {
-            console.error(e);
-            return null;
+            clearCart();
+            return paymentRes.data as PaymentResult;
+        } catch (error: unknown) {
+            const responseMessage = (error as { response?: { data?: { message?: string } } })
+                .response?.data?.message;
+            throw new Error(responseMessage || 'Não foi possível criar o pedido ou processar o pagamento.');
         }
     };
 

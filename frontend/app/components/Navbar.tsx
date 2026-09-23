@@ -7,12 +7,15 @@ import { useState, useEffect } from 'react';
 import { cn } from './ui/Button';
 import { useCart } from '../context/CartContext';
 import { useFavorites } from '../context/FavoritesContext';
+import { useAuth } from '../context/AuthContext';
 
 export function Navbar() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const { itemCount } = useCart();
     const { favoritesCount } = useFavorites();
+    const { user } = useAuth();
+    const accountHref = user ? '/conta' : '/auth';
 
     useEffect(() => {
         const handleScroll = () => {
@@ -79,7 +82,7 @@ export function Navbar() {
 
                     {/* Icons */}
                     <div className="flex items-center gap-4 text-white">
-                        <Link href='/Auth' className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label="Conta">
+                        <Link href={accountHref} className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label={user ? 'Minha conta' : 'Entrar'}>
                             <User className="w-5 h-5" />
                         </Link>
                         <Link href='/favoritos' className="hidden sm:flex hover:text-brand-secondary transition-colors relative items-center" aria-label="Favoritos">
@@ -127,7 +130,7 @@ export function Navbar() {
                     <Link href="/sobre" className="text-gray-800 font-medium py-2 border-b border-gray-100">Sobre</Link>
                     
                     <div className="flex items-center justify-around pt-4 pb-2">
-                        <Link href="/Auth" className="flex flex-col items-center gap-1 text-gray-600">
+                        <Link href={accountHref} className="flex flex-col items-center gap-1 text-gray-600">
                             <User className="w-5 h-5" />
                             <span className="text-xs">Conta</span>
                         </Link>

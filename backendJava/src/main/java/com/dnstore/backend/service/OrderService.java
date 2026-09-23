@@ -2,6 +2,7 @@ package com.dnstore.backend.service;
 
 import com.dnstore.backend.model.Address;
 import com.dnstore.backend.model.Cart;
+import com.dnstore.backend.model.CartItem;
 import com.dnstore.backend.model.Coupon;
 import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.OrderItem;
@@ -10,6 +11,7 @@ import com.dnstore.backend.repository.AddressRepository;
 import com.dnstore.backend.repository.CartRepository;
 import com.dnstore.backend.repository.CouponRepository;
 import com.dnstore.backend.repository.OrderRepository;
+import com.dnstore.backend.repository.ProductVariantRepository;
 import com.dnstore.backend.service.strategy.DeliveryStrategy.DeliveryResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,9 +40,16 @@ public class OrderService {
     private final AddressRepository addressRepository;
     private final CouponService couponService;
     private final CouponRepository couponRepository;
+    private final ProductVariantRepository productVariantRepository;
+
+    public record AddressData(
+            String street, String number, String complement,
+            String neighborhood, String city, String state, String zipCode
+    ) {}
 
     @Transactional
-    public Order checkout(User user, String zipCode, String shippingType, String couponCode, UUID addressId) {
+    public Order checkout(User user, AddressData addressData, String shippingType, String couponCode, UUID addressId) {
+        String zipCode = addressData != null ? addressData.zipCode() : null;
         Cart cart = cartRepository.findByUser(user)
                 .orElseThrow(() -> new IllegalStateException("O carrinho está vazio."));
 
@@ -55,26 +64,24 @@ public class OrderService {
                 shippingType
         );
 
-        // 2. Resolver Endereço
+        // 2. Resolver Endereço — prioridade: addressId salvo > dados do formulário
         Address address;
         if (addressId != null) {
             address = addressRepository.findById(addressId)
                     .orElseThrow(() -> new IllegalArgumentException("Endereço não encontrado."));
+        } else if (addressData != null) {
+            address = new Address();
+            address.setUser(user);
+            address.setStreet(addressData.street());
+            address.setNumber(addressData.number());
+            address.setComplement(addressData.complement());
+            address.setNeighborhood(addressData.neighborhood());
+            address.setCity(addressData.city());
+            address.setState(addressData.state());
+            address.setZipCode(addressData.zipCode());
+            address = addressRepository.save(address);
         } else {
-            List<Address> userAddresses = addressRepository.findByUser_Id(user.getId());
-            if (!userAddresses.isEmpty()) {
-                address = userAddresses.get(0);
-            } else {
-                address = new Address();
-                address.setUser(user);
-                address.setStreet("Rua Simulação de Compra");
-                address.setNumber("10");
-                address.setNeighborhood("Centro");
-                address.setCity("Cidade DN Store");
-                address.setState("SP");
-                address.setZipCode(zipCode != null ? zipCode : "01001-000");
-                address = addressRepository.save(address);
-            }
+            throw new IllegalArgumentException("Endereço de entrega é obrigatório.");
         }
 
         // 3. Aplicar Cupom se existir
@@ -119,12 +126,26 @@ public class OrderService {
         order.setCoupon(appliedCoupon);
         order.setDiscountAmount(discount);
 
-        // Mapear CartItems para OrderItems (Entidades JPA)
+        // 4b. Validar estoque e decrementar
+        for (CartItem cartItem : cart.getItems()) {
+            var variant = cartItem.getProductVariant();
+            if (variant.getStock() < cartItem.getQuantity()) {
+                throw new IllegalStateException(
+                        "Estoque insuficiente para o produto: " + variant.getProduct().getName()
+                                + " (" + variant.getSize() + ")"  
+                );
+            }
+            variant.setStock(variant.getStock() - cartItem.getQuantity());
+            productVariantRepository.save(variant);
+        }
+
+        // Mapear CartItems para OrderItems
         List<OrderItem> orderItems = cart.getItems().stream()
                 .map(cartItem -> new OrderItem(order, cartItem.getProductVariant(), cartItem.getQuantity(), cartItem.getSubtotal()))
                 .collect(Collectors.toList());
 
         order.setItems(orderItems);
+        order.setShippingCost(shipping.cost());
 
         // Total = total produtos + frete - desconto
         BigDecimal total = cart.getTotalPrice().add(shipping.cost()).subtract(discount);

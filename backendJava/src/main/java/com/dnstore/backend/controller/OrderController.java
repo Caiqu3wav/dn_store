@@ -34,9 +34,16 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<?> createOrder(@AuthenticationPrincipal User user, @RequestBody CheckoutRequest request) {
         try {
+            OrderService.AddressData addressData = request.getAddressId() == null
+                    ? new OrderService.AddressData(
+                            request.getStreet(), request.getNumber(), request.getComplement(),
+                            request.getNeighborhood(), request.getCity(), request.getState(),
+                            request.getZipCode())
+                    : null;
+
             Order order = orderService.checkout(
                     user,
-                    request.getZipCode(),
+                    addressData,
                     request.getShippingType(),
                     request.getCouponCode(),
                     request.getAddressId()
@@ -45,7 +52,6 @@ public class OrderController {
         } catch (IllegalStateException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
         } catch (Exception e) {
-            // Em produção logar o erro real
             return ResponseEntity.internalServerError().body(new ErrorResponse("Erro interno ao processar pedido."));
         }
     }
@@ -108,41 +114,36 @@ public class OrderController {
     // DTOs auxiliares
     public static class CheckoutRequest {
         private String zipCode;
+        private String street;
+        private String number;
+        private String complement;
+        private String neighborhood;
+        private String city;
+        private String state;
         private String shippingType;
         private String couponCode;
         private UUID addressId;
 
-        public String getZipCode() {
-            return zipCode;
-        }
-
-        public void setZipCode(String zipCode) {
-            this.zipCode = zipCode;
-        }
-
-        public String getShippingType() {
-            return shippingType;
-        }
-
-        public void setShippingType(String shippingType) {
-            this.shippingType = shippingType;
-        }
-
-        public String getCouponCode() {
-            return couponCode;
-        }
-
-        public void setCouponCode(String couponCode) {
-            this.couponCode = couponCode;
-        }
-
-        public UUID getAddressId() {
-            return addressId;
-        }
-
-        public void setAddressId(UUID addressId) {
-            this.addressId = addressId;
-        }
+        public String getZipCode() { return zipCode; }
+        public void setZipCode(String zipCode) { this.zipCode = zipCode; }
+        public String getStreet() { return street; }
+        public void setStreet(String street) { this.street = street; }
+        public String getNumber() { return number; }
+        public void setNumber(String number) { this.number = number; }
+        public String getComplement() { return complement; }
+        public void setComplement(String complement) { this.complement = complement; }
+        public String getNeighborhood() { return neighborhood; }
+        public void setNeighborhood(String neighborhood) { this.neighborhood = neighborhood; }
+        public String getCity() { return city; }
+        public void setCity(String city) { this.city = city; }
+        public String getState() { return state; }
+        public void setState(String state) { this.state = state; }
+        public String getShippingType() { return shippingType; }
+        public void setShippingType(String shippingType) { this.shippingType = shippingType; }
+        public String getCouponCode() { return couponCode; }
+        public void setCouponCode(String couponCode) { this.couponCode = couponCode; }
+        public UUID getAddressId() { return addressId; }
+        public void setAddressId(UUID addressId) { this.addressId = addressId; }
     }
 
     public static class ErrorResponse {

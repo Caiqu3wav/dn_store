@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { CheckCircle2, Clock, XCircle, Copy, Check, ExternalLink, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import api from '@/lib/axios';
 
 interface PaymentResult {
     status: string;
@@ -23,23 +24,25 @@ export function StepConfirmation({ orderId, paymentMethod, result }: Props) {
     const [status, setStatus] = useState(result.status);
     const [copied, setCopied] = useState(false);
 
-    // Polling para Pix e Boleto — verifica status a cada 5s
+    // Polling para Pix e Boleto — máx 36 tentativas (3 min)
     useEffect(() => {
         if (status === 'PAID' || paymentMethod === 'CREDIT_CARD' || paymentMethod === 'DEBIT_CARD') return;
 
+        let attempts = 0;
+        const MAX_ATTEMPTS = 36;
+
         const interval = setInterval(async () => {
+            attempts++;
             try {
-                const res = await fetch(`/api/payment/order/${orderId}`, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    setStatus(data.status);
-                    if (data.status === 'PAID') clearInterval(interval);
+                const { data } = await api.get(`/payment/order/${orderId}`);
+                setStatus(data.status);
+                if (data.status === 'PAID' || data.status === 'FAILED') {
+                    clearInterval(interval);
                 }
             } catch {
                 // silently ignore polling errors
             }
+            if (attempts >= MAX_ATTEMPTS) clearInterval(interval);
         }, 5000);
 
         return () => clearInterval(interval);

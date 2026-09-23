@@ -10,7 +10,7 @@ export default function RecoverPasswordPage() {
 
         // Por enquanto, apenas vai para a página de redefinição.
         // Futuramente o backend enviará o link por e-mail.
-        router.push('/Auth/recover/reset');
+        router.push('/auth/recover/reset');
     };
 
     return (
@@ -102,7 +102,7 @@ export default function RecoverPasswordPage() {
 
                     <button
                         type="button"
-                        onClick={() => router.push('/Auth')}
+                        onClick={() => router.push('auth')}
                         style={{
                             display: 'block',
                             margin: '16px auto 0',

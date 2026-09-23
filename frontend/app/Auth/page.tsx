@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { Container, Login, Logo } from "./page.style";
 import { AuthForm } from "../components/ui/AuthForm";
@@ -13,6 +13,8 @@ function Auth() {
   const [errorMsg, setErrorMsg] = useState("");
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get('next') || '/';
 
   const handleLoginSubmit = async (email: string, password: string) => {
     setErrorMsg("");
@@ -26,7 +28,7 @@ function Auth() {
       if (data.user.role === 'ADMIN') {
         router.push("/admin");
       } else {
-        router.push("/");
+        router.push(nextPath);
       }
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || "Erro ao fazer login. Verifique suas credenciais.");
@@ -45,7 +47,7 @@ function Auth() {
       login(data.token, data.user);
       
       toast.success("Conta criada com sucesso!");
-      router.push("/");
+      router.push(nextPath);
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || "Erro ao cadastrar.");
     }
@@ -66,13 +68,13 @@ function Auth() {
           <>
             <AuthForm 
               title="Entrar" 
-              onSubmit={handleLoginSubmit} 
+              onSubmit={handleLoginSubmit}
             />
             <p className="mt-4 text-gray-400">
               Não tem conta? <OnClickText onClick={() => setPagetype("register")}>Cadastrar</OnClickText>
             </p>
             <p className="mt-2">
-              <a href="/Auth/recover" style={{ color: "#007bff", textDecoration: "none", fontSize: "0.9rem" }}>
+              <a href="/auth/recover" style={{ color: "#007bff", textDecoration: "none", fontSize: "0.9rem" }}>
                 Esqueci minha senha
               </a>
             </p>

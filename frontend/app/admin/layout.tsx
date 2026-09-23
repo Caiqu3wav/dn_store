@@ -35,7 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (!loading) {
             if (!user) {
                 toast.error("Você precisa estar logado para acessar esta página.");
-                router.push('/auth');
+                router.push('/Auth');
             } else if (user.role !== 'ADMIN') {
                 toast.error("Acesso negado. Apenas administradores podem acessar esta área.");
                 router.push('/');

@@ -107,7 +107,7 @@ export function ProductCard({ product }: ProductCardProps) {
           </Link>
         </h3>
 
-        <div className="mt-auto flex items-center justify-between gap-4 pt-3 border-t border-gray-50">
+        <div className="mt-auto flex items-center justify-between gap-3 pt-3 border-t border-gray-50">
           <div className="flex flex-col">
             {product.promotionalPrice ? (
               <>
