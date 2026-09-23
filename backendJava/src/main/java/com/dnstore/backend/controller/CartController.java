@@ -2,9 +2,11 @@ package com.dnstore.backend.controller;
 
 import com.dnstore.backend.model.Cart;
 import com.dnstore.backend.model.ProductVariant;
+import com.dnstore.backend.model.Product;
 import com.dnstore.backend.model.User;
 import com.dnstore.backend.repository.CartRepository;
 import com.dnstore.backend.repository.ProductVariantRepository;
+import com.dnstore.backend.repository.ProductRepository;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +28,7 @@ public class CartController {
 
     private final CartRepository cartRepository;
     private final ProductVariantRepository productVariantRepository;
+    private final ProductRepository productRepository;
 
     @GetMapping
     public ResponseEntity<Cart> getCart(@AuthenticationPrincipal User user) {
@@ -47,13 +50,27 @@ public class CartController {
                     return cartRepository.save(newCart);
                 });
 
-        return productVariantRepository.findById(request.getProductVariantId())
-                .map(productVariant -> {
+        java.util.Optional<ProductVariant> variant = request.getProductVariantId() != null
+            ? productVariantRepository.findById(request.getProductVariantId())
+            : productRepository.findById(request.getProductId()).map(product -> createDefaultVariant(product, request));
+
+        return variant
+            .map(productVariant -> {
                     cart.addItem(productVariant, request.getQuantity());
                     cartRepository.save(cart);
                     return ResponseEntity.ok(cart);
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    private ProductVariant createDefaultVariant(Product product, CartItemRequest request) {
+        ProductVariant variant = new ProductVariant();
+        variant.setProduct(product);
+        variant.setSize(request.getSize() == null || request.getSize().isBlank() ? "Único" : request.getSize());
+        variant.setColor(product.getColor());
+        variant.setStock(product instanceof com.dnstore.backend.model.PhysicalProduct physical
+                ? physical.getStock() : 0);
+        return productVariantRepository.save(variant);
     }
 
     @PutMapping("/items/{productVariantId}")
@@ -96,6 +113,8 @@ public class CartController {
     @Data
     public static class CartItemRequest {
         private UUID productVariantId;
+        private UUID productId;
+        private String size;
         private int quantity;
     }
 

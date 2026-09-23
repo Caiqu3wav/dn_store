@@ -5,19 +5,26 @@ import { Plus, Search, Edit, Trash2, Filter } from 'lucide-react';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { fetcher, productService } from '@/services/productService';
-import { Product } from '@/types';
+import { Category, Product } from '@/types';
 
 export default function AdminProductsPage() {
     const [searchTerm, setSearchTerm] = useState('');
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [categoryId, setCategoryId] = useState('');
+    const [minPrice, setMinPrice] = useState('');
+    const [maxPrice, setMaxPrice] = useState('');
+    const { data: categories } = useSWR<Category[]>('/categories', fetcher);
+
+    const productQuery = new URLSearchParams();
+    if (searchTerm) productQuery.set('search', searchTerm);
+    if (categoryId) productQuery.set('categoryId', categoryId);
+    if (minPrice) productQuery.set('minPrice', minPrice);
+    if (maxPrice) productQuery.set('maxPrice', maxPrice);
 
     const { data: productsData, mutate } = useSWR<Product[]>(
-        `/products?search=${searchTerm}`,
+        `/products?${productQuery.toString()}`,
         fetcher
     );
-
-    console.log(productsData);
-console.log(Array.isArray(productsData));
-console.log(typeof productsData);
 
     const filteredProducts = productsData || [];
 
@@ -34,20 +41,27 @@ console.log(typeof productsData);
     };
 
     return (
-        <div className="space-y-6 text-white">
+        <div className="space-y-6  text-white">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold">Produtos</h1>
                     <p className="text-gray-400 mt-1">Gerencie o catálogo da sua loja.</p>
                 </div>
-                <Link 
-                    href="/admin/produtos/novo"
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-brand-secondary text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
-                >
-                    <Plus className="w-5 h-5" />
-                    Novo Produto
-                </Link>
-            </div>
+                <div className="flex items-center gap-3">
+                    <Link 
+                        href="/admin/produtos/lote"
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-700 text-white font-medium rounded-lg hover:bg-gray-600 transition-colors"
+                    >
+                        Upload em Lote
+                    </Link>
+                    <Link 
+                        href="/admin/produtos/novo"
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-brand-secondary text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                        <Plus className="w-5 h-5" />
+                        Novo Produto
+                    </Link>
+                </div>
 
             {/* Filters & Search */}
             <div className="flex flex-col md:flex-row gap-4">
@@ -61,11 +75,21 @@ console.log(typeof productsData);
                     />
                     <Search className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 </div>
-                <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#2A2A2A] border border-white/10 text-gray-300 rounded-lg hover:bg-[#333] transition-colors">
+                <button onClick={() => setFiltersOpen(open => !open)} className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#2A2A2A] border border-white/10 text-gray-300 rounded-lg hover:bg-[#333] transition-colors">
                     <Filter className="w-4 h-4" />
                     Filtros
                 </button>
             </div>
+            {filtersOpen && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-[#2A2A2A] border border-white/5 rounded-xl p-4">
+                    <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="bg-[#1A1B1D] border border-white/10 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Todas as categorias</option>
+                        {categories?.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
+                    </select>
+                    <input type="number" value={minPrice} onChange={e => setMinPrice(e.target.value)} placeholder="Preço mínimo" className="bg-[#1A1B1D] border border-white/10 rounded-lg px-3 py-2 text-sm" />
+                    <input type="number" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="Preço máximo" className="bg-[#1A1B1D] border border-white/10 rounded-lg px-3 py-2 text-sm" />
+                </div>
+            )}
 
             {/* Products Table */}
             <div className="bg-[#2A2A2A] border border-white/5 rounded-xl shadow-sm overflow-hidden">
@@ -94,8 +118,7 @@ console.log(typeof productsData);
                                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
                                     </td>
                                     <td className="p-4 text-gray-300">
-                                        {/* TODO: Estoque ainda não está no Product frontend model, colocar fallback */}
-                                        {100} un.
+                                        {product.stock ?? 0} un.
                                     </td>
                                     <td className="p-4">
                                         <span className={`px-2 py-1 text-xs font-medium rounded-full border ${
@@ -136,5 +159,6 @@ console.log(typeof productsData);
                 </div>
             </div>
         </div>
+    </div>
     );
 }

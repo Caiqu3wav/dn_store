@@ -82,8 +82,8 @@ export function StepPayment({ data, onChange, total, onConfirm, onNext, onBack }
             const result = await onConfirm();
             if (result) onNext(result);
             else setError('Não foi possível processar o pagamento. Tente novamente.');
-        } catch {
-            setError('Erro ao conectar com o servidor. Tente novamente.');
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Erro ao conectar com o servidor. Tente novamente.');
         } finally {
             setLoading(false);
         }

@@ -31,6 +31,8 @@ import java.util.UUID;
 @Table(name = "physical_products")
 @PrimaryKeyJoinColumn(name = "id")
 public class PhysicalProduct extends Product {
+    @Column(nullable = false)
+    private int stock = 0;
     private double weight;
     private double width;
     private double height;

@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import Cookies from 'js-cookie';
-import { authService } from '@/services/authService';
 import { User } from '@/types';
 
 interface AuthContextType {

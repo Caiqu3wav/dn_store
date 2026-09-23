@@ -5,6 +5,7 @@ import { Button } from "../../auth/page.style";
 import { LabelInput } from "./LabelInput";
 import { AddressForm } from "./AddressForm";
 import { addressFormsDataTypes } from "./AddressForm";
+import { formatCep } from "@/utils/formatCep";
 
 interface FormData {
   email: string;
@@ -58,32 +59,93 @@ export const AuthForm = ({
   );
 
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    onChange?.(event);
+  const handleChange = (
+  event: React.ChangeEvent<HTMLInputElement>
+) => {
+  onChange?.(event);
 
-    const { name, value } = event.target;
-    if (!isRegister && name === "confirmPassword") return;
-    setFormsData((prev) => {
-      const addressField = name as keyof addressFormsDataTypes;
+  const { name } = event.target;
 
-      if (addressField in prev.addressFormsData) {
-        return {
-          ...prev,
-          addressFormsData: {
-            ...prev.addressFormsData,
-            [addressField]: value,
-          },
-        };
-      }
+  let value = event.target.value;
 
+  if (name === "zipCode") {
+    value = formatCep(value);
+  }
+
+  if (!isRegister && name === "confirmPassword") {
+    return;
+  }
+
+  setFormsData((prev) => {
+    const addressField =
+      name as keyof addressFormsDataTypes;
+
+    if (addressField in prev.addressFormsData) {
       return {
         ...prev,
-        [name]: value,
+        addressFormsData: {
+          ...prev.addressFormsData,
+          [addressField]: value,
+        },
       };
-    });
-  };
+    }
+
+    return {
+      ...prev,
+      [name]: value,
+    };
+  });
+
+  if (name === "zipCode") {
+    const cleanCep = value.replace(/\D/g, "");
+
+    if (cleanCep.length === 8) {
+      handleCepLookup(value);
+    }
+  }
+};
 
   const [error, setError] = useState<string>("");
+
+  const handleCepLookup = async (zipCode: string) => {
+  const cleanCep = zipCode.replace(/\D/g, "");
+
+  if (cleanCep.length !== 8) return;
+
+  try {
+    const response = await fetch(
+      `https://viacep.com.br/ws/${cleanCep}/json/`
+    );
+
+    if (!response.ok) {
+      throw new Error("Erro ao consultar CEP");
+    }
+
+    const data = await response.json();
+
+    if (data.erro) {
+      setError("CEP não encontrado.");
+      return;
+    }
+
+    setFormsData((prev) => ({
+      ...prev,
+      addressFormsData: {
+        ...prev.addressFormsData,
+        zipCode,
+        street: data.logradouro ?? "",
+        neighborhood: data.bairro ?? "",
+        city: data.localidade ?? "",
+        state: data.uf ?? "",
+      },
+    }));
+
+    setError("");
+  } catch (error) {
+    console.error(error);
+    setError("Não foi possível consultar o CEP.");
+  }
+};
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

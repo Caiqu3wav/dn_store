@@ -16,6 +16,7 @@ export interface Product {
   description: string;
   price: number;
   promotionalPrice?: number;
+  stock?: number;
   active: boolean;
   weight?: number;
   width?: number;

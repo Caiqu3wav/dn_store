@@ -73,6 +73,17 @@ public class ProductController {
     }
 
     /**
+     * Cria vrios produtos em lote.
+     * POST /api/products/batch
+     */
+    @PostMapping("/batch")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<Product>> createBatch(@RequestBody List<PhysicalProduct> products) {
+        List<Product> created = productService.createAll(products);
+        return ResponseEntity.ok(created);
+    }
+
+    /**
      * Atualiza um produto.
      * PUT /api/products/{id}
      */

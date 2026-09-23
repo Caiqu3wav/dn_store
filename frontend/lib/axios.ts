@@ -33,8 +33,8 @@ api.interceptors.response.use(
       Cookies.remove('auth_token');
       if (typeof window !== 'undefined') {
         // Redireciona para login apenas se não estivermos na página de login já
-        if (window.location.pathname !== '/login') {
-           window.location.href = '/login';
+          if (window.location.pathname !== '/auth') {
+            window.location.href = `/auth?next=${encodeURIComponent(window.location.pathname)}`;
         }
       }
     }

@@ -169,7 +169,7 @@ public class AsaasGatewayService implements PaymentGateway {
 
         if ("BOLETO".equals(body.get("billingType"))) {
             boletoUrl = (String) body.get("bankSlipUrl");
-            boletoBarcode = (String) body.get("nossoNumero");
+            boletoBarcode = (String) body.get("identificationField");
         }
 
         return new PaymentResult(externalId, status, pixQrCode, pixCopyPaste, boletoUrl, boletoBarcode);

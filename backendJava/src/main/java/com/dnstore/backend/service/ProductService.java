@@ -53,6 +53,27 @@ public class ProductService {
         return productRepository.save(product);
     }
 
+    // --- Batch Create ---
+    public List<Product> createAll(List<PhysicalProduct> products) {
+        for (Product product : products) {
+            if (product.getCategory() != null && product.getCategory().getId() != null) {
+                Category cat = categoryRepository.findById(product.getCategory().getId())
+                    .orElseThrow(() -> new RuntimeException("Category not found"));
+                product.setCategory(cat);
+            }
+            if (product.getImages() != null) {
+                for (ProductImage img : product.getImages()) {
+                    img.setProduct(product);
+                }
+            }
+        }
+        List<Product> saved = new java.util.ArrayList<>();
+        for (PhysicalProduct p : products) {
+            saved.add(productRepository.save(p));
+        }
+        return saved;
+    }
+
     // --- U: Update ---
     public Optional<Product> update(UUID id, Product updatedData) {
         return productRepository.findById(id).map(existing -> {

@@ -8,6 +8,7 @@ import useSWR from 'swr';
 import { fetcher, productService } from '@/services/productService';
 import { Category } from '@/types';
 import { toast } from 'react-hot-toast';
+import { uploadToCloudinary } from '@/utils/cloudinary';
 
 export default function NovoProdutoPage() {
     const router = useRouter();
@@ -65,35 +66,7 @@ export default function NovoProdutoPage() {
         setImagePreviews(prev => prev.filter((_, i) => i !== index));
     };
 
-    const uploadToCloudinary = async (file: File) => {
-        const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dn_store';
-        const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'dn_store_preset';
-        
-        console.log(`Iniciando upload para o Cloudinary (Cloud: ${cloudName}, Preset: ${uploadPreset})`);
-        
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', uploadPreset);
 
-        try {
-            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!res.ok) {
-                const errData = await res.json();
-                console.error("Erro do Cloudinary:", errData);
-                throw new Error(errData.error?.message || 'Falha no upload da imagem');
-            }
-            
-            const data = await res.json();
-            return data.secure_url;
-        } catch (error) {
-            console.error("Fetch error no Cloudinary:", error);
-            throw error;
-        }
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -138,7 +111,7 @@ export default function NovoProdutoPage() {
     };
 
     return (
-        <div className="space-y-6 text-white max-w-4xl mx-auto pb-12">
+        <div className="space-y-6 text-white max-w-5xl mx-auto pb-12">
             <div className="flex items-center gap-4">
                 <Link 
                     href="/admin/produtos"
@@ -154,10 +127,10 @@ export default function NovoProdutoPage() {
 
             <form className="space-y-8" onSubmit={handleSubmit}>
                 {/* Informações Básicas */}
-                <div className="bg-[#2A2A2A] border border-white/5 p-6 rounded-xl shadow-sm space-y-6">
+                <div className="bg-[#2A2A2A] border border-white/5 p-4 sm:p-6 rounded-xl shadow-sm space-y-5 sm:space-y-6">
                     <h2 className="text-xl font-bold border-b border-white/5 pb-4">Informações Básicas</h2>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-300">Nome do Produto *</label>
                             <input 
@@ -206,7 +179,7 @@ export default function NovoProdutoPage() {
                         />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-300">Preço Base (R$) *</label>
                             <input 
@@ -255,9 +228,9 @@ export default function NovoProdutoPage() {
                 </div>
 
                 {/* Dimensões (Opcional) */}
-                <div className="bg-[#2A2A2A] border border-white/5 p-6 rounded-xl shadow-sm space-y-6">
+                <div className="bg-[#2A2A2A] border border-white/5 p-4 sm:p-6 rounded-xl shadow-sm space-y-5 sm:space-y-6">
                     <h2 className="text-xl font-bold border-b border-white/5 pb-4">Dimensões para Frete (Opcional)</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
                         <div className="space-y-2">
                             <label className="text-xs text-gray-400">Peso (kg)</label>
                             <input type="number" step="0.01" value={weight} onChange={(e) => setWeight(e.target.value)} className="w-full bg-[#1A1B1D] border border-white/10 rounded-lg py-2 px-3 text-white" />
@@ -278,7 +251,7 @@ export default function NovoProdutoPage() {
                 </div>
 
                 {/* Imagens */}
-                <div className="bg-[#2A2A2A] border border-white/5 p-6 rounded-xl shadow-sm space-y-6">
+                <div className="bg-[#2A2A2A] border border-white/5 p-4 sm:p-6 rounded-xl shadow-sm space-y-5 sm:space-y-6">
                     <h2 className="text-xl font-bold border-b border-white/5 pb-4">Imagens do Produto</h2>
                     
                     {imagePreviews.length > 0 && (

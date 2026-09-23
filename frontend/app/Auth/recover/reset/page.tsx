@@ -30,7 +30,7 @@ export default function ResetPasswordPage() {
 
         // Por enquanto não salva a senha.
         // O backend será responsável por isso futuramente.
-        router.push('/Auth');
+        router.push('/auth');
     };
 
     return (
@@ -173,7 +173,7 @@ export default function ResetPasswordPage() {
 
                     <button
                         type="button"
-                        onClick={() => router.push('/Auth')}
+                        onClick={() => router.push('/auth')}
                         style={{
                             display: 'block',
                             margin: '16px auto 0',

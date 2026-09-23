@@ -38,6 +38,9 @@ public class Order {
     @Column(name = "total", nullable = false, precision = 10, scale = 2)
     private BigDecimal total;
 
+    @Column(name = "shipping_cost", nullable = false, precision = 10, scale = 2)
+    private BigDecimal shippingCost = BigDecimal.ZERO;
+
     @Column(nullable = false, length = 50)
     private String status;
 
@@ -60,7 +63,7 @@ public class Order {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         if (status == null) {
-            status = "pending";
+            status = "PENDING_PAYMENT";
         }
     }
 }
