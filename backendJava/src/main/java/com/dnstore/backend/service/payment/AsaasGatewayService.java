@@ -25,6 +25,9 @@ public class AsaasGatewayService implements PaymentGateway {
     @Value("${asaas.sandbox:true}")
     private boolean sandbox;
 
+    @Value("${asaas.webhook-token:}")
+    private String webhookToken;
+
     private String baseUrl() {
         return sandbox
                 ? "https://sandbox.asaas.com/api/v3"
@@ -63,8 +66,7 @@ public class AsaasGatewayService implements PaymentGateway {
                 baseUrl() + "/customers",
                 HttpMethod.POST,
                 new HttpEntity<>(body, headers()),
-                Map.class
-        );
+                Map.class);
         return (String) resp.getBody().get("id");
     }
 
@@ -111,8 +113,7 @@ public class AsaasGatewayService implements PaymentGateway {
                     baseUrl() + "/payments",
                     HttpMethod.POST,
                     new HttpEntity<>(body, headers()),
-                    Map.class
-            );
+                    Map.class);
             return parsePaymentResponse(resp.getBody());
         } catch (HttpClientErrorException e) {
             log.error("Asaas createPayment error: {}", e.getResponseBodyAsString(), e);
@@ -125,6 +126,11 @@ public class AsaasGatewayService implements PaymentGateway {
     @Override
     @SuppressWarnings("unchecked")
     public WebhookResult processWebhook(String rawPayload, String signatureHeader) {
+        if (webhookToken == null || webhookToken.isBlank()
+                || signatureHeader == null || !webhookToken.equals(signatureHeader)) {
+            throw new IllegalArgumentException("Webhook não autorizado");
+        }
+
         try {
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             Map<String, Object> payload = mapper.readValue(rawPayload, Map.class);
@@ -158,8 +164,7 @@ public class AsaasGatewayService implements PaymentGateway {
                         baseUrl() + "/payments/" + externalId + "/pixQrCode",
                         HttpMethod.GET,
                         new HttpEntity<>(headers()),
-                        Map.class
-                );
+                        Map.class);
                 pixQrCode = (String) pixResp.getBody().get("encodedImage");
                 pixCopyPaste = (String) pixResp.getBody().get("payload");
             } catch (Exception e) {
@@ -178,15 +183,16 @@ public class AsaasGatewayService implements PaymentGateway {
     private String asaasBillingType(String method) {
         return switch (method.toUpperCase(Locale.ROOT)) {
             case "CREDIT_CARD" -> "CREDIT_CARD";
-            case "DEBIT_CARD"  -> "DEBIT_CARD";
-            case "PIX"         -> "PIX";
-            case "BOLETO"      -> "BOLETO";
+            case "DEBIT_CARD" -> "DEBIT_CARD";
+            case "PIX" -> "PIX";
+            case "BOLETO" -> "BOLETO";
             default -> throw new IllegalArgumentException("Método de pagamento inválido: " + method);
         };
     }
 
     private String normalizeStatus(String asaasStatus) {
-        if (asaasStatus == null) return "PENDING";
+        if (asaasStatus == null)
+            return "PENDING";
         return switch (asaasStatus.toUpperCase(Locale.ROOT)) {
             case "RECEIVED", "CONFIRMED" -> "PAID";
             case "PENDING", "AWAITING_RISK_ANALYSIS" -> "PENDING";
