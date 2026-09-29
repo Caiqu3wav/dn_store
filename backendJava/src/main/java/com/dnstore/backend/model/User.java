@@ -36,6 +36,42 @@ public class User implements UserDetails {
     @Column(name = "reset_token_expiration")
     private LocalDateTime resetTokenExpiration;
 
+    @Column(name = "reset_token_last_sent_at")
+    private LocalDateTime resetTokenLastSentAt;
+
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = true;
+
+    @Column(name = "email_verification_code_hash", length = 64)
+    private String emailVerificationCodeHash;
+
+    @Column(name = "email_verification_expiration")
+    private LocalDateTime emailVerificationExpiration;
+
+    @Column(name = "email_verification_last_sent_at")
+    private LocalDateTime emailVerificationLastSentAt;
+
+    @Column(name = "email_verification_attempts", nullable = false)
+    private int emailVerificationAttempts;
+
+    @Column(name = "mfa_challenge_token_hash", length = 64)
+    private String mfaChallengeTokenHash;
+
+    @Column(name = "mfa_code_hash", length = 64)
+    private String mfaCodeHash;
+
+    @Column(name = "mfa_code_expiration")
+    private LocalDateTime mfaCodeExpiration;
+
+    @Column(name = "mfa_last_sent_at")
+    private LocalDateTime mfaLastSentAt;
+
+    @Column(name = "mfa_attempts", nullable = false)
+    private int mfaAttempts;
+
+    @Column(name = "email_mfa_enabled", nullable = false)
+    private boolean emailMfaEnabled;
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @JdbcTypeCode(java.sql.Types.VARCHAR)
@@ -53,6 +89,9 @@ public class User implements UserDetails {
 
     @Column(length = 20)
     private String phone;
+
+    @Column(length = 11, unique = true)
+    private String cpf;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -99,7 +138,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return emailVerified;
     }
 
     public String getResetToken() {

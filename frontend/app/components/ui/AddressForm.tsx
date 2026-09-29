@@ -15,6 +15,7 @@ export interface addressFormsDataTypes {
 interface AddressFormProps {
     addressFormsData: addressFormsDataTypes;
     onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  isLoading?: boolean;
 }
 
 const AddressFormContainer = styled.div`
@@ -44,12 +45,31 @@ const AddressFormRow = styled.div`
 export function AddressForm({
     addressFormsData,
     onChange,
+  isLoading = false,
 
 }: AddressFormProps
 ) {
   return (
     <AddressFormContainer>
       <AddressFormTitle>Endereço</AddressFormTitle>
+      {isLoading && (
+        <p role="status" aria-live="polite">
+          Consultando CEP...
+        </p>
+      )}
+      <AddressFormRow>
+      <LabelInput
+        width="25%"
+        value={addressFormsData.zipCode}
+        onChange={onChange}
+        name="zipCode"
+        type="text"
+        placeholder="CEP"
+        label="CEP"
+        required
+      />
+      </AddressFormRow>
+
       <AddressFormRow>
         <LabelInput
           label="Cidade"
@@ -71,17 +91,6 @@ export function AddressForm({
           required
         />
       </AddressFormRow>
-
-      <LabelInput
-        width="25%"
-        value={addressFormsData.zipCode}
-        onChange={onChange}
-        name="zipCode"
-        type="text"
-        placeholder="CEP"
-        label="CEP"
-        required
-      />
 
       <LabelInput
         label="Bairro"

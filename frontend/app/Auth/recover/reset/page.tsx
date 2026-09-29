@@ -1,20 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { authService } from '@/services/authService';
 
 export default function ResetPasswordPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const token = searchParams.get('token') || '';
 
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [isComplete, setIsComplete] = useState(false);
 
-    const handleResetPassword = (e: React.FormEvent) => {
+    const handleResetPassword = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
 
-        if (!password || !confirmPassword) {
-            setError('Preencha os dois campos.');
+        if (!token) {
+            setError('Este link de redefinição é inválido. Solicite um novo link.');
             return;
         }
 
@@ -23,14 +29,20 @@ export default function ResetPasswordPage() {
             return;
         }
 
-        if (password.length < 6) {
-            setError('A senha deve ter pelo menos 6 caracteres.');
+        if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+            setError('Use pelo menos 8 caracteres, incluindo uma letra e um número.');
             return;
         }
 
-        // Por enquanto não salva a senha.
-        // O backend será responsável por isso futuramente.
-        router.push('/auth');
+        setIsLoading(true);
+        try {
+            await authService.resetPassword({ token, newPassword: password });
+            setIsComplete(true);
+        } catch {
+            setError('Este link é inválido ou expirou. Solicite uma nova redefinição.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -70,7 +82,7 @@ export default function ResetPasswordPage() {
                          textAlign: 'center',
                     }}
                 >
-                    Digite sua nova senha e confirme para continuar.
+                    {isComplete ? 'Sua senha foi atualizada. Agora você pode entrar com a nova senha.' : 'Crie uma senha segura para sua conta.'}
                 </p>
 
                 <form
@@ -99,6 +111,9 @@ export default function ResetPasswordPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        minLength={8}
+                        maxLength={128}
+                        disabled={isLoading || isComplete || !token}
                         style={{
                             width: '100%',
                             padding: 12,
@@ -129,6 +144,9 @@ export default function ResetPasswordPage() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required
+                        minLength={8}
+                        maxLength={128}
+                        disabled={isLoading || isComplete || !token}
                         style={{
                             width: '100%',
                             padding: 12,
@@ -156,19 +174,20 @@ export default function ResetPasswordPage() {
 
                     <button
                         type="submit"
+                        disabled={isLoading || isComplete || !token}
                         style={{
                             marginTop: 16,
                             width: '100%',
                             padding: 12,
                             border: 'none',
                             borderRadius: 6,
-                            backgroundColor: '#ff0000',
+                            backgroundColor: isComplete ? '#166534' : '#ff0000',
                             color: '#ffffff',
                             cursor: 'pointer',
                             fontSize: 16,
                         }}
                     >
-                        Confirmar
+                        {isLoading ? 'Salvando...' : isComplete ? 'Senha atualizada' : 'Redefinir senha'}
                     </button>
 
                     <button

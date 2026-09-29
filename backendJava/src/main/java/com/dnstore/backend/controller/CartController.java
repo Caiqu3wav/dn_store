@@ -12,7 +12,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -63,6 +67,46 @@ public class CartController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @PutMapping("/sync")
+    @Transactional
+    public ResponseEntity<?> synchronizeCart(
+            @AuthenticationPrincipal User user,
+            @RequestBody List<CartItemRequest> requests) {
+        if (requests == null) return ResponseEntity.badRequest().build();
+
+        List<CartLine> resolvedLines = new ArrayList<>();
+        for (CartItemRequest request : requests) {
+            if (request.getQuantity() < 1 || request.getQuantity() > 99) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            Optional<ProductVariant> variant = request.getProductVariantId() != null
+                    ? productVariantRepository.findById(request.getProductVariantId())
+                    : productRepository.findById(request.getProductId())
+                            .map(product -> productVariantRepository.findByProductId(product.getId()).stream()
+                                    .filter(existing -> java.util.Objects.equals(
+                                            existing.getSize(), request.getSize() == null || request.getSize().isBlank()
+                                                    ? "Único" : request.getSize()))
+                                    .findFirst()
+                                    .orElseGet(() -> createDefaultVariant(product, request)));
+
+            if (variant.isEmpty() || !variant.get().getProduct().isActive()) {
+                return ResponseEntity.notFound().build();
+            }
+            resolvedLines.add(new CartLine(variant.get(), request.getQuantity()));
+        }
+
+        Cart cart = cartRepository.findByUser(user).orElseGet(() -> {
+            Cart newCart = new Cart();
+            newCart.setUser(user);
+            return newCart;
+        });
+        cart.clear();
+        resolvedLines.forEach(line -> cart.addItem(line.variant(), line.quantity()));
+        cartRepository.save(cart);
+        return ResponseEntity.noContent().build();
+    }
+
     private ProductVariant createDefaultVariant(Product product, CartItemRequest request) {
         ProductVariant variant = new ProductVariant();
         variant.setProduct(product);
@@ -110,6 +154,8 @@ public class CartController {
     }
 
     // DTOs
+    private record CartLine(ProductVariant variant, int quantity) {}
+
     @Data
     public static class CartItemRequest {
         private UUID productVariantId;

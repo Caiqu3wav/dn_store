@@ -253,7 +253,7 @@ export function StepPayment({ data, onChange, total, onConfirm, onNext, onBack }
                 <button
                     onClick={handleConfirm}
                     disabled={!isValid || loading}
-                    className="flex-[2] bg-brand-primary text-white font-bold py-4 rounded-xl hover:bg-brand-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="flex-[2] bg-brand-secondary text-white font-bold py-4 rounded-xl hover:bg-brand-primary hover:text-gray-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                     {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Processando...</> : 'Confirmar Pagamento'}
                 </button>

@@ -2,6 +2,14 @@
 
 import { useState } from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
+import api from '@/lib/axios';
+
+export interface ShippingOption {
+    typeName: string;
+    cost: number;
+    deadLineDays: number;
+    source: 'SIMULATED' | 'CORREIOS';
+}
 
 export interface DeliveryData {
     zipCode: string;
@@ -14,8 +22,11 @@ export interface DeliveryData {
 }
 
 interface Props {
+    items: { id: string; size?: string; quantity: number }[];
     data: DeliveryData;
     onChange: (data: DeliveryData) => void;
+    shipping: ShippingOption | null;
+    onShippingChange: (shipping: ShippingOption | null) => void;
     onNext: () => void;
 }
 
@@ -24,36 +35,68 @@ const STATES = [
     'PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'
 ];
 
-export function StepDelivery({ data, onChange, onNext }: Props) {
+export function StepDelivery({ items, data, onChange, shipping, onShippingChange, onNext }: Props) {
     const [loadingCep, setLoadingCep] = useState(false);
+    const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
+    const [shippingError, setShippingError] = useState('');
 
-    const set = (field: keyof DeliveryData, value: string) =>
+    const set = (field: keyof DeliveryData, value: string) => {
         onChange({ ...data, [field]: value });
+        if (field === 'zipCode') {
+            setShippingOptions([]);
+            onShippingChange(null);
+        }
+    };
 
     const handleCepBlur = async () => {
         const cep = data.zipCode.replace(/\D/g, '');
         if (cep.length !== 8) return;
         setLoadingCep(true);
+        setShippingError('');
         try {
-            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-            const json = await res.json();
-            if (!json.erro) {
+            await api.put('/cart/sync', items.map(item => ({
+                productId: item.id,
+                size: item.size,
+                quantity: item.quantity,
+            })));
+            const [addressResult, quoteResult] = await Promise.allSettled([
+                fetch(`https://viacep.com.br/ws/${cep}/json/`).then(response => response.json()),
+                api.post<ShippingOption[]>('/orders/shipping-quotes', { zipCode: cep }),
+            ]);
+
+            if (addressResult.status === 'fulfilled' && !addressResult.value.erro) {
+                const address = addressResult.value;
                 onChange({
                     ...data,
-                    street: json.logradouro || '',
-                    neighborhood: json.bairro || '',
-                    city: json.localidade || '',
-                    state: json.uf || '',
+                    street: address.logradouro || '',
+                    neighborhood: address.bairro || '',
+                    city: address.localidade || '',
+                    state: address.uf || '',
                 });
             }
+
+            if (quoteResult.status === 'fulfilled') {
+                const options = quoteResult.value.data;
+                setShippingOptions(options);
+                onShippingChange(options[0] ?? null);
+            } else {
+                setShippingOptions([]);
+                onShippingChange(null);
+                setShippingError('Não foi possível cotar o frete para este CEP. Tente novamente.');
+            }
         } catch {
-            // silently ignore
+            setShippingOptions([]);
+            onShippingChange(null);
+            setShippingError('Não foi possível consultar o CEP. Verifique o número e tente novamente.');
         } finally {
             setLoadingCep(false);
         }
     };
 
-    const isValid = data.zipCode && data.street && data.number && data.city && data.state;
+    const isValid = data.zipCode && data.street && data.number && data.city && data.state && shipping;
+    const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', {
+        style: 'currency', currency: 'BRL',
+    }).format(value);
 
     return (
         <div className="space-y-6">
@@ -160,9 +203,38 @@ export function StepDelivery({ data, onChange, onNext }: Props) {
                 </div>
             </div>
 
+            <section aria-labelledby="shipping-options-title" className="space-y-3">
+                <h3 id="shipping-options-title" className="text-sm font-bold uppercase text-gray-600">Opções de entrega</h3>
+                {loadingCep && <p role="status" className="text-sm text-gray-500">Consultando CEP e estimativas...</p>}
+                {shippingError && <p role="alert" className="text-sm text-red-700">{shippingError}</p>}
+                {!loadingCep && shippingOptions.length > 0 && (
+                    <>
+                        <p className="text-xs text-amber-700">Estimativas temporárias para teste. A tarifa oficial dos Correios depende da configuração da API.</p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            {shippingOptions.map(option => {
+                                const selected = shipping?.typeName === option.typeName;
+                                return (
+                                    <button
+                                        key={option.typeName}
+                                        type="button"
+                                        aria-pressed={selected}
+                                        onClick={() => onShippingChange(option)}
+                                        className={`rounded-lg border p-4 text-left transition ${selected ? 'border-red-700 bg-red-50 ring-1 ring-red-700' : 'border-gray-200 hover:border-gray-400'}`}
+                                    >
+                                        <span className="block font-bold text-gray-900">{option.typeName}</span>
+                                        <span className="mt-1 block text-sm text-gray-600">Até {option.deadLineDays} dias úteis</span>
+                                        <span className="mt-2 block font-semibold text-gray-900">{formatCurrency(option.cost)}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
+            </section>
+
             <button
                 onClick={onNext}
-                disabled={!isValid}
+                disabled={!isValid || loadingCep}
                 className="w-full bg-brand-primary text-white font-bold py-4 rounded-xl hover:bg-brand-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
                 Continuar para Pagamento →

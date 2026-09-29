@@ -2,20 +2,125 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { ShoppingCart, Menu, X, Search, User, Heart } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { ShoppingCart, Menu, X, Search, UserRound, Heart, ChevronDown, Package, MapPin, LogOut, LogIn, UserPlus, ShieldCheck } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { cn } from './ui/Button';
 import { useCart } from '../context/CartContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useAuth } from '../context/AuthContext';
+
+function AccountDropdown({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate?: () => void }) {
+    const { user, logout } = useAuth();
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const menuId = mobile ? 'mobile-account-menu' : 'desktop-account-menu';
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const closeOnOutsideClick = (event: PointerEvent) => {
+            if (!dropdownRef.current?.contains(event.target as Node)) setIsOpen(false);
+        };
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setIsOpen(false);
+        };
+
+        document.addEventListener('pointerdown', closeOnOutsideClick);
+        document.addEventListener('keydown', closeOnEscape);
+        return () => {
+            document.removeEventListener('pointerdown', closeOnOutsideClick);
+            document.removeEventListener('keydown', closeOnEscape);
+        };
+    }, [isOpen]);
+
+    const itemClass = mobile
+        ? 'flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50'
+        : 'flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50';
+    const closeMenu = () => {
+        setIsOpen(false);
+        onNavigate?.();
+    };
+
+    return (
+        <div ref={dropdownRef} className={mobile ? 'w-full' : 'relative'}>
+            <button
+                type="button"
+                aria-label="Opções da conta"
+                aria-expanded={isOpen}
+                aria-controls={menuId}
+                onClick={() => setIsOpen(open => !open)}
+                className={mobile
+                    ? 'flex w-full items-center justify-between rounded-lg px-3 py-3 text-gray-800 hover:bg-gray-50'
+                    : 'flex items-center gap-1 rounded-md p-2 text-white transition-colors hover:text-brand-secondary'}
+            >
+                <span className={mobile ? 'flex items-center gap-3' : 'flex items-center gap-1'}>
+                    <UserRound className="h-5 w-5" />
+                    {mobile && <span className="font-medium">{user ? 'Minha conta' : 'Entrar ou cadastrar'}</span>}
+                </span>
+                <ChevronDown className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')} />
+            </button>
+
+            {isOpen && (
+                <div
+                    id={menuId}
+                    className={mobile
+                        ? 'mt-1 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm'
+                        : 'absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 text-gray-800 shadow-lg'}
+                >
+                    {user ? (
+                        <>
+                            <div className="border-b border-gray-100 px-4 py-3">
+                                <p className="truncate text-sm font-semibold text-gray-900">{user.name}</p>
+                                <p className="truncate text-xs text-gray-500">{user.email}</p>
+                            </div>
+                            <Link href="/conta#dados" className={itemClass} onClick={closeMenu}>
+                                <UserRound className="h-4 w-4" /> Meus dados
+                            </Link>
+                            <Link href="/conta#pedidos" className={itemClass} onClick={closeMenu}>
+                                <Package className="h-4 w-4" /> Meus pedidos
+                            </Link>
+                            <Link href="/conta#enderecos" className={itemClass} onClick={closeMenu}>
+                                <MapPin className="h-4 w-4" /> Meus endereços
+                            </Link>
+                            <Link href="/favoritos" className={itemClass} onClick={closeMenu}>
+                                <Heart className="h-4 w-4" /> Favoritos
+                            </Link>
+                            {user.role === 'ADMIN' && (
+                                <Link href="/admin" className={itemClass} onClick={closeMenu}>
+                                    <ShieldCheck className="h-4 w-4" /> Painel administrativo
+                                </Link>
+                            )}
+                            <div className="border-t border-gray-100">
+                                <button
+                                    type="button"
+                                    onClick={() => { closeMenu(); logout(); }}
+                                    className={`${itemClass} text-red-600 hover:bg-red-50`}
+                                >
+                                    <LogOut className="h-4 w-4" /> Sair
+                                </button>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <Link href="/auth" className={itemClass} onClick={closeMenu}>
+                                <LogIn className="h-4 w-4" /> Entrar
+                            </Link>
+                            <Link href="/auth?mode=register" className={itemClass} onClick={closeMenu}>
+                                <UserPlus className="h-4 w-4" /> Criar conta
+                            </Link>
+                        </>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
 
 export function Navbar() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const { itemCount } = useCart();
     const { favoritesCount } = useFavorites();
-    const { user } = useAuth();
-    const accountHref = user ? '/conta' : '/auth';
 
     useEffect(() => {
         const handleScroll = () => {
@@ -58,8 +163,21 @@ export function Navbar() {
                 </Link>
 
                 {/* Search Bar Centralizada */}
-                <div className="flex flex-1 min-w-0 justify-center xl:absolute xl:left-1/2 xl:-translate-x-1/2 xl:w-full xl:max-w-md xl:px-4">
-                    <div className="relative w-full">
+<div className="
+    mr-3
+    flex
+    min-w-0
+    flex-1
+    justify-center
+    sm:mr-6
+    md:w-[20rem]
+    xl:mr-0
+    xl:absolute
+    xl:left-1/2
+    xl:-translate-x-[20rem]
+    xl:w-[28rem]
+    xl:max-w-[calc(100%-32rem)]
+"><div className="relative w-full">
                     <input 
                         type="text" 
                         placeholder="Buscar produtos..." 
@@ -82,9 +200,9 @@ export function Navbar() {
 
                     {/* Icons */}
                     <div className="flex items-center gap-4 text-white">
-                        <Link href={accountHref} className="hidden sm:block hover:text-brand-secondary transition-colors" aria-label={user ? 'Minha conta' : 'Entrar'}>
-                            <User className="w-5 h-5" />
-                        </Link>
+                        <div className="hidden sm:block">
+                            <AccountDropdown />
+                        </div>
                         <Link href='/favoritos' className="hidden sm:flex hover:text-brand-secondary transition-colors relative items-center" aria-label="Favoritos">
                             <Heart className="w-5 h-5" />
                             {favoritesCount > 0 && (
@@ -129,15 +247,8 @@ export function Navbar() {
                     <Link href="/eventos" className="text-gray-800 font-medium py-2 border-b border-gray-100">Eventos</Link>
                     <Link href="/sobre" className="text-gray-800 font-medium py-2 border-b border-gray-100">Sobre</Link>
                     
-                    <div className="flex items-center justify-around pt-4 pb-2">
-                        <Link href={accountHref} className="flex flex-col items-center gap-1 text-gray-600">
-                            <User className="w-5 h-5" />
-                            <span className="text-xs">Conta</span>
-                        </Link>
-                        <button className="flex flex-col items-center gap-1 text-gray-600">
-                            <Heart className="w-5 h-5" />
-                            <span className="text-xs">Favoritos</span>
-                        </button>
+                    <div className="border-t border-gray-100 pt-3">
+                        <AccountDropdown mobile onNavigate={() => setIsMobileMenuOpen(false)} />
                     </div>
                 </div>
             )}

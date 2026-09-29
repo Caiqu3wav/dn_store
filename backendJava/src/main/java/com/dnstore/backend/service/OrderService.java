@@ -22,6 +22,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -46,6 +47,21 @@ public class OrderService {
             String street, String number, String complement,
             String neighborhood, String city, String state, String zipCode
     ) {}
+
+        public record ShippingOption(String typeName, BigDecimal cost, int deadLineDays, String source) {}
+
+        @Transactional(readOnly = true)
+        public List<ShippingOption> quoteShipping(User user, String zipCode) {
+        Cart cart = cartRepository.findByUser(user)
+            .orElseThrow(() -> new IllegalStateException("O carrinho está vazio."));
+        if (cart.getItems().isEmpty()) {
+            throw new IllegalStateException("O carrinho está vazio.");
+        }
+
+        return deliveryService.calculateOptions(zipCode, cart.getTotalWeight()).stream()
+            .map(option -> new ShippingOption(option.typeName(), option.cost(), option.deadLineDays(), "SIMULATED"))
+            .toList();
+        }
 
     @Transactional
     public Order checkout(User user, AddressData addressData, String shippingType, String couponCode, UUID addressId) {
@@ -148,6 +164,8 @@ public class OrderService {
 
         order.setItems(orderItems);
         order.setShippingCost(shipping.cost());
+        order.setShippingType(shipping.typeName());
+        order.setShippingDeadlineDays(shipping.deadLineDays());
 
         // Total = total produtos + frete - desconto
         BigDecimal total = cart.getTotalPrice().add(shipping.cost()).subtract(discount);

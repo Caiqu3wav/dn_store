@@ -3,8 +3,10 @@ package com.dnstore.backend.controller;
 import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.enums.Role;
 import com.dnstore.backend.model.User;
+import com.dnstore.backend.exception.DeliveryException;
 import com.dnstore.backend.service.OrderService;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,6 +28,17 @@ import java.util.UUID;
 public class OrderController {
 
     private final OrderService orderService;
+
+    @PostMapping("/shipping-quotes")
+    public ResponseEntity<?> quoteShipping(
+            @AuthenticationPrincipal User user,
+            @Valid @RequestBody ShippingQuoteRequest request) {
+        try {
+            return ResponseEntity.ok(orderService.quoteShipping(user, request.getZipCode()));
+        } catch (DeliveryException | IllegalStateException | IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        }
+    }
 
     /**
      * Cria um novo pedido (Checkout).
@@ -49,7 +62,7 @@ public class OrderController {
                     request.getAddressId()
             );
             return ResponseEntity.status(201).body(order);
-        } catch (IllegalStateException | IllegalArgumentException e) {
+        } catch (DeliveryException | IllegalStateException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(new ErrorResponse("Erro interno ao processar pedido."));
@@ -112,6 +125,13 @@ public class OrderController {
     }
 
     // DTOs auxiliares
+    public static class ShippingQuoteRequest {
+        @NotBlank
+        private String zipCode;
+        public String getZipCode() { return zipCode; }
+        public void setZipCode(String zipCode) { this.zipCode = zipCode; }
+    }
+
     public static class CheckoutRequest {
         private String zipCode;
         private String street;

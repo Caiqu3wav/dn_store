@@ -1,0 +1,3 @@
+ALTER TABLE users ADD COLUMN cpf VARCHAR(11) NULL;
+
+CREATE UNIQUE INDEX uk_users_cpf ON users (cpf);

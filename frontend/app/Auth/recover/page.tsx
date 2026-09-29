@@ -1,16 +1,26 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { authService } from '@/services/authService';
 
 export default function RecoverPasswordPage() {
-    const router = useRouter();
+    const [email, setEmail] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [isSent, setIsSent] = useState(false);
+    const [error, setError] = useState('');
 
-    const handleSendLink = (e: React.FormEvent) => {
+    const handleSendLink = async (e: React.FormEvent) => {
         e.preventDefault();
-
-        // Por enquanto, apenas vai para a página de redefinição.
-        // Futuramente o backend enviará o link por e-mail.
-        router.push('/auth/recover/reset');
+        setError('');
+        setIsLoading(true);
+        try {
+            await authService.forgotPassword({ email });
+            setIsSent(true);
+        } catch {
+            setError('Não foi possível solicitar a redefinição agora. Tente novamente.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -43,7 +53,9 @@ export default function RecoverPasswordPage() {
                         marginBottom: 20,
                     }}
                 >
-                    Informe seu e-mail para receber um link de redefinição.
+                    {isSent
+                        ? 'Se houver uma conta associada a este e-mail, você receberá um link para redefinir sua senha.'
+                        : 'Informe seu e-mail e enviaremos um link seguro para redefinir sua senha.'}
                 </p>
 
                 <form
@@ -69,7 +81,10 @@ export default function RecoverPasswordPage() {
                     <input
                         type="email"
                         placeholder="user@example.com"
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
                         required
+                        disabled={isLoading || isSent}
                         style={{
                             width: '100%',
                             padding: 12,
@@ -82,27 +97,30 @@ export default function RecoverPasswordPage() {
                         }}
                     />
 
+                    {error && <p role="alert" style={{ color: '#b91c1c', marginTop: 12 }}>{error}</p>}
+
                     <button
                         type="submit"
+                        disabled={isLoading || isSent}
                         style={{
                             marginTop: 16,
                             width: '100%',
                             padding: 12,
                             border: 'none',
                             borderRadius: 6,
-                            background: '#ff0000',
+                            background: isSent ? '#166534' : '#ff0000',
                             color: '#ffffff',
                             cursor: 'pointer',
                             fontSize: 16,
                             fontWeight: 700,
                         }}
                     >
-                        Enviar link
+                        {isLoading ? 'Enviando...' : isSent ? 'Solicitação enviada' : 'Enviar link'}
                     </button>
 
                     <button
                         type="button"
-                        onClick={() => router.push('auth')}
+                        onClick={() => window.location.assign('/auth')}
                         style={{
                             display: 'block',
                             margin: '16px auto 0',
