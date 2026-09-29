@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../context/CartContext';
-import { StepDelivery, DeliveryData } from './components/StepDelivery';
-import { StepPayment, PaymentData, PaymentMethod } from './components/StepPayment';
+import { StepDelivery, DeliveryData, ShippingOption } from './components/StepDelivery';
+import { StepPayment, PaymentData } from './components/StepPayment';
 import { StepConfirmation } from './components/StepConfirmation';
 import { OrderSummary } from './components/OrderSummary';
 import Link from 'next/link';
@@ -42,6 +42,7 @@ export default function CheckoutPage() {
 
     const [step, setStep] = useState<Step>(1);
     const [delivery, setDelivery] = useState<DeliveryData>(EMPTY_DELIVERY);
+    const [shipping, setShipping] = useState<ShippingOption | null>(null);
     const [payment, setPayment] = useState<PaymentData>(EMPTY_PAYMENT);
     const [orderId, setOrderId] = useState<string>('');
     const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
@@ -73,14 +74,6 @@ export default function CheckoutPage() {
 
     const handleConfirmPayment = async (): Promise<PaymentResult | null> => {
         try {
-            for (const item of items) {
-                await api.post('/cart/items', {
-                    productId: item.id,
-                    size: item.size,
-                    quantity: item.quantity,
-                });
-            }
-
             const orderRes = await api.post('/orders', {
                 zipCode: delivery.zipCode.replace(/\D/g, ''),
                 street: delivery.street,
@@ -89,7 +82,7 @@ export default function CheckoutPage() {
                 neighborhood: delivery.neighborhood,
                 city: delivery.city,
                 state: delivery.state,
-                shippingType: 'PAC',
+                shippingType: shipping?.typeName,
             });
             const order = orderRes.data;
             setOrderId(order.id);
@@ -134,12 +127,12 @@ export default function CheckoutPage() {
                                 <div className={`flex items-center gap-2 ${active || done ? 'text-brand-primary' : 'text-gray-400'}`}>
                                     <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${
                                         done ? 'bg-green-500 text-white' :
-                                        active ? 'bg-brand-primary text-white' :
-                                        'bg-gray-200 text-gray-400'
+                                        active ? 'bg-gray-100 text-gray-600' :
+                                        'bg-gray-200 text-gray-600'
                                     }`}>
                                         {done ? '✓' : n}
                                     </div>
-                                    <span className="text-sm font-semibold hidden sm:block">{label}</span>
+                                    <span className="text-sm text-black font-semibold hidden sm:block">{label}</span>
                                 </div>
                                 {i < STEP_LABELS.length - 1 && (
                                     <div className={`flex-1 h-0.5 mx-2 rounded transition-colors ${done ? 'bg-green-500' : 'bg-gray-200'}`} />
@@ -154,8 +147,11 @@ export default function CheckoutPage() {
                     <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
                         {step === 1 && (
                             <StepDelivery
+                                items={items}
                                 data={delivery}
                                 onChange={setDelivery}
+                                shipping={shipping}
+                                onShippingChange={setShipping}
                                 onNext={() => setStep(2)}
                             />
                         )}
@@ -163,7 +159,7 @@ export default function CheckoutPage() {
                             <StepPayment
                                 data={payment}
                                 onChange={setPayment}
-                                total={total}
+                                total={total + (shipping?.cost ?? 0)}
                                 onConfirm={handleConfirmPayment}
                                 onNext={(result) => {
                                     setPaymentResult(result);
@@ -183,7 +179,7 @@ export default function CheckoutPage() {
 
                     {/* Sidebar */}
                     <div className="lg:col-span-1">
-                        <OrderSummary items={items} total={total} />
+                        <OrderSummary items={items} total={total} shipping={shipping} />
                     </div>
                 </div>
             </div>

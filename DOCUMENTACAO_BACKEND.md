@@ -54,6 +54,10 @@ DB_URL=jdbc:mysql://HOST_AIVEN:PORTA/defaultdb?ssl-mode=REQUIRED
 DB_USER=avnadmin
 DB_PASS=SENHA_ATUAL_DO_AIVEN
 DDL_AUTO=validate
+RESEND_API_KEY=re_xxxxxxxxx
+RESEND_FROM=DN Store <no-reply@seudominio.com>
+FRONTEND_URL=http://localhost:3000
+SHIPPING_ORIGIN_ZIP=12600-000
 ```
 
 Não coloque `DB_USER` ou `DB_PASS` dentro de `DB_URL`; eles são informados separadamente. O arquivo `.env` contém segredos e deve permanecer fora do Git.
@@ -120,10 +124,29 @@ A maioria dos endpoints requer autenticação via token JWT. O token deve ser en
 
 | Método | Endpoint | Descrição |
 | :--- | :--- | :--- |
-| `POST` | `/register` | Cadastra um novo usuário no sistema. |
-| `POST` | `/login` | Autentica um usuário e retorna o token JWT e dados básicos. |
-| `POST` | `/forgot-password` | Solicita um token de recuperação de senha via e-mail (em desenvolvimento). |
-| `POST` | `/reset-password` | Redefine a senha do usuário utilizando o token de recuperação. |
+| `POST` | `/register` | Cria a conta e envia código de confirmação por e-mail. Não retorna JWT antes da confirmação. |
+| `POST` | `/verify-email` | Confirma o cadastro com `{ "email": "...", "code": "123456" }` e retorna JWT. |
+| `POST` | `/resend-verification` | Reenvia o código de confirmação; limitado a uma solicitação por minuto. |
+| `POST` | `/login` | Autentica; retorna JWT ou um desafio de MFA, conforme configuração. |
+| `POST` | `/verify-mfa` | Completa o login com `{ "challengeToken": "...", "code": "123456" }`. |
+| `POST` | `/resend-mfa` | Reenvia o código de MFA usando o desafio pendente. |
+| `POST` | `/forgot-password` | Envia link de redefinição, com resposta genérica para evitar descoberta de contas. |
+| `POST` | `/reset-password` | Define nova senha usando o token de uso único recebido por e-mail. |
+| `POST` | `/change-password` | Altera senha com `{ "currentPassword": "...", "newPassword": "..." }`; exige JWT. |
+
+### Configuração de e-mail e MFA
+
+O backend envia mensagens pela API HTTP do Resend. Configure `RESEND_API_KEY` e um remetente verificado em `RESEND_FROM`; em desenvolvimento, o remetente de teste do Resend só pode enviar para destinatários autorizados na conta. Defina `FRONTEND_URL` para a origem pública do Next.js, usada nos links de redefinição.
+
+O MFA por e-mail é uma preferência individual: começa desativado e o usuário pode ativá-lo após o cadastro ou em `/conta`. A confirmação do e-mail no cadastro continua obrigatória. Configure `AUTH_CHALLENGE_SECRET` como segredo aleatório persistente (mínimo recomendado de 32 bytes). Se omitido, usa `JWT_SECRET` como fallback.
+
+Os códigos expiram em 10 minutos, têm no máximo cinco tentativas e possuem intervalo de reenvio de 60 segundos. Tokens e códigos são armazenados como HMAC, nunca em texto puro. As migrations `V7__add_email_authentication.sql`, `V8__throttle_password_reset_email.sql` e `V9__add_per_user_email_mfa.sql` preparam o schema; as contas atuais começam verificadas e com MFA desativado. O Flyway aplica as migrations antes de usar a nova versão.
+
+### Frete no checkout
+
+`POST /api/orders/shipping-quotes` recebe `{ "zipCode": "12600-000" }`, calcula opções PAC/SEDEX com peso obtido do carrinho e retorna preço, prazo e origem da cotação. O checkout deve enviar apenas o serviço escolhido em `shippingType`; o backend recalcula valor e prazo ao criar o pedido. A origem provisória é Lorena/SP (`SHIPPING_ORIGIN_ZIP=12600-000`).
+
+No estado atual, preços e prazos são estimativas internas de teste e vêm marcados como `SIMULATED`; ViaCEP é usado para validar o CEP e descobrir a UF, não para calcular tarifa. Para tarifa oficial é necessário habilitar a API de preço e prazo no contrato Correios, obter credenciais de integração e códigos dos serviços habilitados, e configurá-los no backend. Não use os valores simulados para cobrar clientes em produção.
 
 ---
 

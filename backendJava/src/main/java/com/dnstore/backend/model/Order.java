@@ -41,6 +41,12 @@ public class Order {
     @Column(name = "shipping_cost", nullable = false, precision = 10, scale = 2)
     private BigDecimal shippingCost = BigDecimal.ZERO;
 
+    @Column(name = "shipping_type", length = 20)
+    private String shippingType;
+
+    @Column(name = "shipping_deadline_days")
+    private Integer shippingDeadlineDays;
+
     @Column(nullable = false, length = 50)
     private String status;
 

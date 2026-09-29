@@ -1,3 +1,10 @@
 {
-    "java.compile.nullAnalysis.mode": "disabled"
+    "java.compile.nullAnalysis.mode": "disabled",
+    "chat.tools.terminal.autoApprove": {
+        "npm run lint": true,
+        ".\\mvnw.cmd": true,
+        "Push-Location": true,
+        "Pop-Location": true,
+        "npx tsc": true
+    }
 }

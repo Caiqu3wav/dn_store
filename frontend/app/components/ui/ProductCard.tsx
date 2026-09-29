@@ -126,7 +126,7 @@ export function ProductCard({ product }: ProductCardProps) {
   href={`/produtos/${product.id}`}
   className="w-fit py-3 px-5 rounded-xl font-bold flex items-center justify-center transition-all outline-none shrink-0 bg-brand-red-primary text-white hover:bg-[#1A1B1D] hover:scale-105"
 >
-  COMPRAR
+  VER MAIS
 </Link>
 
          <button

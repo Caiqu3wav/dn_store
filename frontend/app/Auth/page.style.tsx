@@ -12,13 +12,14 @@ export const Container = styled.div`
 export const Login = styled.div`
   background-color: #f7f7f7;
   padding: 2rem;
-  border-radius: 10px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-  width: 35%;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  width: min(100%, 460px);
+  box-sizing: border-box;
   animation: fadeIn 0.5s ease-in-out;
   @keyframes fadeIn {
     from {
@@ -31,8 +32,8 @@ export const Login = styled.div`
 `;
 
 export const Logo = styled.div`
-  width: 400px;
-  height: 200px;
+  width: min(100%, 400px);
+  height: 160px;
   background-image: url("/assets/Logo.jpeg");
   background-size: contain;
   background-repeat: no-repeat;

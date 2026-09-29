@@ -1,15 +1,11 @@
 import styled from "styled-components";
 
-interface LabelInputProps {
-  required?: boolean;
-  width?: string;
-  max?: number;
-  label: string;
-  placeholder?: string;
-  type?: string;
+interface LabelInputProps
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "width" | "name" | "value"> {
   name: string;
   value: string;
-  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  width?: string;
+  label: string;
 }
 
 const StyledInput = styled.input`
@@ -45,11 +41,9 @@ const FieldContainer = styled.div<{ inputWidth: string }>`
 export function LabelInput({
   width = "100%",
   label,
-  placeholder,
-  type,
   name,
   value,
-  onChange,
+  ...inputProps
 }: LabelInputProps) {
   return (
     <>
@@ -58,12 +52,10 @@ export function LabelInput({
           {label}
         </StyledLabel>
         <StyledInput
+          {...inputProps}
           name={name}
-          id={name}
-          placeholder={placeholder}
-          type={type}
+          id={inputProps.id ?? name}
           value={value}
-          onChange={onChange}
         />
       </FieldContainer>
     </>

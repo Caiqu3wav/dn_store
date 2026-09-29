@@ -35,6 +35,7 @@ export interface User {
   email: string;
   role: 'USER' | 'ADMIN';
   roles?: string[];
+  emailMfaEnabled?: boolean;
 }
 
 export interface CartItem {

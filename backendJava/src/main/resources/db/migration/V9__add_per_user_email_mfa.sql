@@ -1,0 +1,2 @@
+ALTER TABLE users
+    ADD COLUMN email_mfa_enabled BOOLEAN NOT NULL DEFAULT FALSE;
