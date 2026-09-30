@@ -45,46 +45,52 @@ public class OrderService {
 
     public record AddressData(
             String street, String number, String complement,
-            String neighborhood, String city, String state, String zipCode
-    ) {}
+            String neighborhood, String city, String state, String zipCode) {
+    }
 
-        public record ShippingOption(String typeName, BigDecimal cost, int deadLineDays, String source) {}
+    public record ShippingOption(String typeName, BigDecimal cost, int deadLineDays, String source) {
+    }
 
-        @Transactional(readOnly = true)
-        public List<ShippingOption> quoteShipping(User user, String zipCode) {
+    @Transactional(readOnly = true)
+    public List<ShippingOption> quoteShipping(User user, String zipCode) {
         Cart cart = cartRepository.findByUser(user)
-            .orElseThrow(() -> new IllegalStateException("O carrinho está vazio."));
+                .orElseThrow(() -> new IllegalStateException("O carrinho está vazio."));
         if (cart.getItems().isEmpty()) {
             throw new IllegalStateException("O carrinho está vazio.");
         }
 
         return deliveryService.calculateOptions(zipCode, cart.getTotalWeight()).stream()
-            .map(option -> new ShippingOption(option.typeName(), option.cost(), option.deadLineDays(), "SIMULATED"))
-            .toList();
-        }
+                .map(option -> new ShippingOption(option.typeName(), option.cost(), option.deadLineDays(), "SIMULATED"))
+                .toList();
+    }
 
     @Transactional
     public Order checkout(User user, AddressData addressData, String shippingType, String couponCode, UUID addressId) {
-        String zipCode = addressData != null ? addressData.zipCode() : null;
+        if (user == null) {
+            throw new IllegalArgumentException("Usuário autenticado é obrigatório.");
+        }
+
         Cart cart = cartRepository.findByUser(user)
                 .orElseThrow(() -> new IllegalStateException("O carrinho está vazio."));
 
-        if (cart.getItems().isEmpty()) {
+        if (cart.getItems() == null || cart.getItems().isEmpty()) {
             throw new IllegalStateException("O carrinho está vazio.");
         }
 
-        // 1. Calcular Frete
-        DeliveryResult shipping = deliveryService.calculateShipping(
-                zipCode,
-                cart.getTotalWeight(),
-                shippingType);
-
-        // 2. Resolver Endereço — prioridade: addressId salvo > dados do formulário
         Address address;
+        String zipCode;
+
         if (addressId != null) {
             address = addressRepository.findByIdAndUser_Id(addressId, user.getId())
                     .orElseThrow(() -> new IllegalArgumentException("Endereço não encontrado."));
+            zipCode = address.getZipCode();
         } else if (addressData != null) {
+            if (addressData.street() == null || addressData.number() == null || addressData.city() == null
+                    || addressData.state() == null || addressData.zipCode() == null
+                    || addressData.zipCode().isBlank()) {
+                throw new IllegalArgumentException("Dados de endereço incompletos.");
+            }
+
             address = new Address();
             address.setUser(user);
             address.setStreet(addressData.street());
@@ -95,9 +101,33 @@ public class OrderService {
             address.setState(addressData.state());
             address.setZipCode(addressData.zipCode());
             address = addressRepository.save(address);
+            zipCode = addressData.zipCode();
         } else {
             throw new IllegalArgumentException("Endereço de entrega é obrigatório.");
         }
+
+        if (zipCode == null || zipCode.isBlank()) {
+            throw new IllegalArgumentException("CEP do endereço é obrigatório.");
+        }
+
+        BigDecimal productTotal = BigDecimal.ZERO;
+        for (CartItem cartItem : cart.getItems()) {
+            if (cartItem == null || cartItem.getProductVariant() == null
+                    || cartItem.getProductVariant().getProduct() == null) {
+                throw new IllegalArgumentException("Produto do carrinho inválido.");
+            }
+            if (cartItem.getQuantity() <= 0) {
+                throw new IllegalArgumentException("Quantidade inválida para o produto: "
+                        + cartItem.getProductVariant().getProduct().getName());
+            }
+            BigDecimal unitPrice = cartItem.getProductVariant().getProduct().getPrice();
+            productTotal = productTotal.add(unitPrice.multiply(BigDecimal.valueOf(cartItem.getQuantity())));
+        }
+
+        DeliveryResult shipping = deliveryService.calculateShipping(
+                zipCode,
+                cart.getTotalWeight(),
+                shippingType);
 
         // 3. Aplicar Cupom se existir
         BigDecimal discount = BigDecimal.ZERO;
@@ -107,8 +137,7 @@ public class OrderService {
             Coupon coupon = couponService.validateCoupon(couponCode)
                     .orElseThrow(() -> new IllegalArgumentException("Cupom inválido ou expirado."));
 
-            BigDecimal cartTotal = cart.getTotalPrice();
-            if (coupon.getMinCartValue() != null && cartTotal.compareTo(coupon.getMinCartValue()) < 0) {
+            if (coupon.getMinCartValue() != null && productTotal.compareTo(coupon.getMinCartValue()) < 0) {
                 throw new IllegalArgumentException(
                         "O valor mínimo do carrinho para usar este cupom é R$ " + coupon.getMinCartValue());
             }
@@ -119,14 +148,14 @@ public class OrderService {
             }
 
             if (coupon.getDiscountPercentage() != null) {
-                discount = cartTotal.multiply(coupon.getDiscountPercentage())
+                discount = productTotal.multiply(coupon.getDiscountPercentage())
                         .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
             } else if (coupon.getDiscountValue() != null) {
                 discount = coupon.getDiscountValue();
             }
 
-            if (discount.compareTo(cartTotal) > 0) {
-                discount = cartTotal;
+            if (discount.compareTo(productTotal) > 0) {
+                discount = productTotal;
             }
 
             coupon.setCurrentUsage((coupon.getCurrentUsage() != null ? coupon.getCurrentUsage() : 0) + 1);
@@ -149,17 +178,18 @@ public class OrderService {
             if (variant.getStock() < cartItem.getQuantity()) {
                 throw new IllegalStateException(
                         "Estoque insuficiente para o produto: " + variant.getProduct().getName()
-                                + " (" + variant.getSize() + ")"  
-                );
+                                + " (" + variant.getSize() + ")");
             }
             variant.setStock(variant.getStock() - cartItem.getQuantity());
             productVariantRepository.save(variant);
         }
 
-        // Mapear CartItems para OrderItems
         List<OrderItem> orderItems = cart.getItems().stream()
-                .map(cartItem -> new OrderItem(order, cartItem.getProductVariant(), cartItem.getQuantity(),
-                        cartItem.getSubtotal()))
+                .map(cartItem -> new OrderItem(
+                        order,
+                        cartItem.getProductVariant(),
+                        cartItem.getQuantity(),
+                        cartItem.getProductVariant().getProduct().getPrice()))
                 .collect(Collectors.toList());
 
         order.setItems(orderItems);
@@ -167,8 +197,7 @@ public class OrderService {
         order.setShippingType(shipping.typeName());
         order.setShippingDeadlineDays(shipping.deadLineDays());
 
-        // Total = total produtos + frete - desconto
-        BigDecimal total = cart.getTotalPrice().add(shipping.cost()).subtract(discount);
+        BigDecimal total = productTotal.add(shipping.cost()).subtract(discount);
         if (total.compareTo(BigDecimal.ZERO) < 0) {
             total = BigDecimal.ZERO;
         }
