@@ -49,6 +49,13 @@ public class Cart {
     }
 
     public void addItem(ProductVariant productVariant, int quantity) {
+        if (productVariant == null) {
+            throw new IllegalArgumentException("Produto inválido.");
+        }
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Quantidade inválida.");
+        }
+
         Optional<CartItem> existing = items.stream()
                 .filter(i -> i.getProductVariant().getId().equals(productVariant.getId()))
                 .findFirst();

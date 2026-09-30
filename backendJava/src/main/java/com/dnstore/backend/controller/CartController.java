@@ -47,6 +47,10 @@ public class CartController {
 
     @PostMapping("/items")
     public ResponseEntity<?> addItem(@AuthenticationPrincipal User user, @RequestBody CartItemRequest request) {
+        if (request == null || request.getQuantity() <= 0) {
+            return ResponseEntity.badRequest().build();
+        }
+
         Cart cart = cartRepository.findByUser(user)
                 .orElseGet(() -> {
                     Cart newCart = new Cart();
@@ -55,11 +59,12 @@ public class CartController {
                 });
 
         java.util.Optional<ProductVariant> variant = request.getProductVariantId() != null
-            ? productVariantRepository.findById(request.getProductVariantId())
-            : productRepository.findById(request.getProductId()).map(product -> createDefaultVariant(product, request));
+                ? productVariantRepository.findById(request.getProductVariantId())
+                : productRepository.findById(request.getProductId())
+                        .map(product -> createDefaultVariant(product, request));
 
         return variant
-            .map(productVariant -> {
+                .map(productVariant -> {
                     cart.addItem(productVariant, request.getQuantity());
                     cartRepository.save(cart);
                     return ResponseEntity.ok(cart);
@@ -72,7 +77,8 @@ public class CartController {
     public ResponseEntity<?> synchronizeCart(
             @AuthenticationPrincipal User user,
             @RequestBody List<CartItemRequest> requests) {
-        if (requests == null) return ResponseEntity.badRequest().build();
+        if (requests == null)
+            return ResponseEntity.badRequest().build();
 
         List<CartLine> resolvedLines = new ArrayList<>();
         for (CartItemRequest request : requests) {
@@ -86,7 +92,8 @@ public class CartController {
                             .map(product -> productVariantRepository.findByProductId(product.getId()).stream()
                                     .filter(existing -> java.util.Objects.equals(
                                             existing.getSize(), request.getSize() == null || request.getSize().isBlank()
-                                                    ? "Único" : request.getSize()))
+                                                    ? "Único"
+                                                    : request.getSize()))
                                     .findFirst()
                                     .orElseGet(() -> createDefaultVariant(product, request)));
 
@@ -113,12 +120,14 @@ public class CartController {
         variant.setSize(request.getSize() == null || request.getSize().isBlank() ? "Único" : request.getSize());
         variant.setColor(product.getColor());
         variant.setStock(product instanceof com.dnstore.backend.model.PhysicalProduct physical
-                ? physical.getStock() : 0);
+                ? physical.getStock()
+                : 0);
         return productVariantRepository.save(variant);
     }
 
     @PutMapping("/items/{productVariantId}")
-    public ResponseEntity<?> updateItem(@AuthenticationPrincipal User user, @PathVariable UUID productVariantId, @RequestBody UpdateQuantityRequest request) {
+    public ResponseEntity<?> updateItem(@AuthenticationPrincipal User user, @PathVariable UUID productVariantId,
+            @RequestBody UpdateQuantityRequest request) {
         Cart cart = cartRepository.findByUser(user).orElse(null);
         if (cart == null) {
             return ResponseEntity.notFound().build();
@@ -154,7 +163,8 @@ public class CartController {
     }
 
     // DTOs
-    private record CartLine(ProductVariant variant, int quantity) {}
+    private record CartLine(ProductVariant variant, int quantity) {
+    }
 
     @Data
     public static class CartItemRequest {
