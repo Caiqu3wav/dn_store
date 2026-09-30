@@ -9,7 +9,10 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "payments")
+@Table(name = "payments", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_payments_order_id", columnNames = "order_id"),
+        @UniqueConstraint(name = "uk_payments_external_id", columnNames = "external_id")
+})
 @Data
 public class Payment {
 
@@ -23,16 +26,16 @@ public class Payment {
     private Order order;
 
     @Column(name = "external_id", length = 100)
-    private String externalId;       // ID da cobrança no Asaas
+    private String externalId; // ID da cobrança no Asaas
 
     @Column(name = "payment_method", nullable = false, length = 20)
-    private String paymentMethod;    // CREDIT_CARD | DEBIT_CARD | PIX | BOLETO
+    private String paymentMethod; // CREDIT_CARD | DEBIT_CARD | PIX | BOLETO
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 
     @Column(nullable = false, length = 30)
-    private String status;           // PENDING | PAID | FAILED | REFUNDED
+    private String status; // PENDING | PAID | FAILED | REFUNDED
 
     @Column(name = "pix_qr_code", columnDefinition = "TEXT")
     private String pixQrCode;
@@ -58,6 +61,7 @@ public class Payment {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
-        if (status == null) status = "PENDING";
+        if (status == null)
+            status = "PENDING";
     }
 }
