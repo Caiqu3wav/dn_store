@@ -1,0 +1,35 @@
+UPDATE products SET active = TRUE WHERE active IS NULL;
+
+UPDATE product_variants SET stock = 0 WHERE stock IS NULL;
+
+UPDATE coupons SET active = TRUE WHERE active IS NULL;
+
+UPDATE product_images SET is_main = FALSE WHERE is_main IS NULL;
+
+UPDATE orders SET status = 'PENDING_PAYMENT' WHERE status IS NULL;
+
+UPDATE orders
+SET
+    status = 'PENDING_PAYMENT'
+WHERE
+    LOWER(status) = 'pending';
+
+UPDATE users SET role = 'USER' WHERE role IS NULL;
+
+ALTER TABLE products
+MODIFY COLUMN active BOOLEAN NOT NULL DEFAULT TRUE;
+
+ALTER TABLE product_variants
+MODIFY COLUMN stock INT NOT NULL DEFAULT 0;
+
+ALTER TABLE coupons
+MODIFY COLUMN active BOOLEAN NOT NULL DEFAULT TRUE;
+
+ALTER TABLE product_images
+MODIFY COLUMN is_main BOOLEAN NOT NULL DEFAULT FALSE;
+
+ALTER TABLE orders
+MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'PENDING_PAYMENT';
+
+ALTER TABLE users
+MODIFY COLUMN role VARCHAR(20) NOT NULL DEFAULT 'USER';

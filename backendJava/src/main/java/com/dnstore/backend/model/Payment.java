@@ -1,7 +1,9 @@
 package com.dnstore.backend.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 
 import java.math.BigDecimal;
@@ -13,7 +15,9 @@ import java.util.UUID;
         @UniqueConstraint(name = "uk_payments_order_id", columnNames = "order_id"),
         @UniqueConstraint(name = "uk_payments_external_id", columnNames = "external_id")
 })
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
 public class Payment {
 
     @Id

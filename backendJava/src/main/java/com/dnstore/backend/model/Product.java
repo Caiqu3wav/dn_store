@@ -2,12 +2,10 @@ package com.dnstore.backend.model;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -31,8 +29,7 @@ import java.util.List;
 @Entity
 @Table(name = "products")
 @Inheritance(strategy = InheritanceType.JOINED)
-@DiscriminatorColumn(name = "product_type")
-@Data
+@DiscriminatorColumn(name = "product_type", length = 50)
 @AllArgsConstructor
 @NoArgsConstructor
 public abstract class Product {
@@ -50,7 +47,6 @@ public abstract class Product {
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
-
 
     @Column(nullable = false)
     private boolean active = true;

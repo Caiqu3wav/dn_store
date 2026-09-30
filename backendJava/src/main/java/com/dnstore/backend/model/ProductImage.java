@@ -11,7 +11,6 @@ import org.hibernate.annotations.JdbcTypeCode;
 @Setter
 @Entity
 @Table(name = "product_images")
-@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProductImage {
