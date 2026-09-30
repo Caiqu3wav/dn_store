@@ -4,6 +4,8 @@ import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.Payment;
 import com.dnstore.backend.model.enums.OrderStatus;
 import com.dnstore.backend.model.enums.PaymentStatus;
+import com.dnstore.backend.exception.ConflictException;
+import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.repository.OrderRepository;
 import com.dnstore.backend.repository.PaymentRepository;
 import com.dnstore.backend.service.payment.PaymentGateway;
@@ -43,24 +45,22 @@ public class PaymentService {
             PaymentGateway.CardData cardData) {
 
         Order order = orderRepository.findByIdForUpdate(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Pedido não encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Pedido não encontrado."));
 
         if (!order.getUser().getId().equals(requestingUserId)) {
-            throw new IllegalArgumentException("Pedido não encontrado");
+            throw new ResourceNotFoundException("Pedido não encontrado.");
         }
 
         if (!OrderStatus.PENDING_PAYMENT.name().equals(order.getStatus())) {
-            throw new IllegalStateException(
-                    "Pedido não está aguardando pagamento");
+            throw new ConflictException("Pedido não está aguardando pagamento.");
         }
 
         if (order.getTotal() == null || order.getTotal().compareTo(java.math.BigDecimal.ZERO) <= 0) {
-            throw new IllegalStateException("Pedido não possui valor válido para pagamento");
+            throw new ConflictException("Pedido não possui valor válido para pagamento.");
         }
 
         if (paymentRepository.findByOrder_Id(orderId).isPresent()) {
-            throw new IllegalStateException(
-                    "Já existe um pagamento iniciado para este pedido");
+            throw new ConflictException("Já existe um pagamento iniciado para este pedido.");
         }
 
         PaymentGateway.PaymentRequest gatewayRequest = new PaymentGateway.PaymentRequest(
@@ -107,7 +107,7 @@ public class PaymentService {
         Payment payment = paymentRepository.findByExternalIdForUpdate(result.externalId())
                 .orElseThrow(() -> {
                     log.warn("Webhook recebido para pagamento não localizado");
-                    return new IllegalStateException("Pagamento não encontrado");
+                    return new ResourceNotFoundException("Pagamento não encontrado.");
                 });
 
         PaymentStatus currentStatus = PaymentStatus.valueOf(payment.getStatus());
@@ -133,7 +133,7 @@ public class PaymentService {
 
     public Payment findByOrderId(UUID orderId) {
         return paymentRepository.findByOrder_Id(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Pagamento não encontrado para o pedido"));
+                .orElseThrow(() -> new ResourceNotFoundException("Pagamento não encontrado para o pedido."));
     }
 
     /**
@@ -142,7 +142,7 @@ public class PaymentService {
     public Payment findByOrderIdAndUser(UUID orderId, UUID userId) {
         Payment payment = findByOrderId(orderId);
         if (!payment.getOrder().getUser().getId().equals(userId)) {
-            throw new IllegalArgumentException("Pagamento não encontrado para o pedido");
+            throw new ResourceNotFoundException("Pagamento não encontrado para o pedido.");
         }
         return payment;
     }

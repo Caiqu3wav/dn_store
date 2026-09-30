@@ -4,6 +4,7 @@ import com.dnstore.backend.model.Category;
 import com.dnstore.backend.model.PhysicalProduct;
 import com.dnstore.backend.model.Product;
 import com.dnstore.backend.model.ProductImage;
+import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.repository.CategoryRepository;
 import com.dnstore.backend.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
@@ -42,7 +43,7 @@ public class ProductService {
     public Product create(Product product) {
         if (product.getCategory() != null && product.getCategory().getId() != null) {
             Category cat = categoryRepository.findById(product.getCategory().getId())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
             product.setCategory(cat);
         }
         if (product.getImages() != null) {
@@ -58,7 +59,7 @@ public class ProductService {
         for (Product product : products) {
             if (product.getCategory() != null && product.getCategory().getId() != null) {
                 Category cat = categoryRepository.findById(product.getCategory().getId())
-                    .orElseThrow(() -> new RuntimeException("Category not found"));
+                        .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
                 product.setCategory(cat);
             }
             if (product.getImages() != null) {
@@ -86,7 +87,7 @@ public class ProductService {
 
             if (updatedData.getCategory() != null && updatedData.getCategory().getId() != null) {
                 Category cat = categoryRepository.findById(updatedData.getCategory().getId())
-                    .orElseThrow(() -> new RuntimeException("Category not found"));
+                        .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
                 existing.setCategory(cat);
             } else {
                 existing.setCategory(null);
@@ -123,27 +124,20 @@ public class ProductService {
         Specification<Product> spec = Specification.where(null);
 
         if (search != null && !search.isBlank()) {
-            spec = spec.and((root, query, cb) ->
-                    cb.like(cb.lower(root.get("name")), "%" + search.toLowerCase(java.util.Locale.ROOT) + "%")
-            );
+            spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("name")),
+                    "%" + search.toLowerCase(java.util.Locale.ROOT) + "%"));
         }
 
         if (categoryId != null) {
-            spec = spec.and((root, query, cb) ->
-                    cb.equal(root.get("category").get("id"), categoryId)
-            );
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("category").get("id"), categoryId));
         }
 
         if (minPrice != null) {
-            spec = spec.and((root, query, cb) ->
-                    cb.greaterThanOrEqualTo(root.get("price"), minPrice)
-            );
+            spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("price"), minPrice));
         }
 
         if (maxPrice != null) {
-            spec = spec.and((root, query, cb) ->
-                    cb.lessThanOrEqualTo(root.get("price"), maxPrice)
-            );
+            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("price"), maxPrice));
         }
 
         Sort sort = Sort.unsorted();

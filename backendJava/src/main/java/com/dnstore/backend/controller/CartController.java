@@ -4,6 +4,7 @@ import com.dnstore.backend.model.Cart;
 import com.dnstore.backend.model.ProductVariant;
 import com.dnstore.backend.model.Product;
 import com.dnstore.backend.model.User;
+import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.repository.CartRepository;
 import com.dnstore.backend.repository.ProductVariantRepository;
 import com.dnstore.backend.repository.ProductRepository;
@@ -48,7 +49,7 @@ public class CartController {
     @PostMapping("/items")
     public ResponseEntity<?> addItem(@AuthenticationPrincipal User user, @RequestBody CartItemRequest request) {
         if (request == null || request.getQuantity() <= 0) {
-            return ResponseEntity.badRequest().build();
+            throw new IllegalArgumentException("Quantidade inválida para o carrinho.");
         }
 
         Cart cart = cartRepository.findByUser(user)
@@ -63,13 +64,11 @@ public class CartController {
                 : productRepository.findById(request.getProductId())
                         .map(product -> createDefaultVariant(product, request));
 
-        return variant
-                .map(productVariant -> {
-                    cart.addItem(productVariant, request.getQuantity());
-                    cartRepository.save(cart);
-                    return ResponseEntity.ok(cart);
-                })
-                .orElse(ResponseEntity.notFound().build());
+        ProductVariant productVariant = variant
+                .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado."));
+        cart.addItem(productVariant, request.getQuantity());
+        cartRepository.save(cart);
+        return ResponseEntity.ok(cart);
     }
 
     @PutMapping("/sync")
@@ -77,13 +76,17 @@ public class CartController {
     public ResponseEntity<?> synchronizeCart(
             @AuthenticationPrincipal User user,
             @RequestBody List<CartItemRequest> requests) {
-        if (requests == null)
-            return ResponseEntity.badRequest().build();
+        if (requests == null) {
+            throw new IllegalArgumentException("Lista de itens é obrigatória.");
+        }
 
         List<CartLine> resolvedLines = new ArrayList<>();
         for (CartItemRequest request : requests) {
+            if (request == null) {
+                throw new IllegalArgumentException("Item de carrinho inválido.");
+            }
             if (request.getQuantity() < 1 || request.getQuantity() > 99) {
-                return ResponseEntity.badRequest().build();
+                throw new IllegalArgumentException("Quantidade deve estar entre 1 e 99.");
             }
 
             Optional<ProductVariant> variant = request.getProductVariantId() != null
@@ -98,7 +101,7 @@ public class CartController {
                                     .orElseGet(() -> createDefaultVariant(product, request)));
 
             if (variant.isEmpty() || !variant.get().getProduct().isActive()) {
-                return ResponseEntity.notFound().build();
+                throw new ResourceNotFoundException("Produto não encontrado ou inativo.");
             }
             resolvedLines.add(new CartLine(variant.get(), request.getQuantity()));
         }
@@ -130,7 +133,7 @@ public class CartController {
             @RequestBody UpdateQuantityRequest request) {
         Cart cart = cartRepository.findByUser(user).orElse(null);
         if (cart == null) {
-            return ResponseEntity.notFound().build();
+            throw new ResourceNotFoundException("Carrinho não encontrado.");
         }
 
         cart.updateItemQuantity(productVariantId, request.getQuantity());
@@ -142,7 +145,7 @@ public class CartController {
     public ResponseEntity<?> removeItem(@AuthenticationPrincipal User user, @PathVariable UUID productVariantId) {
         Cart cart = cartRepository.findByUser(user).orElse(null);
         if (cart == null) {
-            return ResponseEntity.notFound().build();
+            throw new ResourceNotFoundException("Carrinho não encontrado.");
         }
 
         cart.removeItem(productVariantId);
@@ -154,7 +157,7 @@ public class CartController {
     public ResponseEntity<?> clearCart(@AuthenticationPrincipal User user) {
         Cart cart = cartRepository.findByUser(user).orElse(null);
         if (cart == null) {
-            return ResponseEntity.notFound().build();
+            throw new ResourceNotFoundException("Carrinho não encontrado.");
         }
 
         cart.clear();

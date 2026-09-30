@@ -3,6 +3,9 @@ package com.dnstore.backend.service;
 import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.Payment;
 import com.dnstore.backend.model.User;
+import com.dnstore.backend.exception.ConflictException;
+import com.dnstore.backend.exception.GlobalExceptionHandler;
+import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.repository.OrderRepository;
 import com.dnstore.backend.repository.PaymentRepository;
 import com.dnstore.backend.service.payment.PaymentGateway;
@@ -60,7 +63,7 @@ class PaymentServiceTest {
                 "12345678909",
                 "PIX",
                 null,
-                null)).isInstanceOf(IllegalStateException.class)
+                null)).isInstanceOf(ConflictException.class)
                 .hasMessageContaining("Já existe");
     }
 
@@ -98,7 +101,7 @@ class PaymentServiceTest {
 
         assertThatThrownBy(() -> paymentService.initPayment(orderId, UUID.randomUUID(),
                 "52998224725", "PIX", null, null))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Pedido não encontrado");
         verifyNoInteractions(gateway);
     }
@@ -116,7 +119,7 @@ class PaymentServiceTest {
 
         assertThatThrownBy(() -> paymentService.initPayment(order.getId(), UUID.randomUUID(),
                 "52998224725", "PIX", null, null))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Pedido não encontrado");
         verifyNoInteractions(gateway);
     }
@@ -178,7 +181,9 @@ class PaymentServiceTest {
         PaymentService paymentServiceMock = mock(PaymentService.class);
         com.dnstore.backend.controller.PaymentController controller = new com.dnstore.backend.controller.PaymentController(
                 paymentServiceMock);
-        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
         doThrow(new IllegalArgumentException("Webhook inválido"))
                 .when(paymentServiceMock).handleWebhook(anyString(), anyString());
 
@@ -194,7 +199,9 @@ class PaymentServiceTest {
         PaymentService paymentServiceMock = mock(PaymentService.class);
         com.dnstore.backend.controller.PaymentController controller = new com.dnstore.backend.controller.PaymentController(
                 paymentServiceMock);
-        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
 
         doThrow(new com.dnstore.backend.service.payment.WebhookAuthenticationException())
                 .when(paymentServiceMock).handleWebhook(anyString(), anyString());
@@ -204,6 +211,26 @@ class PaymentServiceTest {
                 .header("asaas-access-token", "wrong-token"))
                 .andExpect(result -> {
                     assertThat(result.getResponse().getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+                });
+    }
+
+    @Test
+    void webhookController_whenProcessingFails_shouldReturnGenericServerError() throws Exception {
+        PaymentService paymentServiceMock = mock(PaymentService.class);
+        com.dnstore.backend.controller.PaymentController controller = new com.dnstore.backend.controller.PaymentController(
+                paymentServiceMock);
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+        doThrow(new IllegalStateException("internal database detail"))
+                .when(paymentServiceMock).handleWebhook(anyString(), anyString());
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/api/payment/webhook")
+                .content("{}")
+                .header("asaas-access-token", "token"))
+                .andExpect(result -> {
+                    assertThat(result.getResponse().getStatus()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR.value());
+                    assertThat(result.getResponse().getContentAsString()).doesNotContain("internal database detail");
                 });
     }
 }

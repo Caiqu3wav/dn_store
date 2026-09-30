@@ -2,6 +2,7 @@ package com.dnstore.backend.controller;
 
 import com.dnstore.backend.model.PhysicalProduct;
 import com.dnstore.backend.model.Product;
+import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -51,7 +52,7 @@ public class ProductController {
     public ResponseEntity<Product> getById(@PathVariable UUID id) {
         return productService.findById(id)
                 .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado."));
     }
 
     /**
@@ -92,7 +93,7 @@ public class ProductController {
     public ResponseEntity<Product> update(@PathVariable UUID id, @RequestBody PhysicalProduct product) {
         return productService.update(id, product)
                 .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado."));
     }
 
     /**
@@ -105,6 +106,6 @@ public class ProductController {
         if (productService.delete(id)) {
             return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.notFound().build();
+        throw new ResourceNotFoundException("Produto não encontrado.");
     }
 }
