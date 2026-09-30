@@ -3,7 +3,8 @@ package com.dnstore.backend.service;
 import com.dnstore.backend.model.*;
 import com.dnstore.backend.model.enums.Role;
 import com.dnstore.backend.repository.*;
-import com.dnstore.backend.service.strategy.DeliveryStrategy;
+import com.dnstore.backend.service.shipping.ShippingGateway.ShippingItem;
+import com.dnstore.backend.service.shipping.ShippingQuote;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,13 +14,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -83,6 +85,9 @@ class OrderServiceTest {
         product.setName("Camiseta");
         product.setPrice(new BigDecimal("100.00"));
         product.setWeight(0.5);
+        product.setWidth(20);
+        product.setHeight(10);
+        product.setDepth(30);
         product.setStock(5);
 
         variant = new ProductVariant();
@@ -98,8 +103,8 @@ class OrderServiceTest {
         cart.getItems().add(cartItem);
 
         lenient().when(cartRepository.findByUser(user)).thenReturn(Optional.of(cart));
-        lenient().when(deliveryService.calculateShipping(anyString(), anyDouble(), eq("PAC")))
-                .thenReturn(new DeliveryStrategy.DeliveryResult(new BigDecimal("10.00"), 3, "PAC"));
+        lenient().when(deliveryService.calculateShipping(anyString(), anyList(), eq("PAC")))
+                .thenReturn(new ShippingQuote("PAC", new BigDecimal("10.00"), 3));
         lenient().when(addressRepository.findByIdAndUser_Id(address.getId(), user.getId()))
                 .thenReturn(Optional.of(address));
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -112,10 +117,16 @@ class OrderServiceTest {
         Order order = orderService.checkout(user, null, "PAC", null, address.getId());
 
         assertThat(order.getTotal()).isEqualByComparingTo("210.00");
+        assertThat(order.getShippingCost()).isEqualByComparingTo("10.00");
+        assertThat(order.getShippingType()).isEqualTo("PAC");
+        assertThat(order.getShippingDeadlineDays()).isEqualTo(3);
         assertThat(order.getItems()).hasSize(1);
         assertThat(order.getItems().get(0).getPrice()).isEqualByComparingTo("100.00");
         assertThat(variant.getStock()).isEqualTo(3);
         verify(productVariantRepository, times(1)).save(variant);
+        verify(deliveryService).calculateShipping(eq("01000-000"), eq(List.of(new ShippingItem(
+                new BigDecimal("0.5"), new BigDecimal("20.0"), new BigDecimal("10.0"),
+                new BigDecimal("30.0"), 2))), eq("PAC"));
     }
 
     @Test
