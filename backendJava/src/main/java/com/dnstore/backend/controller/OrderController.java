@@ -4,6 +4,7 @@ import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.enums.Role;
 import com.dnstore.backend.model.User;
 import com.dnstore.backend.exception.DeliveryException;
+import com.dnstore.backend.exception.ShippingGatewayException;
 import com.dnstore.backend.service.OrderService;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.Valid;
@@ -35,6 +36,8 @@ public class OrderController {
             @Valid @RequestBody ShippingQuoteRequest request) {
         try {
             return ResponseEntity.ok(orderService.quoteShipping(user, request.getZipCode()));
+        } catch (ShippingGatewayException e) {
+            return ResponseEntity.status(503).body(new ErrorResponse(e.getMessage()));
         } catch (DeliveryException | IllegalStateException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
         }
@@ -59,9 +62,10 @@ public class OrderController {
                     addressData,
                     request.getShippingType(),
                     request.getCouponCode(),
-                    request.getAddressId()
-            );
+                    request.getAddressId());
             return ResponseEntity.status(201).body(order);
+        } catch (ShippingGatewayException e) {
+            return ResponseEntity.status(503).body(new ErrorResponse(e.getMessage()));
         } catch (DeliveryException | IllegalStateException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
         } catch (Exception e) {
@@ -128,8 +132,14 @@ public class OrderController {
     public static class ShippingQuoteRequest {
         @NotBlank
         private String zipCode;
-        public String getZipCode() { return zipCode; }
-        public void setZipCode(String zipCode) { this.zipCode = zipCode; }
+
+        public String getZipCode() {
+            return zipCode;
+        }
+
+        public void setZipCode(String zipCode) {
+            this.zipCode = zipCode;
+        }
     }
 
     public static class CheckoutRequest {
@@ -144,26 +154,85 @@ public class OrderController {
         private String couponCode;
         private UUID addressId;
 
-        public String getZipCode() { return zipCode; }
-        public void setZipCode(String zipCode) { this.zipCode = zipCode; }
-        public String getStreet() { return street; }
-        public void setStreet(String street) { this.street = street; }
-        public String getNumber() { return number; }
-        public void setNumber(String number) { this.number = number; }
-        public String getComplement() { return complement; }
-        public void setComplement(String complement) { this.complement = complement; }
-        public String getNeighborhood() { return neighborhood; }
-        public void setNeighborhood(String neighborhood) { this.neighborhood = neighborhood; }
-        public String getCity() { return city; }
-        public void setCity(String city) { this.city = city; }
-        public String getState() { return state; }
-        public void setState(String state) { this.state = state; }
-        public String getShippingType() { return shippingType; }
-        public void setShippingType(String shippingType) { this.shippingType = shippingType; }
-        public String getCouponCode() { return couponCode; }
-        public void setCouponCode(String couponCode) { this.couponCode = couponCode; }
-        public UUID getAddressId() { return addressId; }
-        public void setAddressId(UUID addressId) { this.addressId = addressId; }
+        public String getZipCode() {
+            return zipCode;
+        }
+
+        public void setZipCode(String zipCode) {
+            this.zipCode = zipCode;
+        }
+
+        public String getStreet() {
+            return street;
+        }
+
+        public void setStreet(String street) {
+            this.street = street;
+        }
+
+        public String getNumber() {
+            return number;
+        }
+
+        public void setNumber(String number) {
+            this.number = number;
+        }
+
+        public String getComplement() {
+            return complement;
+        }
+
+        public void setComplement(String complement) {
+            this.complement = complement;
+        }
+
+        public String getNeighborhood() {
+            return neighborhood;
+        }
+
+        public void setNeighborhood(String neighborhood) {
+            this.neighborhood = neighborhood;
+        }
+
+        public String getCity() {
+            return city;
+        }
+
+        public void setCity(String city) {
+            this.city = city;
+        }
+
+        public String getState() {
+            return state;
+        }
+
+        public void setState(String state) {
+            this.state = state;
+        }
+
+        public String getShippingType() {
+            return shippingType;
+        }
+
+        public void setShippingType(String shippingType) {
+            this.shippingType = shippingType;
+        }
+
+        public String getCouponCode() {
+            return couponCode;
+        }
+
+        public void setCouponCode(String couponCode) {
+            this.couponCode = couponCode;
+        }
+
+        public UUID getAddressId() {
+            return addressId;
+        }
+
+        public void setAddressId(UUID addressId) {
+            this.addressId = addressId;
+        }
     }
 
     public static class ErrorResponse {

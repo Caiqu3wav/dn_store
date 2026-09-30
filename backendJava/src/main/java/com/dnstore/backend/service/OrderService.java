@@ -6,13 +6,15 @@ import com.dnstore.backend.model.CartItem;
 import com.dnstore.backend.model.Coupon;
 import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.OrderItem;
+import com.dnstore.backend.model.PhysicalProduct;
 import com.dnstore.backend.model.User;
 import com.dnstore.backend.repository.AddressRepository;
 import com.dnstore.backend.repository.CartRepository;
 import com.dnstore.backend.repository.CouponRepository;
 import com.dnstore.backend.repository.OrderRepository;
 import com.dnstore.backend.repository.ProductVariantRepository;
-import com.dnstore.backend.service.strategy.DeliveryStrategy.DeliveryResult;
+import com.dnstore.backend.service.shipping.ShippingGateway.ShippingItem;
+import com.dnstore.backend.service.shipping.ShippingQuote;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -55,12 +56,13 @@ public class OrderService {
     public List<ShippingOption> quoteShipping(User user, String zipCode) {
         Cart cart = cartRepository.findByUser(user)
                 .orElseThrow(() -> new IllegalStateException("O carrinho está vazio."));
-        if (cart.getItems().isEmpty()) {
+        if (cart.getItems() == null || cart.getItems().isEmpty()) {
             throw new IllegalStateException("O carrinho está vazio.");
         }
 
-        return deliveryService.calculateOptions(zipCode, cart.getTotalWeight()).stream()
-                .map(option -> new ShippingOption(option.typeName(), option.cost(), option.deadLineDays(), "SIMULATED"))
+        return deliveryService.calculateOptions(zipCode, shippingItems(cart)).stream()
+                .map(option -> new ShippingOption(option.service(), option.price(), option.deliveryDays(),
+                        "SHIPPING_GATEWAY"))
                 .toList();
     }
 
@@ -124,9 +126,9 @@ public class OrderService {
             productTotal = productTotal.add(unitPrice.multiply(BigDecimal.valueOf(cartItem.getQuantity())));
         }
 
-        DeliveryResult shipping = deliveryService.calculateShipping(
+        ShippingQuote shipping = deliveryService.calculateShipping(
                 zipCode,
-                cart.getTotalWeight(),
+                shippingItems(cart),
                 shippingType);
 
         // 3. Aplicar Cupom se existir
@@ -193,11 +195,11 @@ public class OrderService {
                 .collect(Collectors.toList());
 
         order.setItems(orderItems);
-        order.setShippingCost(shipping.cost());
-        order.setShippingType(shipping.typeName());
-        order.setShippingDeadlineDays(shipping.deadLineDays());
+        order.setShippingCost(shipping.price());
+        order.setShippingType(shipping.service());
+        order.setShippingDeadlineDays(shipping.deliveryDays());
 
-        BigDecimal total = productTotal.add(shipping.cost()).subtract(discount);
+        BigDecimal total = productTotal.add(shipping.price()).subtract(discount);
         if (total.compareTo(BigDecimal.ZERO) < 0) {
             total = BigDecimal.ZERO;
         }
@@ -211,6 +213,26 @@ public class OrderService {
         cartRepository.save(cart);
 
         return savedOrder;
+    }
+
+    private List<ShippingItem> shippingItems(Cart cart) {
+        return cart.getItems().stream().map(item -> {
+            if (item == null || item.getProductVariant() == null
+                    || !(item.getProductVariant().getProduct() instanceof PhysicalProduct product)) {
+                throw new IllegalArgumentException("Produto físico inválido para cotação de frete.");
+            }
+            if (item.getQuantity() <= 0 || !Double.isFinite(product.getWeight())
+                    || !Double.isFinite(product.getWidth()) || !Double.isFinite(product.getHeight())
+                    || !Double.isFinite(product.getDepth())) {
+                throw new IllegalArgumentException("Peso, dimensões e quantidade dos produtos devem ser válidos.");
+            }
+            return new ShippingItem(
+                    BigDecimal.valueOf(product.getWeight()),
+                    BigDecimal.valueOf(product.getWidth()),
+                    BigDecimal.valueOf(product.getHeight()),
+                    BigDecimal.valueOf(product.getDepth()),
+                    item.getQuantity());
+        }).toList();
     }
 
     private static final java.util.Set<String> VALID_STATUSES = java.util.Set.of(
