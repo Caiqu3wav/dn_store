@@ -8,6 +8,8 @@ import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.OrderItem;
 import com.dnstore.backend.model.PhysicalProduct;
 import com.dnstore.backend.model.User;
+import com.dnstore.backend.exception.ConflictException;
+import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.repository.AddressRepository;
 import com.dnstore.backend.repository.CartRepository;
 import com.dnstore.backend.repository.CouponRepository;
@@ -55,9 +57,9 @@ public class OrderService {
     @Transactional(readOnly = true)
     public List<ShippingOption> quoteShipping(User user, String zipCode) {
         Cart cart = cartRepository.findByUser(user)
-                .orElseThrow(() -> new IllegalStateException("O carrinho está vazio."));
+                .orElseThrow(() -> new ConflictException("O carrinho está vazio."));
         if (cart.getItems() == null || cart.getItems().isEmpty()) {
-            throw new IllegalStateException("O carrinho está vazio.");
+            throw new ConflictException("O carrinho está vazio.");
         }
 
         return deliveryService.calculateOptions(zipCode, shippingItems(cart)).stream()
@@ -73,10 +75,10 @@ public class OrderService {
         }
 
         Cart cart = cartRepository.findByUser(user)
-                .orElseThrow(() -> new IllegalStateException("O carrinho está vazio."));
+                .orElseThrow(() -> new ConflictException("O carrinho está vazio."));
 
         if (cart.getItems() == null || cart.getItems().isEmpty()) {
-            throw new IllegalStateException("O carrinho está vazio.");
+            throw new ConflictException("O carrinho está vazio.");
         }
 
         Address address;
@@ -84,7 +86,7 @@ public class OrderService {
 
         if (addressId != null) {
             address = addressRepository.findByIdAndUser_Id(addressId, user.getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Endereço não encontrado."));
+                    .orElseThrow(() -> new ResourceNotFoundException("Endereço não encontrado."));
             zipCode = address.getZipCode();
         } else if (addressData != null) {
             if (addressData.street() == null || addressData.number() == null || addressData.city() == null
@@ -178,7 +180,7 @@ public class OrderService {
         for (CartItem cartItem : cart.getItems()) {
             var variant = cartItem.getProductVariant();
             if (variant.getStock() < cartItem.getQuantity()) {
-                throw new IllegalStateException(
+                throw new ConflictException(
                         "Estoque insuficiente para o produto: " + variant.getProduct().getName()
                                 + " (" + variant.getSize() + ")");
             }

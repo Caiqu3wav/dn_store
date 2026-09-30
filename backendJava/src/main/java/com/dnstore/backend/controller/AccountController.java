@@ -3,6 +3,7 @@ package com.dnstore.backend.controller;
 import com.dnstore.backend.model.Address;
 import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.User;
+import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.model.enums.Role;
 import com.dnstore.backend.repository.AddressRepository;
 import com.dnstore.backend.repository.UserRepository;
@@ -32,8 +33,10 @@ public class AccountController {
 
     @PutMapping("/me")
     public ResponseEntity<User> updateMe(@AuthenticationPrincipal User user, @RequestBody Map<String, String> body) {
-        if (body.containsKey("name") && !body.get("name").isBlank()) user.setName(body.get("name"));
-        if (body.containsKey("phone")) user.setPhone(body.get("phone"));
+        if (body.containsKey("name") && !body.get("name").isBlank())
+            user.setName(body.get("name"));
+        if (body.containsKey("phone"))
+            user.setPhone(body.get("phone"));
         return ResponseEntity.ok(userRepository.save(user));
     }
 
@@ -42,7 +45,8 @@ public class AccountController {
             @AuthenticationPrincipal User user,
             @RequestBody Map<String, Boolean> body) {
         Boolean enabled = body.get("enabled");
-        if (enabled == null) return ResponseEntity.badRequest().build();
+        if (enabled == null)
+            throw new IllegalArgumentException("O estado do MFA é obrigatório.");
         user.setEmailMfaEnabled(enabled);
         if (!enabled) {
             user.setMfaChallengeTokenHash(null);
@@ -62,7 +66,8 @@ public class AccountController {
     }
 
     @PostMapping("/addresses")
-    public ResponseEntity<AddressResponse> addAddress(@AuthenticationPrincipal User user, @RequestBody Address address) {
+    public ResponseEntity<AddressResponse> addAddress(@AuthenticationPrincipal User user,
+            @RequestBody Address address) {
         address.setId(null);
         address.setUser(user);
         return ResponseEntity.status(201).body(new AddressResponse(addressRepository.save(address)));
@@ -70,10 +75,11 @@ public class AccountController {
 
     @DeleteMapping("/addresses/{id}")
     public ResponseEntity<Void> deleteAddress(@AuthenticationPrincipal User user, @PathVariable UUID id) {
-        return addressRepository.findById(id)
-                .filter(address -> address.getUser().getId().equals(user.getId()))
-                .map(address -> { addressRepository.delete(address); return ResponseEntity.noContent().<Void>build(); })
-                .orElse(ResponseEntity.notFound().build());
+        Address address = addressRepository.findById(id)
+                .filter(candidate -> candidate.getUser().getId().equals(user.getId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Endereço não encontrado."));
+        addressRepository.delete(address);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/orders")
@@ -102,20 +108,44 @@ public class AccountController {
             this.zipCode = address.getZipCode();
         }
 
-        public UUID getId() { return id; }
-        public String getStreet() { return street; }
-        public String getNumber() { return number; }
-        public String getComplement() { return complement; }
-        public String getNeighborhood() { return neighborhood; }
-        public String getCity() { return city; }
-        public String getState() { return state; }
-        public String getZipCode() { return zipCode; }
+        public UUID getId() {
+            return id;
+        }
+
+        public String getStreet() {
+            return street;
+        }
+
+        public String getNumber() {
+            return number;
+        }
+
+        public String getComplement() {
+            return complement;
+        }
+
+        public String getNeighborhood() {
+            return neighborhood;
+        }
+
+        public String getCity() {
+            return city;
+        }
+
+        public String getState() {
+            return state;
+        }
+
+        public String getZipCode() {
+            return zipCode;
+        }
     }
 
     public record AccountProfileResponse(
             UUID id, String name, String email, String phone, Role role, boolean emailMfaEnabled) {
         public AccountProfileResponse(User user) {
-            this(user.getId(), user.getName(), user.getEmail(), user.getPhone(), user.getRole(), user.isEmailMfaEnabled());
+            this(user.getId(), user.getName(), user.getEmail(), user.getPhone(), user.getRole(),
+                    user.isEmailMfaEnabled());
         }
     }
 }

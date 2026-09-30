@@ -5,15 +5,12 @@ import com.dnstore.backend.model.User;
 import com.dnstore.backend.model.enums.Role;
 import com.dnstore.backend.service.PaymentService;
 import com.dnstore.backend.service.payment.PaymentGateway;
-import com.dnstore.backend.service.payment.PaymentGatewayException;
-import com.dnstore.backend.service.payment.WebhookAuthenticationException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +18,6 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-@Slf4j
 @RestController
 @RequestMapping("/api/payment")
 @RequiredArgsConstructor
@@ -38,49 +34,26 @@ public class PaymentController {
         public ResponseEntity<?> initPayment(
                         @AuthenticationPrincipal User user,
                         @Valid @RequestBody PaymentInitRequest request) {
-                try {
-                        PaymentGateway.CardData cardData = null;
+                PaymentGateway.CardData cardData = null;
 
-                        if (request.card() != null) {
-                                cardData = new PaymentGateway.CardData(
-                                                request.card().holderName(),
-                                                request.card().number(),
-                                                request.card().expiryMonth(),
-                                                request.card().expiryYear(),
-                                                request.card().ccv());
-                        }
-
-                        Payment payment = paymentService.initPayment(
-                                        request.orderId(),
-                                        user.getId(),
-                                        request.cpfCnpj(),
-                                        request.paymentMethod(),
-                                        request.installments(),
-                                        cardData);
-
-                        return ResponseEntity.ok(
-                                        PaymentResponse.from(payment));
-
-                } catch (PaymentGatewayException e) {
-                        return ResponseEntity.status(502)
-                                        .body(new ErrorResponse("Gateway de pagamento indisponível."));
-                } catch (IllegalArgumentException | IllegalStateException e) {
-                        return ResponseEntity
-                                        .badRequest()
-                                        .body(new ErrorResponse(e.getMessage()));
-
-                } catch (Exception e) {
-                        log.error(
-                                        "Payment init error for order {}",
-                                        request.orderId(),
-                                        e);
-
-                        return ResponseEntity
-                                        .internalServerError()
-                                        .body(
-                                                        new ErrorResponse(
-                                                                        "Erro ao processar pagamento."));
+                if (request.card() != null) {
+                        cardData = new PaymentGateway.CardData(
+                                        request.card().holderName(),
+                                        request.card().number(),
+                                        request.card().expiryMonth(),
+                                        request.card().expiryYear(),
+                                        request.card().ccv());
                 }
+
+                Payment payment = paymentService.initPayment(
+                                request.orderId(),
+                                user.getId(),
+                                request.cpfCnpj(),
+                                request.paymentMethod(),
+                                request.installments(),
+                                cardData);
+
+                return ResponseEntity.ok(PaymentResponse.from(payment));
         }
 
         /**
@@ -91,21 +64,8 @@ public class PaymentController {
         public ResponseEntity<Void> webhook(
                         @RequestBody String rawPayload,
                         @RequestHeader(value = "asaas-access-token", required = false) String signature) {
-                try {
-                        paymentService.handleWebhook(
-                                        rawPayload,
-                                        signature);
-
-                        return ResponseEntity.ok().build();
-
-                } catch (WebhookAuthenticationException e) {
-                        return ResponseEntity.status(401).build();
-                } catch (IllegalArgumentException e) {
-                        return ResponseEntity.badRequest().build();
-                } catch (Exception e) {
-                        log.error("Webhook processing failed");
-                        return ResponseEntity.internalServerError().build();
-                }
+                paymentService.handleWebhook(rawPayload, signature);
+                return ResponseEntity.ok().build();
         }
 
         /**
@@ -116,21 +76,11 @@ public class PaymentController {
         public ResponseEntity<?> getPaymentStatus(
                         @PathVariable UUID orderId,
                         @AuthenticationPrincipal User user) {
-                try {
-                        Payment payment = user.getRole() == Role.ADMIN
-                                        ? paymentService.findByOrderId(orderId)
-                                        : paymentService.findByOrderIdAndUser(
-                                                        orderId,
-                                                        user.getId());
+                Payment payment = user.getRole() == Role.ADMIN
+                                ? paymentService.findByOrderId(orderId)
+                                : paymentService.findByOrderIdAndUser(orderId, user.getId());
 
-                        return ResponseEntity.ok(
-                                        PaymentResponse.from(payment));
-
-                } catch (IllegalArgumentException e) {
-                        return ResponseEntity
-                                        .notFound()
-                                        .build();
-                }
+                return ResponseEntity.ok(PaymentResponse.from(payment));
         }
 
         public record PaymentInitRequest(
@@ -175,7 +125,4 @@ public class PaymentController {
                 }
         }
 
-        public record ErrorResponse(
-                        String message) {
-        }
 }

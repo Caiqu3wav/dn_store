@@ -2,6 +2,8 @@ package com.dnstore.backend.service;
 
 import com.dnstore.backend.model.*;
 import com.dnstore.backend.model.enums.Role;
+import com.dnstore.backend.exception.ConflictException;
+import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.repository.*;
 import com.dnstore.backend.service.shipping.ShippingGateway.ShippingItem;
 import com.dnstore.backend.service.shipping.ShippingQuote;
@@ -134,7 +136,7 @@ class OrderServiceTest {
         cart.getItems().clear();
 
         assertThatThrownBy(() -> orderService.checkout(user, null, "PAC", null, address.getId()))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("vazio");
     }
 
@@ -144,7 +146,7 @@ class OrderServiceTest {
         cartItem.setQuantity(10);
 
         assertThatThrownBy(() -> orderService.checkout(user, null, "PAC", null, address.getId()))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("Estoque insuficiente");
 
         verify(orderRepository, never()).save(any(Order.class));
@@ -155,7 +157,7 @@ class OrderServiceTest {
         when(addressRepository.findByIdAndUser_Id(address.getId(), user.getId())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> orderService.checkout(user, null, "PAC", null, address.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Endereço não encontrado");
     }
 }

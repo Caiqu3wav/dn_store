@@ -70,7 +70,7 @@ public class AsaasGatewayService implements PaymentGateway {
                 if (customerId instanceof String id && !id.isBlank()) {
                     return id;
                 }
-                throw new IllegalStateException("Resposta inválida ao consultar customer Asaas");
+                throw new PaymentGatewayException("Resposta inválida ao consultar customer Asaas");
             }
         } catch (PaymentGatewayException e) {
             throw e;
