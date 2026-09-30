@@ -1,7 +1,11 @@
 package com.dnstore.backend.model;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -12,7 +16,6 @@ import org.hibernate.annotations.JdbcTypeCode;
 @Setter
 @Entity
 @Table(name = "coupons")
-@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -39,12 +42,14 @@ public class Coupon {
     private Integer maxUsage;
 
     @Column(name = "current_usage")
+    @Builder.Default
     private Integer currentUsage = 0;
 
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
 
     @Column(nullable = false)
+    @Builder.Default
     private Boolean active = true;
 
     @Column(name = "created_at", insertable = false, updatable = false)

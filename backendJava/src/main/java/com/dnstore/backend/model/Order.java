@@ -1,7 +1,7 @@
 package com.dnstore.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.Builder;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -15,7 +15,6 @@ import org.hibernate.annotations.JdbcTypeCode;
 
 @Getter
 @Setter
-@Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -31,14 +30,15 @@ public class Order {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id")
+    @JsonManagedReference("order-items")
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<OrderItem> items; // Mudança de CartItem para OrderItem
 
     @Column(name = "total", nullable = false, precision = 10, scale = 2)
     private BigDecimal total;
 
     @Column(name = "shipping_cost", nullable = false, precision = 10, scale = 2)
+    @Builder.Default
     private BigDecimal shippingCost = BigDecimal.ZERO;
 
     @Column(name = "shipping_type", length = 20)
@@ -63,6 +63,7 @@ public class Order {
     private Coupon coupon;
 
     @Column(name = "discount_amount", precision = 10, scale = 2)
+    @Builder.Default
     private BigDecimal discountAmount = BigDecimal.ZERO;
 
     @PrePersist

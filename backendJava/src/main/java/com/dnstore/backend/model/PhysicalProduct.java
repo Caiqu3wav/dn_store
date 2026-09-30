@@ -2,14 +2,9 @@ package com.dnstore.backend.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.math.BigDecimal;
-import java.util.UUID;
 
 /**
  * 📦 Classe ProdutoFisico (PhysicalProduct)
@@ -23,8 +18,6 @@ import java.util.UUID;
  */
 @Getter
 @Setter
-@Data
-@EqualsAndHashCode(callSuper = true)
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity

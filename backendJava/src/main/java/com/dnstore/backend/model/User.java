@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -26,49 +25,66 @@ import org.hibernate.annotations.JdbcTypeCode;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "users")
-@Data
+@Table(name = "users", indexes = {
+        @Index(name = "idx_users_reset_token", columnList = "reset_token"),
+        @Index(name = "idx_users_mfa_challenge_token_hash", columnList = "mfa_challenge_token_hash")
+})
 public class User implements UserDetails {
 
+    @JsonIgnore
     @Column(length = 64)
     private String resetToken;
 
+    @JsonIgnore
     @Column(name = "reset_token_expiration")
     private LocalDateTime resetTokenExpiration;
 
+    @JsonIgnore
     @Column(name = "reset_token_last_sent_at")
     private LocalDateTime resetTokenLastSentAt;
 
+    @JsonIgnore
     @Column(name = "email_verified", nullable = false)
+    @Builder.Default
     private boolean emailVerified = true;
 
+    @JsonIgnore
     @Column(name = "email_verification_code_hash", length = 64)
     private String emailVerificationCodeHash;
 
+    @JsonIgnore
     @Column(name = "email_verification_expiration")
     private LocalDateTime emailVerificationExpiration;
 
+    @JsonIgnore
     @Column(name = "email_verification_last_sent_at")
     private LocalDateTime emailVerificationLastSentAt;
 
+    @JsonIgnore
     @Column(name = "email_verification_attempts", nullable = false)
     private int emailVerificationAttempts;
 
+    @JsonIgnore
     @Column(name = "mfa_challenge_token_hash", length = 64)
     private String mfaChallengeTokenHash;
 
+    @JsonIgnore
     @Column(name = "mfa_code_hash", length = 64)
     private String mfaCodeHash;
 
+    @JsonIgnore
     @Column(name = "mfa_code_expiration")
     private LocalDateTime mfaCodeExpiration;
 
+    @JsonIgnore
     @Column(name = "mfa_last_sent_at")
     private LocalDateTime mfaLastSentAt;
 
+    @JsonIgnore
     @Column(name = "mfa_attempts", nullable = false)
     private int mfaAttempts;
 
+    @JsonIgnore
     @Column(name = "email_mfa_enabled", nullable = false)
     private boolean emailMfaEnabled;
 
@@ -90,11 +106,13 @@ public class User implements UserDetails {
     @Column(length = 20)
     private String phone;
 
+    @JsonIgnore
     @Column(length = 11, unique = true)
     private String cpf;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
+    @Builder.Default
     private Role role = Role.USER;
 
     @Column(name = "created_at")
@@ -112,6 +130,7 @@ public class User implements UserDetails {
     }
 
     @Override
+    @JsonIgnore
     public String getPassword() {
         return passwordHash;
     }
