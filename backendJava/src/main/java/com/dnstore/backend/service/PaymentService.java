@@ -2,9 +2,12 @@ package com.dnstore.backend.service;
 
 import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.Payment;
+import com.dnstore.backend.model.enums.OrderStatus;
+import com.dnstore.backend.model.enums.PaymentStatus;
 import com.dnstore.backend.repository.OrderRepository;
 import com.dnstore.backend.repository.PaymentRepository;
 import com.dnstore.backend.service.payment.PaymentGateway;
+import com.dnstore.backend.service.payment.PaymentGatewayException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -24,8 +27,7 @@ public class PaymentService {
     public PaymentService(
             @Qualifier("asaas") PaymentGateway gateway,
             PaymentRepository paymentRepository,
-            OrderRepository orderRepository
-    ) {
+            OrderRepository orderRepository) {
         this.gateway = gateway;
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
@@ -38,56 +40,57 @@ public class PaymentService {
             String cpfCnpj,
             String paymentMethod,
             Integer installments,
-            PaymentGateway.CardData cardData
-    ) {
+            PaymentGateway.CardData cardData) {
 
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Pedido não encontrado")
-                );
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Pedido não encontrado"));
 
         if (!order.getUser().getId().equals(requestingUserId)) {
             throw new IllegalArgumentException("Pedido não encontrado");
         }
 
-        if (!"PENDING_PAYMENT".equals(order.getStatus())) {
+        if (!OrderStatus.PENDING_PAYMENT.name().equals(order.getStatus())) {
             throw new IllegalStateException(
-                    "Pedido não está aguardando pagamento"
-            );
+                    "Pedido não está aguardando pagamento");
+        }
+
+        if (order.getTotal() == null || order.getTotal().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Pedido não possui valor válido para pagamento");
         }
 
         if (paymentRepository.findByOrder_Id(orderId).isPresent()) {
             throw new IllegalStateException(
-                    "Já existe um pagamento iniciado para este pedido"
-            );
+                    "Já existe um pagamento iniciado para este pedido");
         }
 
-        PaymentGateway.PaymentRequest gatewayRequest =
-                new PaymentGateway.PaymentRequest(
-                        order.getId(),
-                        order.getTotal(),
-                        order.getUser().getName(),
-                        order.getUser().getEmail(),
-                        cpfCnpj,
-                        "Pedido DN Store #" + order.getId(),
-                        paymentMethod,
-                        installments,
-                        cardData
-                );
+        PaymentGateway.PaymentRequest gatewayRequest = new PaymentGateway.PaymentRequest(
+                order.getId(),
+                order.getTotal(),
+                order.getUser().getName(),
+                order.getUser().getEmail(),
+                cpfCnpj,
+                "Pedido DN Store #" + order.getId(),
+                paymentMethod,
+                installments,
+                cardData);
 
-        PaymentGateway.PaymentResult result =
-                gateway.createPayment(gatewayRequest);
+        PaymentGateway.PaymentResult result = gateway.createPayment(gatewayRequest);
+        if (result == null || result.externalId() == null || result.externalId().isBlank()) {
+            throw new PaymentGatewayException("Gateway retornou uma cobrança inválida");
+        }
+
+        PaymentStatus paymentStatus = PaymentStatus.valueOf(result.status());
 
         Payment payment = new Payment();
 
         payment.setOrder(order);
         payment.setExternalId(result.externalId());
-        payment.setPaymentMethod(paymentMethod);
+        payment.setPaymentMethod(result.paymentMethod() == null ? paymentMethod : result.paymentMethod());
 
         // O valor vem exclusivamente do banco
         payment.setAmount(order.getTotal());
 
-        payment.setStatus(result.status());
+        payment.setStatus(paymentStatus.name());
         payment.setPixQrCode(result.pixQrCode());
         payment.setPixCopyPaste(result.pixCopyPaste());
         payment.setBoletoUrl(result.boletoUrl());
@@ -101,26 +104,30 @@ public class PaymentService {
     public void handleWebhook(String rawPayload, String signatureHeader) {
         PaymentGateway.WebhookResult result = gateway.processWebhook(rawPayload, signatureHeader);
 
-        Payment payment = paymentRepository.findByExternalId(result.externalId())
+        Payment payment = paymentRepository.findByExternalIdForUpdate(result.externalId())
                 .orElseThrow(() -> {
-                    log.warn("Webhook recebido para pagamento desconhecido: {}", result.externalId());
-                    return new IllegalArgumentException("Pagamento não encontrado");
+                    log.warn("Webhook recebido para pagamento não localizado");
+                    return new IllegalStateException("Pagamento não encontrado");
                 });
 
-        String status = result.normalizedStatus();
-
-        payment.setStatus(status);
-
-        if ("PAID".equals(status)) {
-            payment.setPaidAt(LocalDateTime.now());
-            payment.getOrder().setStatus("PAID");
-            orderRepository.save(payment.getOrder());
-            log.info("Pedido {} marcado como PAID", payment.getOrder().getId());
-        } else if ("FAILED".equals(status)) {
-            payment.getOrder().setStatus("PAYMENT_FAILED");
-            orderRepository.save(payment.getOrder());
+        PaymentStatus currentStatus = PaymentStatus.valueOf(payment.getStatus());
+        PaymentStatus nextStatus = PaymentStatus.valueOf(result.normalizedStatus());
+        if (currentStatus == nextStatus || currentStatus == PaymentStatus.REFUNDED
+                || (currentStatus == PaymentStatus.PAID && nextStatus != PaymentStatus.REFUNDED)) {
+            return;
         }
 
+        payment.setStatus(nextStatus.name());
+        if (nextStatus == PaymentStatus.PAID && payment.getPaidAt() == null) {
+            payment.setPaidAt(LocalDateTime.now());
+        }
+
+        String nextOrderStatus = nextStatus.orderStatus().name();
+        if (nextStatus != PaymentStatus.PENDING
+                && !nextOrderStatus.equals(payment.getOrder().getStatus())) {
+            payment.getOrder().setStatus(nextOrderStatus);
+            orderRepository.save(payment.getOrder());
+        }
         paymentRepository.save(payment);
     }
 
@@ -129,7 +136,9 @@ public class PaymentService {
                 .orElseThrow(() -> new IllegalArgumentException("Pagamento não encontrado para o pedido"));
     }
 
-    /** Busca pagamento garantindo que o pedido pertence ao usuário — previne IDOR. */
+    /**
+     * Busca pagamento garantindo que o pedido pertence ao usuário — previne IDOR.
+     */
     public Payment findByOrderIdAndUser(UUID orderId, UUID userId) {
         Payment payment = findByOrderId(orderId);
         if (!payment.getOrder().getUser().getId().equals(userId)) {
