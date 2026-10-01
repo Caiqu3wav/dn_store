@@ -7,6 +7,7 @@ import com.dnstore.backend.model.Coupon;
 import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.OrderItem;
 import com.dnstore.backend.model.PhysicalProduct;
+import com.dnstore.backend.model.ProductVariant;
 import com.dnstore.backend.model.User;
 import com.dnstore.backend.exception.ConflictException;
 import com.dnstore.backend.exception.ResourceNotFoundException;
@@ -114,6 +115,20 @@ public class OrderService {
             throw new IllegalArgumentException("CEP do endereço é obrigatório.");
         }
 
+        List<UUID> variantIds = cart.getItems().stream()
+                .map(cartItem -> cartItem.getProductVariant().getId())
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .sorted(java.util.Comparator.comparing(UUID::toString))
+                .toList();
+
+        java.util.Map<UUID, ProductVariant> lockedVariants = new java.util.LinkedHashMap<>();
+        for (UUID variantId : variantIds) {
+            ProductVariant variant = productVariantRepository.findByIdForUpdate(variantId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado."));
+            lockedVariants.put(variantId, variant);
+        }
+
         BigDecimal productTotal = BigDecimal.ZERO;
         for (CartItem cartItem : cart.getItems()) {
             if (cartItem == null || cartItem.getProductVariant() == null
@@ -124,6 +139,17 @@ public class OrderService {
                 throw new IllegalArgumentException("Quantidade inválida para o produto: "
                         + cartItem.getProductVariant().getProduct().getName());
             }
+
+            ProductVariant variant = lockedVariants.get(cartItem.getProductVariant().getId());
+            if (variant == null) {
+                throw new ResourceNotFoundException("Produto não encontrado.");
+            }
+            if (variant.getStock() < cartItem.getQuantity()) {
+                throw new ConflictException(
+                        "Estoque insuficiente para o produto: " + variant.getProduct().getName()
+                                + " (" + variant.getSize() + ")");
+            }
+
             BigDecimal unitPrice = cartItem.getProductVariant().getProduct().getPrice();
             productTotal = productTotal.add(unitPrice.multiply(BigDecimal.valueOf(cartItem.getQuantity())));
         }
@@ -178,11 +204,9 @@ public class OrderService {
 
         // 4b. Validar estoque e decrementar
         for (CartItem cartItem : cart.getItems()) {
-            var variant = cartItem.getProductVariant();
-            if (variant.getStock() < cartItem.getQuantity()) {
-                throw new ConflictException(
-                        "Estoque insuficiente para o produto: " + variant.getProduct().getName()
-                                + " (" + variant.getSize() + ")");
+            ProductVariant variant = lockedVariants.get(cartItem.getProductVariant().getId());
+            if (variant == null) {
+                throw new ResourceNotFoundException("Produto não encontrado.");
             }
             variant.setStock(variant.getStock() - cartItem.getQuantity());
             productVariantRepository.save(variant);
