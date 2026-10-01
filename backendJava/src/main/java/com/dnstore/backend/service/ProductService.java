@@ -44,6 +44,8 @@ public class ProductService {
 
     // --- C: Create ---
     public Product create(Product product) {
+        validateProduct(product);
+
         if (product.getCategory() != null && product.getCategory().getId() != null) {
             Category cat = categoryRepository.findById(product.getCategory().getId())
                     .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
@@ -62,6 +64,7 @@ public class ProductService {
     // --- Batch Create ---
     public List<Product> createAll(List<PhysicalProduct> products) {
         for (Product product : products) {
+            validateProduct(product);
             if (product.getCategory() != null && product.getCategory().getId() != null) {
                 Category cat = categoryRepository.findById(product.getCategory().getId())
                         .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
@@ -84,6 +87,8 @@ public class ProductService {
 
     // --- U: Update ---
     public Optional<Product> update(UUID id, Product updatedData) {
+        validateProduct(updatedData);
+
         return productRepository.findById(id).map(existing -> {
             existing.setName(updatedData.getName());
             existing.setPrice(updatedData.getPrice());
@@ -160,6 +165,28 @@ public class ProductService {
         }
 
         return productRepository.findAll(spec, sort);
+    }
+
+    private void validateProduct(Product product) {
+        if (product == null) {
+            throw new IllegalArgumentException("Produto é obrigatório.");
+        }
+        if (product.getName() == null || product.getName().isBlank()) {
+            throw new IllegalArgumentException("Nome do produto é obrigatório.");
+        }
+        if (product.getPrice() == null) {
+            throw new IllegalArgumentException("Preço do produto é obrigatório.");
+        }
+        if (product.getPrice().compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Preço do produto não pode ser negativo.");
+        }
+        if (product instanceof PhysicalProduct physicalProduct && physicalProduct.getStock() < 0) {
+            throw new IllegalArgumentException("Estoque do produto não pode ser negativo.");
+        }
+        if (product.getCategory() != null && product.getCategory().getId() != null) {
+            categoryRepository.findById(product.getCategory().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
+        }
     }
 
     // --- D: Delete ---
