@@ -62,7 +62,7 @@ public class CartController {
         java.util.Optional<ProductVariant> variant = request.getProductVariantId() != null
                 ? productVariantRepository.findById(request.getProductVariantId())
                 : productRepository.findById(request.getProductId())
-                        .map(product -> createDefaultVariant(product, request));
+                        .map(this::resolveDefaultVariantForProduct);
 
         ProductVariant productVariant = variant
                 .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado."));
@@ -92,13 +92,7 @@ public class CartController {
             Optional<ProductVariant> variant = request.getProductVariantId() != null
                     ? productVariantRepository.findById(request.getProductVariantId())
                     : productRepository.findById(request.getProductId())
-                            .map(product -> productVariantRepository.findByProductId(product.getId()).stream()
-                                    .filter(existing -> java.util.Objects.equals(
-                                            existing.getSize(), request.getSize() == null || request.getSize().isBlank()
-                                                    ? "Único"
-                                                    : request.getSize()))
-                                    .findFirst()
-                                    .orElseGet(() -> createDefaultVariant(product, request)));
+                            .map(this::resolveDefaultVariantForProduct);
 
             if (variant.isEmpty() || !variant.get().getProduct().isActive()) {
                 throw new ResourceNotFoundException("Produto não encontrado ou inativo.");
@@ -117,15 +111,17 @@ public class CartController {
         return ResponseEntity.noContent().build();
     }
 
-    private ProductVariant createDefaultVariant(Product product, CartItemRequest request) {
-        ProductVariant variant = new ProductVariant();
-        variant.setProduct(product);
-        variant.setSize(request.getSize() == null || request.getSize().isBlank() ? "Único" : request.getSize());
-        variant.setColor(product.getColor());
-        variant.setStock(product instanceof com.dnstore.backend.model.PhysicalProduct physical
-                ? physical.getStock()
-                : 0);
-        return productVariantRepository.save(variant);
+    private ProductVariant resolveDefaultVariantForProduct(Product product) {
+        String defaultSize = "Único";
+        return productVariantRepository.findByProductIdAndSize(product.getId(), defaultSize)
+                .orElseGet(() -> {
+                    ProductVariant variant = new ProductVariant();
+                    variant.setProduct(product);
+                    variant.setSize(defaultSize);
+                    variant.setColor(product.getColor());
+                    variant.setStock(0);
+                    return productVariantRepository.save(variant);
+                });
     }
 
     @PutMapping("/items/{productVariantId}")

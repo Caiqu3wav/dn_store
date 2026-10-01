@@ -4,9 +4,11 @@ import com.dnstore.backend.model.Category;
 import com.dnstore.backend.model.PhysicalProduct;
 import com.dnstore.backend.model.Product;
 import com.dnstore.backend.model.ProductImage;
+import com.dnstore.backend.model.ProductVariant;
 import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.repository.CategoryRepository;
 import com.dnstore.backend.repository.ProductRepository;
+import com.dnstore.backend.repository.ProductVariantRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -29,6 +31,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final ProductVariantRepository productVariantRepository;
 
     // --- R: Read ---
     public List<Product> findAll() {
@@ -51,7 +54,9 @@ public class ProductService {
                 img.setProduct(product);
             }
         }
-        return productRepository.save(product);
+        Product saved = productRepository.save(product);
+        ensureLegacyDefaultVariant(saved);
+        return saved;
     }
 
     // --- Batch Create ---
@@ -70,7 +75,9 @@ public class ProductService {
         }
         List<Product> saved = new java.util.ArrayList<>();
         for (PhysicalProduct p : products) {
-            saved.add(productRepository.save(p));
+            Product savedProduct = productRepository.save(p);
+            ensureLegacyDefaultVariant(savedProduct);
+            saved.add(savedProduct);
         }
         return saved;
     }
@@ -109,8 +116,11 @@ public class ProductService {
                 existingPhysical.setWidth(updatedPhysical.getWidth());
                 existingPhysical.setHeight(updatedPhysical.getHeight());
                 existingPhysical.setDepth(updatedPhysical.getDepth());
+                existingPhysical.setStock(updatedPhysical.getStock());
             }
-            return productRepository.save(existing);
+            Product saved = productRepository.save(existing);
+            ensureLegacyDefaultVariant(saved);
+            return saved;
         });
     }
 
@@ -153,6 +163,35 @@ public class ProductService {
     }
 
     // --- D: Delete ---
+    private void ensureLegacyDefaultVariant(Product product) {
+        if (!(product instanceof PhysicalProduct physicalProduct)) {
+            return;
+        }
+
+        List<ProductVariant> existingVariants = productVariantRepository.findByProductId(product.getId());
+        ProductVariant defaultVariant = existingVariants.stream()
+                .filter(variant -> variant.getSize() != null && variant.getSize().equalsIgnoreCase("Único"))
+                .findFirst()
+                .orElse(null);
+
+        if (defaultVariant != null) {
+            defaultVariant.setColor(product.getColor());
+            defaultVariant.setProduct(product);
+            defaultVariant.setStock(Math.max(0, physicalProduct.getStock()));
+            productVariantRepository.save(defaultVariant);
+            physicalProduct.setStock(defaultVariant.getStock());
+            productRepository.save(physicalProduct);
+            return;
+        }
+
+        ProductVariant variant = new ProductVariant();
+        variant.setProduct(product);
+        variant.setSize("Único");
+        variant.setColor(product.getColor());
+        variant.setStock(Math.max(0, physicalProduct.getStock()));
+        productVariantRepository.save(variant);
+    }
+
     public boolean delete(UUID id) {
         if (productRepository.existsById(id)) {
             productRepository.deleteById(id);
