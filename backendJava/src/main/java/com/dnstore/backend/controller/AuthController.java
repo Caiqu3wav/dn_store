@@ -57,7 +57,7 @@ public class AuthController {
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             ResendEmailService emailService,
-            @Value("${auth.challenge-secret:${jwt.secret}}") String challengeSecret) {
+            @Value("${auth.challenge-secret}") String challengeSecret) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.addressRepository = addressRepository;
