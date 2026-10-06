@@ -14,6 +14,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -43,6 +44,10 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/payment/webhook").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/zip-code/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/products", "/api/products/**")
+                        .permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/integrations/melhor-envio/callback")
                         .permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
