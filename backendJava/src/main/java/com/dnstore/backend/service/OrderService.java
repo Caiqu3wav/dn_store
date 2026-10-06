@@ -247,9 +247,9 @@ public class OrderService {
                     || !(item.getProductVariant().getProduct() instanceof PhysicalProduct product)) {
                 throw new IllegalArgumentException("Produto físico inválido para cotação de frete.");
             }
-            if (item.getQuantity() <= 0 || !Double.isFinite(product.getWeight())
-                    || !Double.isFinite(product.getWidth()) || !Double.isFinite(product.getHeight())
-                    || !Double.isFinite(product.getDepth())) {
+            if (item.getQuantity() <= 0 || !isPositiveFinite(product.getWeight())
+                    || !isPositiveFinite(product.getWidth()) || !isPositiveFinite(product.getHeight())
+                    || !isPositiveFinite(product.getDepth())) {
                 throw new IllegalArgumentException("Peso, dimensões e quantidade dos produtos devem ser válidos.");
             }
             return new ShippingItem(
@@ -259,6 +259,10 @@ public class OrderService {
                     BigDecimal.valueOf(product.getDepth()),
                     item.getQuantity());
         }).toList();
+    }
+
+    private boolean isPositiveFinite(double value) {
+        return Double.isFinite(value) && value > 0;
     }
 
     private static final java.util.Set<String> VALID_STATUSES = java.util.Set.of(

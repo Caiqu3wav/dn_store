@@ -10,7 +10,8 @@ import lombok.Setter;
  * 📦 Classe ProdutoFisico (PhysicalProduct)
  *
  * Estende a classe Product, herdando seus atributos (nome, preço, etc).
- * Adiciona características específicas de itens tangíveis, como peso.
+ * Adiciona características específicas de itens tangíveis, como peso em kg e
+ * dimensões em cm, unidades utilizadas pela cotação do Melhor Envio.
  *
  * Conceitos de POO:
  * - Herança: 'extends Product'

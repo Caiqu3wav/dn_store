@@ -135,6 +135,70 @@ class OrderServiceTest {
         }
 
         @Test
+        void quoteShipping_validPhysicalProduct_shouldCreateShippingItemFromPersistedValues() {
+                when(deliveryService.calculateOptions(eq("12500-000"), anyList()))
+                                .thenReturn(List.of(new ShippingQuote("PAC", new BigDecimal("10.00"), 3)));
+
+                List<OrderService.ShippingOption> options = orderService.quoteShipping(user, "12500-000");
+
+                assertThat(options).containsExactly(
+                                new OrderService.ShippingOption("PAC", new BigDecimal("10.00"), 3,
+                                                "SHIPPING_GATEWAY"));
+                verify(deliveryService).calculateOptions(eq("12500-000"), eq(List.of(new ShippingItem(
+                                new BigDecimal("0.5"), new BigDecimal("20.0"), new BigDecimal("10.0"),
+                                new BigDecimal("30.0"), 2))));
+        }
+
+        @Test
+        void quoteShipping_zeroWeight_shouldRejectProduct() {
+                physicalProduct().setWeight(0);
+
+                assertInvalidShippingProduct();
+        }
+
+        @Test
+        void quoteShipping_zeroDimension_shouldRejectProduct() {
+                physicalProduct().setWidth(0);
+
+                assertInvalidShippingProduct();
+        }
+
+        @Test
+        void quoteShipping_zeroHeight_shouldRejectProduct() {
+                physicalProduct().setHeight(0);
+
+                assertInvalidShippingProduct();
+        }
+
+        @Test
+        void quoteShipping_zeroDepth_shouldRejectProduct() {
+                physicalProduct().setDepth(0);
+
+                assertInvalidShippingProduct();
+        }
+
+        @Test
+        void quoteShipping_zeroQuantity_shouldRejectProduct() {
+                cart.getItems().get(0).setQuantity(0);
+
+                assertInvalidShippingProduct();
+        }
+
+        @Test
+        void quoteShipping_nonPhysicalProduct_shouldRejectProduct() {
+                variant.setProduct(mock(Product.class));
+
+                assertInvalidShippingProduct();
+        }
+
+        @Test
+        void quoteShipping_nonFiniteWeight_shouldRejectProduct() {
+                physicalProduct().setWeight(Double.NaN);
+
+                assertInvalidShippingProduct();
+        }
+
+        @Test
         void checkout_whenCartIsEmpty_shouldFail() {
                 cart.getItems().clear();
 
@@ -162,5 +226,16 @@ class OrderServiceTest {
                 assertThatThrownBy(() -> orderService.checkout(user, null, "PAC", null, address.getId()))
                                 .isInstanceOf(ResourceNotFoundException.class)
                                 .hasMessageContaining("Endereço não encontrado");
+        }
+
+        private PhysicalProduct physicalProduct() {
+                return (PhysicalProduct) variant.getProduct();
+        }
+
+        private void assertInvalidShippingProduct() {
+                assertThatThrownBy(() -> orderService.quoteShipping(user, "12500-000"))
+                                .isInstanceOf(IllegalArgumentException.class);
+
+                verifyNoInteractions(deliveryService);
         }
 }
