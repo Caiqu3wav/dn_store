@@ -1,6 +1,7 @@
 package com.dnstore.backend.service;
 
 import com.dnstore.backend.model.Category;
+import com.dnstore.backend.exception.ConflictException;
 import com.dnstore.backend.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,13 +27,13 @@ public class CategoryService {
     public Category create(Category category) {
         // Prevent duplicate category names
         categoryRepository.findByNameIgnoreCase(category.getName()).ifPresent(c -> {
-            throw new RuntimeException("Category already exists with name: " + category.getName());
+            throw new ConflictException("Já existe uma categoria com esse nome.");
         });
         if (category.getSlug() == null || category.getSlug().isBlank()) {
             category.setSlug(category.getName().toLowerCase(java.util.Locale.ROOT)
-                .replaceAll("[^a-z0-9\\s]", "")
-                .trim()
-                .replaceAll("\\s+", "-"));
+                    .replaceAll("[^a-z0-9\\s]", "")
+                    .trim()
+                    .replaceAll("\\s+", "-"));
         }
         return categoryRepository.save(category);
     }
@@ -42,7 +43,7 @@ public class CategoryService {
             // Check if name is changing and already exists
             if (!existing.getName().equalsIgnoreCase(updatedData.getName())) {
                 categoryRepository.findByNameIgnoreCase(updatedData.getName()).ifPresent(c -> {
-                    throw new RuntimeException("Category already exists with name: " + updatedData.getName());
+                    throw new ConflictException("Já existe uma categoria com esse nome.");
                 });
             }
             existing.setName(updatedData.getName());
@@ -50,9 +51,9 @@ public class CategoryService {
                 existing.setSlug(updatedData.getSlug());
             } else {
                 existing.setSlug(updatedData.getName().toLowerCase(java.util.Locale.ROOT)
-                    .replaceAll("[^a-z0-9\\s]", "")
-                    .trim()
-                    .replaceAll("\\s+", "-"));
+                        .replaceAll("[^a-z0-9\\s]", "")
+                        .trim()
+                        .replaceAll("\\s+", "-"));
             }
             existing.setDescription(updatedData.getDescription());
             return categoryRepository.save(existing);

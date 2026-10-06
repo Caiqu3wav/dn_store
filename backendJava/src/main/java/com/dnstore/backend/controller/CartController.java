@@ -4,6 +4,7 @@ import com.dnstore.backend.model.Cart;
 import com.dnstore.backend.model.ProductVariant;
 import com.dnstore.backend.model.Product;
 import com.dnstore.backend.model.User;
+import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.repository.CartRepository;
 import com.dnstore.backend.repository.ProductVariantRepository;
 import com.dnstore.backend.repository.ProductRepository;
@@ -47,6 +48,10 @@ public class CartController {
 
     @PostMapping("/items")
     public ResponseEntity<?> addItem(@AuthenticationPrincipal User user, @RequestBody CartItemRequest request) {
+        if (request == null || request.getQuantity() <= 0) {
+            throw new IllegalArgumentException("Quantidade inválida para o carrinho.");
+        }
+
         Cart cart = cartRepository.findByUser(user)
                 .orElseGet(() -> {
                     Cart newCart = new Cart();
@@ -55,16 +60,15 @@ public class CartController {
                 });
 
         java.util.Optional<ProductVariant> variant = request.getProductVariantId() != null
-            ? productVariantRepository.findById(request.getProductVariantId())
-            : productRepository.findById(request.getProductId()).map(product -> createDefaultVariant(product, request));
+                ? productVariantRepository.findById(request.getProductVariantId())
+                : productRepository.findById(request.getProductId())
+                        .map(this::resolveDefaultVariantForProduct);
 
-        return variant
-            .map(productVariant -> {
-                    cart.addItem(productVariant, request.getQuantity());
-                    cartRepository.save(cart);
-                    return ResponseEntity.ok(cart);
-                })
-                .orElse(ResponseEntity.notFound().build());
+        ProductVariant productVariant = variant
+                .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado."));
+        cart.addItem(productVariant, request.getQuantity());
+        cartRepository.save(cart);
+        return ResponseEntity.ok(cart);
     }
 
     @PutMapping("/sync")
@@ -72,26 +76,26 @@ public class CartController {
     public ResponseEntity<?> synchronizeCart(
             @AuthenticationPrincipal User user,
             @RequestBody List<CartItemRequest> requests) {
-        if (requests == null) return ResponseEntity.badRequest().build();
+        if (requests == null) {
+            throw new IllegalArgumentException("Lista de itens é obrigatória.");
+        }
 
         List<CartLine> resolvedLines = new ArrayList<>();
         for (CartItemRequest request : requests) {
+            if (request == null) {
+                throw new IllegalArgumentException("Item de carrinho inválido.");
+            }
             if (request.getQuantity() < 1 || request.getQuantity() > 99) {
-                return ResponseEntity.badRequest().build();
+                throw new IllegalArgumentException("Quantidade deve estar entre 1 e 99.");
             }
 
             Optional<ProductVariant> variant = request.getProductVariantId() != null
                     ? productVariantRepository.findById(request.getProductVariantId())
                     : productRepository.findById(request.getProductId())
-                            .map(product -> productVariantRepository.findByProductId(product.getId()).stream()
-                                    .filter(existing -> java.util.Objects.equals(
-                                            existing.getSize(), request.getSize() == null || request.getSize().isBlank()
-                                                    ? "Único" : request.getSize()))
-                                    .findFirst()
-                                    .orElseGet(() -> createDefaultVariant(product, request)));
+                            .map(this::resolveDefaultVariantForProduct);
 
             if (variant.isEmpty() || !variant.get().getProduct().isActive()) {
-                return ResponseEntity.notFound().build();
+                throw new ResourceNotFoundException("Produto não encontrado ou inativo.");
             }
             resolvedLines.add(new CartLine(variant.get(), request.getQuantity()));
         }
@@ -107,21 +111,25 @@ public class CartController {
         return ResponseEntity.noContent().build();
     }
 
-    private ProductVariant createDefaultVariant(Product product, CartItemRequest request) {
-        ProductVariant variant = new ProductVariant();
-        variant.setProduct(product);
-        variant.setSize(request.getSize() == null || request.getSize().isBlank() ? "Único" : request.getSize());
-        variant.setColor(product.getColor());
-        variant.setStock(product instanceof com.dnstore.backend.model.PhysicalProduct physical
-                ? physical.getStock() : 0);
-        return productVariantRepository.save(variant);
+    private ProductVariant resolveDefaultVariantForProduct(Product product) {
+        String defaultSize = "Único";
+        return productVariantRepository.findByProductIdAndSize(product.getId(), defaultSize)
+                .orElseGet(() -> {
+                    ProductVariant variant = new ProductVariant();
+                    variant.setProduct(product);
+                    variant.setSize(defaultSize);
+                    variant.setColor(product.getColor());
+                    variant.setStock(0);
+                    return productVariantRepository.save(variant);
+                });
     }
 
     @PutMapping("/items/{productVariantId}")
-    public ResponseEntity<?> updateItem(@AuthenticationPrincipal User user, @PathVariable UUID productVariantId, @RequestBody UpdateQuantityRequest request) {
+    public ResponseEntity<?> updateItem(@AuthenticationPrincipal User user, @PathVariable UUID productVariantId,
+            @RequestBody UpdateQuantityRequest request) {
         Cart cart = cartRepository.findByUser(user).orElse(null);
         if (cart == null) {
-            return ResponseEntity.notFound().build();
+            throw new ResourceNotFoundException("Carrinho não encontrado.");
         }
 
         cart.updateItemQuantity(productVariantId, request.getQuantity());
@@ -133,7 +141,7 @@ public class CartController {
     public ResponseEntity<?> removeItem(@AuthenticationPrincipal User user, @PathVariable UUID productVariantId) {
         Cart cart = cartRepository.findByUser(user).orElse(null);
         if (cart == null) {
-            return ResponseEntity.notFound().build();
+            throw new ResourceNotFoundException("Carrinho não encontrado.");
         }
 
         cart.removeItem(productVariantId);
@@ -145,7 +153,7 @@ public class CartController {
     public ResponseEntity<?> clearCart(@AuthenticationPrincipal User user) {
         Cart cart = cartRepository.findByUser(user).orElse(null);
         if (cart == null) {
-            return ResponseEntity.notFound().build();
+            throw new ResourceNotFoundException("Carrinho não encontrado.");
         }
 
         cart.clear();
@@ -154,7 +162,8 @@ public class CartController {
     }
 
     // DTOs
-    private record CartLine(ProductVariant variant, int quantity) {}
+    private record CartLine(ProductVariant variant, int quantity) {
+    }
 
     @Data
     public static class CartItemRequest {

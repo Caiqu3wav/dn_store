@@ -1,8 +1,8 @@
 package com.dnstore.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -21,7 +21,6 @@ import org.hibernate.annotations.JdbcTypeCode;
 @Setter
 @Entity
 @Table(name = "cart_items")
-@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class CartItem {
@@ -31,6 +30,7 @@ public class CartItem {
     @JdbcTypeCode(java.sql.Types.VARCHAR)
     private UUID id;
 
+    @JsonBackReference("cart-items")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cart_id", nullable = false)
     private Cart cart;

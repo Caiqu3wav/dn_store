@@ -3,7 +3,6 @@ package com.dnstore.backend.model;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -18,7 +17,6 @@ import java.util.UUID;
 @Builder
 @Entity
 @Table(name = "categories")
-@Data
 public class Category {
 
     @Id

@@ -2,20 +2,16 @@ package com.dnstore.backend.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.math.BigDecimal;
-import java.util.UUID;
 
 /**
  * 📦 Classe ProdutoFisico (PhysicalProduct)
  *
  * Estende a classe Product, herdando seus atributos (nome, preço, etc).
- * Adiciona características específicas de itens tangíveis, como peso.
+ * Adiciona características específicas de itens tangíveis, como peso em kg e
+ * dimensões em cm, unidades utilizadas pela cotação do Melhor Envio.
  *
  * Conceitos de POO:
  * - Herança: 'extends Product'
@@ -23,8 +19,6 @@ import java.util.UUID;
  */
 @Getter
 @Setter
-@Data
-@EqualsAndHashCode(callSuper = true)
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity

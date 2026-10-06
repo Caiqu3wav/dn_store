@@ -1,78 +1,85 @@
 package com.dnstore.backend.service;
 
 import com.dnstore.backend.exception.DeliveryException;
-import com.dnstore.backend.service.impl.ViaCepResponse;
-import com.dnstore.backend.service.strategy.DeliveryStrategy;
-import com.dnstore.backend.service.strategy.DeliveryStrategy.DeliveryResult;
+import com.dnstore.backend.exception.ShippingGatewayException;
+import com.dnstore.backend.service.shipping.ShippingGateway;
+import com.dnstore.backend.service.shipping.ShippingGateway.ShippingItem;
+import com.dnstore.backend.service.shipping.ShippingGateway.ShippingRequest;
+import com.dnstore.backend.service.shipping.ShippingQuote;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 🚚 DeliveryService (Serviço de Entregas)
  * 
- * Responsável por orquestrar o cálculo de frete:
- * 1. Valida e enriquece o CEP via Serviço dedicado (ZipCodeService).
- * 2. Determina a distância baseada na região (UF).
- * 3. Delega o cálculo final para a estratégia selecionada.
+ * Valida os dados de envio e delega cotações ao gateway configurado.
  */
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class DeliveryService {
 
-    private final ZipCodeService zipCodeService;
-    private final Map<String, DeliveryStrategy> strategies;
+    private final ShippingGateway shippingGateway;
 
-    @Value("${shipping.origin-zip:12600-000}")
+    @Value("${shipping.origin-zip:}")
     private String originZip;
-    
-    private static final Map<String, Integer> STATE_DISTANCES = new HashMap<>();
 
-    static {
-        // Tabela de Zonas (Em produção, isso viria de um Banco de Dados)
-        // Distância do Centro de Distribuição (ex: SP) em km
-        STATE_DISTANCES.put("SP", 50);
-        STATE_DISTANCES.put("RJ", 400);
-        STATE_DISTANCES.put("MG", 600);
-        STATE_DISTANCES.put("ES", 800);
-        STATE_DISTANCES.put("PR", 700);
-        STATE_DISTANCES.put("SC", 850);
-        STATE_DISTANCES.put("RS", 1000);
-        STATE_DISTANCES.put("DF", 1000);
-    }
-
-    public DeliveryResult calculateShipping(String zipCode, double weight, String strategyName) {
-        return calculateOptions(zipCode, weight).stream()
-                .filter(option -> option.typeName().equalsIgnoreCase(strategyName))
-                .findFirst()
-                .orElseThrow(() -> new DeliveryException("Serviço de entrega inválido."));
-    }
-
-    public List<DeliveryResult> calculateOptions(String zipCode, double weight) {
-        String originState = zipCodeService.getAddress(originZip).getUf();
-        String destinationState = zipCodeService.getAddress(zipCode).getUf();
-        if (!"SP".equalsIgnoreCase(originState)) {
-            throw new DeliveryException("O frete estimado temporariamente requer origem no estado de SP.");
+    public ShippingQuote calculateShipping(String destinationZip, List<ShippingItem> items, String service) {
+        if (service == null || service.isBlank()) {
+            throw new DeliveryException("Modalidade de entrega é obrigatória.");
         }
-        int distance = getDistanceFromState(destinationState);
-        log.info("Estimando frete de {} para {}, UF {}, peso {} kg", originZip, zipCode, destinationState, weight);
-
-        return strategies.values().stream()
-                .map(strategy -> strategy.calculate(weight, distance))
-                .sorted(Comparator.comparing(DeliveryResult::cost))
-                .toList();
+        return calculateOptions(destinationZip, items).stream()
+                .filter(option -> option.service().equalsIgnoreCase(service.trim()))
+                .findFirst()
+                .orElseThrow(() -> new DeliveryException("Modalidade de entrega indisponível."));
     }
 
-    private int getDistanceFromState(String uf) {
-        // Se UF desconhecida, assume longa distância (Frete Nacional)
-        if (uf == null) return 2000; 
-        return STATE_DISTANCES.getOrDefault(uf.toUpperCase(java.util.Locale.ROOT), 2000); 
+    public List<ShippingQuote> calculateOptions(String destinationZip, List<ShippingItem> items) {
+        if (originZip == null || originZip.isBlank()) {
+            throw new ShippingGatewayException("CEP de origem não configurado.");
+        }
+        String normalizedOrigin;
+        try {
+            normalizedOrigin = normalizeZip(originZip, "origem");
+        } catch (DeliveryException e) {
+            throw new ShippingGatewayException("CEP de origem não configurado corretamente.");
+        }
+        String normalizedDestination = normalizeZip(destinationZip, "destino");
+        if (items == null || items.isEmpty()) {
+            throw new DeliveryException("O carrinho não possui itens para cotação.");
+        }
+        for (ShippingItem item : items) {
+            if (item == null || item.quantity() <= 0 || !isPositive(item.weight())
+                    || !isPositive(item.width()) || !isPositive(item.height()) || !isPositive(item.length())) {
+                throw new DeliveryException("Peso, dimensões e quantidade dos produtos devem ser válidos.");
+            }
+        }
+
+        List<ShippingQuote> quotes = shippingGateway.quote(
+                new ShippingRequest(normalizedOrigin, normalizedDestination, items));
+        if (quotes == null) {
+            throw new ShippingGatewayException("Resposta inválida recebida do serviço de frete.");
+        }
+        if (quotes.isEmpty()) {
+            throw new DeliveryException("Não há modalidades de entrega disponíveis para este CEP.");
+        }
+        if (quotes.stream().anyMatch(quote -> quote == null || quote.service() == null || quote.service().isBlank()
+                || quote.price() == null || quote.price().signum() < 0 || quote.deliveryDays() <= 0)) {
+            throw new ShippingGatewayException("Resposta inválida recebida do serviço de frete.");
+        }
+        return List.copyOf(quotes);
+    }
+
+    private String normalizeZip(String zipCode, String role) {
+        if (zipCode == null || !zipCode.trim().matches("\\d{5}-?\\d{3}")) {
+            throw new DeliveryException("CEP de " + role + " inválido.");
+        }
+        return zipCode.replace("-", "").trim();
+    }
+
+    private boolean isPositive(java.math.BigDecimal value) {
+        return value != null && value.signum() > 0;
     }
 }
