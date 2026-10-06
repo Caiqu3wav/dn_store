@@ -190,6 +190,9 @@ Ao criar ou editar um produto, envie o JSON contendo os dados e a lista de URLs 
 }
 ```
 
+`weight` deve ser informado em quilogramas (kg); `width`, `height` e `depth`
+devem ser informados em centímetros (cm), como esperado pelo cálculo de frete.
+
 ---
 
 ## Carrinho de Compras (`/api/cart`)
