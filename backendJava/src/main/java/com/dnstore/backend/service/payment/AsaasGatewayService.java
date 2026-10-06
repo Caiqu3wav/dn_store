@@ -34,7 +34,7 @@ public class AsaasGatewayService implements PaymentGateway {
 
     private String baseUrl() {
         return sandbox
-                ? "https://sandbox.asaas.com/api/v3"
+                ? "https://api-sandbox.asaas.com/v3"
                 : "https://api.asaas.com/v3";
     }
 
@@ -45,6 +45,7 @@ public class AsaasGatewayService implements PaymentGateway {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("access_token", apiKey);
+        headers.set("User-Agent", "DN-Store/1.0");
         return headers;
     }
 
