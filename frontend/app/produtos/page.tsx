@@ -7,6 +7,7 @@ import { ProductCard } from '../components/ui/ProductCard';
 import useSWR from 'swr';
 import { fetcher } from '@/services/productService';
 import { Product, Category } from '@/types';
+import { normalizeProductColor, productColorOptions } from '@/utils/productColor';
 
 type SortOption = 'relevance' | 'price-asc' | 'price-desc' | 'name-asc' | 'name-desc';
 
@@ -47,7 +48,11 @@ export default function ProdutosPage() {
     fetcher
   );
 
-  const filteredAndSortedProducts = productsData || [];
+  const filteredAndSortedProducts = (productsData || []).filter(product => {
+    if (!selectedColor) return true;
+    const color = normalizeProductColor(product.color);
+    return color === selectedColor || (color?.split(' e ').includes(selectedColor) ?? false);
+  });
 
 
   return (
@@ -127,12 +132,15 @@ export default function ProdutosPage() {
                     {/* Sidebar Header with Clear All */}
                     <div className="flex items-center justify-between">
                       <h3 className="font-bold text-[#1A1B1D] uppercase text-sm tracking-wider">Filtros</h3>
-                      {(searchQuery || selectedCategories.length > 0 || priceRange.min || priceRange.max) && (
+                      {(searchQuery || selectedCategories.length > 0 || priceRange.min || priceRange.max || selectedColor || selectedSize) && (
                         <button
                           onClick={() => {
                             setSearchQuery('');
                             setSelectedCategories([]);
                             setPriceRange({ min: '', max: '' });
+                            setSelectedCategory('');
+                            setSelectedColor('');
+                            setSelectedSize('');
                           }}
                           className="text-xs font-bold text-brand-secondary hover:underline transition-all"
                         >
@@ -238,13 +246,7 @@ export default function ProdutosPage() {
         className="w-full border border-gray-200 rounded-xl p-3"
       >
         <option value="">Todas</option>
-        <option value="Cinza">Cinza</option>
-        <option value="Preta">Preta</option>
-        <option value="Azul">Azul</option>
-        <option value="Laranja">Laranja</option>
-        <option value="Rosa">Rosa</option>
-        <option value="Vermelha">Vermelho</option>
-        <option value="Marrom">Marrom</option>
+        {productColorOptions.map(color => <option key={color} value={color}>{color}</option>)}
       </select>
     </div>
 
@@ -282,11 +284,7 @@ export default function ProdutosPage() {
         className="w-full border border-gray-200 rounded-xl p-3"
       >
         <option value="">Todas</option>
-        <option value="Azul">Azul</option>
-        <option value="Laranja">Laranja</option>
-        <option value="Marrom">Marrom</option>
-         <option value="Vermelha">Vermelha</option>
-          <option value="Preta">Preta</option>
+        {productColorOptions.map(color => <option key={color} value={color}>{color}</option>)}
 
       </select>
     </div>
@@ -328,8 +326,7 @@ export default function ProdutosPage() {
         className="w-full border border-gray-200 rounded-xl p-3"
       >
         <option value="">Todas</option>
-        <option value="Preto e Vermelho">Preto e Vermelho</option>
-        <option value="Preto e Verde">Preto e Verde</option>
+        {productColorOptions.map(color => <option key={color} value={color}>{color}</option>)}
       </select>
     </div>
 
@@ -441,6 +438,9 @@ export default function ProdutosPage() {
                     setSearchQuery('');
                     setSelectedCategories([]);
                     setPriceRange({ min: '', max: '' });
+                    setSelectedCategory('');
+                    setSelectedColor('');
+                    setSelectedSize('');
                   }}
                   className="mt-6 font-bold text-brand-secondary hover:text-[#1A1B1D] transition-colors border-b-2 border-brand-secondary hover:border-[#1A1B1D] pb-1"
                 >

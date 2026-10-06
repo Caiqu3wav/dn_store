@@ -9,7 +9,9 @@ import com.dnstore.backend.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -40,6 +42,7 @@ public class ProductService {
 
     // --- C: Create ---
     public Product create(Product product) {
+        normalizeProductColor(product);
         if (product.getCategory() != null && product.getCategory().getId() != null) {
             Category cat = categoryRepository.findById(product.getCategory().getId())
                 .orElseThrow(() -> new RuntimeException("Category not found"));
@@ -56,6 +59,7 @@ public class ProductService {
     // --- Batch Create ---
     public List<Product> createAll(List<PhysicalProduct> products) {
         for (Product product : products) {
+            normalizeProductColor(product);
             if (product.getCategory() != null && product.getCategory().getId() != null) {
                 Category cat = categoryRepository.findById(product.getCategory().getId())
                     .orElseThrow(() -> new RuntimeException("Category not found"));
@@ -82,6 +86,7 @@ public class ProductService {
             existing.setDescription(updatedData.getDescription());
             existing.setPromotionalPrice(updatedData.getPromotionalPrice());
             existing.setActive(updatedData.isActive());
+            normalizeProductColor(updatedData);
             existing.setColor(updatedData.getColor());
 
             if (updatedData.getCategory() != null && updatedData.getCategory().getId() != null) {
@@ -104,6 +109,7 @@ public class ProductService {
             if (existing instanceof PhysicalProduct && updatedData instanceof PhysicalProduct) {
                 PhysicalProduct existingPhysical = (PhysicalProduct) existing;
                 PhysicalProduct updatedPhysical = (PhysicalProduct) updatedData;
+                existingPhysical.setStock(updatedPhysical.getStock());
                 existingPhysical.setWeight(updatedPhysical.getWeight());
                 existingPhysical.setWidth(updatedPhysical.getWidth());
                 existingPhysical.setHeight(updatedPhysical.getHeight());
@@ -111,6 +117,14 @@ public class ProductService {
             }
             return productRepository.save(existing);
         });
+    }
+
+    private void normalizeProductColor(Product product) {
+        try {
+            product.setColor(ProductColorNormalizer.normalize(product.getColor()));
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage());
+        }
     }
 
     public List<Product> search(
