@@ -9,6 +9,7 @@ import { fetcher, productService } from '@/services/productService';
 import { Category } from '@/types';
 import { toast } from 'react-hot-toast';
 import { uploadToCloudinary } from '@/utils/cloudinary';
+import { normalizeProductColor, productColorOptions } from '@/utils/productColor';
 
 export default function NovoProdutoPage() {
     const router = useRouter();
@@ -70,6 +71,11 @@ export default function NovoProdutoPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        const normalizedColor = normalizeProductColor(color);
+        if (normalizedColor === null) {
+            toast.error('Selecione uma cor válida da lista.');
+            return;
+        }
         setLoading(true);
 
         try {
@@ -84,7 +90,7 @@ export default function NovoProdutoPage() {
             const payload = {
                 name,
                 category: categoryId ? { id: categoryId } : null,
-                color,
+                color: normalizedColor,
                 description,
                 price: parseFloat(price),
                 promotionalPrice: promotionalPrice ? parseFloat(promotionalPrice) : null,
@@ -102,9 +108,9 @@ export default function NovoProdutoPage() {
             toast.success('Produto criado com sucesso!');
             router.push('/admin/produtos');
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Erro ao salvar produto:", error);
-            toast.error(error.message || 'Erro ao salvar produto. Verifique os dados e o console.');
+            toast.error(error instanceof Error ? error.message : 'Erro ao salvar produto. Verifique os dados e o console.');
         } finally {
             setLoading(false);
         }
@@ -158,13 +164,10 @@ export default function NovoProdutoPage() {
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-300">Cor</label>
-                            <input 
-                                value={color}
-                                onChange={(e) => setColor(e.target.value)}
-                                type="text" 
-                                className="w-full bg-[#1A1B1D] border border-white/10 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary"
-                                placeholder="Ex: Azul, Preto, Vermelho"
-                            />
+                            <select value={color} onChange={(e) => setColor(e.target.value)} className="w-full bg-[#1A1B1D] border border-white/10 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary">
+                                <option value="">Selecione uma cor</option>
+                                {productColorOptions.map(option => <option key={option} value={option}>{option}</option>)}
+                            </select>
                         </div>
                     </div>
 

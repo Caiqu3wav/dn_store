@@ -11,6 +11,7 @@ import { toast } from 'react-hot-toast';
 import { uploadToCloudinary } from '@/utils/cloudinary';
 import Papa from 'papaparse';
 import api from '@/lib/axios';
+import { normalizeProductColor } from '@/utils/productColor';
 
 interface DraftProduct {
     id: string;
@@ -185,6 +186,12 @@ export default function BatchUpload() {
             return;
         }
 
+        const invalidColor = drafts.find(draft => normalizeProductColor(draft.color) === null);
+        if (invalidColor) {
+            toast.error(`Cor inválida no produto "${invalidColor.name || 'Sem nome'}".`);
+            return;
+        }
+
         setLoading(true);
         try {
             const payload = [];
@@ -201,7 +208,7 @@ export default function BatchUpload() {
                     promotionalPrice: draft.promotionalPrice ? parseFloat(draft.promotionalPrice) : null,
                     stock: parseInt(draft.stock),
                     description: draft.description,
-                    color: draft.color,
+                    color: normalizeProductColor(draft.color),
                     active: draft.active,
                     weight: draft.weight ? parseFloat(draft.weight) : null,
                     width: draft.width ? parseFloat(draft.width) : null,
