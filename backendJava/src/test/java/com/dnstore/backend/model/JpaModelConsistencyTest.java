@@ -2,6 +2,8 @@ package com.dnstore.backend.model;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.dnstore.backend.repository.CartRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import jakarta.persistence.OneToMany;
 import org.junit.jupiter.api.Test;
 
@@ -39,6 +41,17 @@ class JpaModelConsistencyTest {
 
         assertThat(json.path("items")).hasSize(1);
         assertThat(json.path("items").get(0).has("cart")).isFalse();
+    }
+
+    @Test
+    void cartLookup_shouldFetchProductSubtypeWithItems() throws Exception {
+        EntityGraph graph = CartRepository.class
+                .getMethod("findByUser", User.class)
+                .getAnnotation(EntityGraph.class);
+
+        assertThat(graph).isNotNull();
+        assertThat(graph.attributePaths()).contains(
+                "items", "items.productVariant", "items.productVariant.product");
     }
 
     @Test
