@@ -1,6 +1,8 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
+const authenticatedRoutes = ['/checkout', '/conta', '/admin'];
+
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api',
   headers: {
@@ -29,12 +31,19 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Token expirou ou é inválido: remover cookie e redirecionar para login se estiver no client
-      Cookies.remove('auth_token');
       if (typeof window !== 'undefined') {
-        // Redireciona para login apenas se não estivermos na página de login já
-          if (window.location.pathname !== '/auth') {
-            window.location.href = `/auth?next=${encodeURIComponent(window.location.pathname)}`;
+        const pathname = window.location.pathname;
+        const requiresAuthentication = authenticatedRoutes.some(
+          (route) => pathname === route || pathname.startsWith(`${route}/`)
+        );
+        const hasToken = Boolean(Cookies.get('auth_token'));
+
+        if (hasToken) {
+          Cookies.remove('auth_token');
+        }
+
+        if (requiresAuthentication) {
+          window.location.href = `/auth?next=${encodeURIComponent(pathname)}`;
         }
       }
     }
