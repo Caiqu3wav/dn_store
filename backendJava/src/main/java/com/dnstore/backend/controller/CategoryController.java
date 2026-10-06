@@ -1,6 +1,7 @@
 package com.dnstore.backend.controller;
 
 import com.dnstore.backend.model.Category;
+import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.service.CategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -28,34 +29,26 @@ public class CategoryController {
     public ResponseEntity<Category> getById(@PathVariable UUID id) {
         return categoryService.findById(id)
                 .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> create(@RequestBody Category category) {
-        try {
-            Category created = categoryService.create(category);
-            URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                    .path("/{id}")
-                    .buildAndExpand(created.getId())
-                    .toUri();
-            return ResponseEntity.created(location).body(created);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        Category created = categoryService.create(category);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(created.getId())
+                .toUri();
+        return ResponseEntity.created(location).body(created);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody Category category) {
-        try {
-            return categoryService.update(id, category)
-                    .map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.notFound().build());
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        Category updated = categoryService.update(id, category)
+                .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
@@ -64,6 +57,6 @@ public class CategoryController {
         if (categoryService.delete(id)) {
             return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.notFound().build();
+        throw new ResourceNotFoundException("Categoria não encontrada.");
     }
 }

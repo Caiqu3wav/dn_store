@@ -3,6 +3,7 @@ package com.dnstore.backend.service;
 import com.dnstore.backend.model.Favorite;
 import com.dnstore.backend.model.Product;
 import com.dnstore.backend.model.User;
+import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.repository.FavoriteRepository;
 import com.dnstore.backend.repository.ProductRepository;
 import com.dnstore.backend.repository.UserRepository;
@@ -34,9 +35,9 @@ public class FavoriteService {
         }
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado."));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado."));
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("Produto não encontrado."));
+                .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado."));
 
         Favorite favorite = new Favorite();
         favorite.setUser(user);

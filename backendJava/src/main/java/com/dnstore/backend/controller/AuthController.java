@@ -3,6 +3,7 @@ package com.dnstore.backend.controller;
 import com.dnstore.backend.model.Address;
 import com.dnstore.backend.model.User;
 import com.dnstore.backend.model.enums.Role;
+import com.dnstore.backend.exception.ConflictException;
 import com.dnstore.backend.repository.AddressRepository;
 import com.dnstore.backend.repository.UserRepository;
 import com.dnstore.backend.service.JwtService;
@@ -19,7 +20,6 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
-import java.util.Map;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -57,7 +57,7 @@ public class AuthController {
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             ResendEmailService emailService,
-            @Value("${auth.challenge-secret:${jwt.secret}}") String challengeSecret) {
+            @Value("${auth.challenge-secret}") String challengeSecret) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.addressRepository = addressRepository;
@@ -71,10 +71,10 @@ public class AuthController {
     @Transactional
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Email already exists"));
+            throw new ConflictException("Email já cadastrado.");
         }
         if (request.getAddress() == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Address is required"));
+            throw new IllegalArgumentException("Endereço é obrigatório.");
         }
 
         User user = new User();
@@ -120,7 +120,8 @@ public class AuthController {
         if (!user.isEmailMfaEnabled()) {
             return ResponseEntity.ok(authResponse(user));
         }
-        if (cooldownActive(user.getMfaLastSentAt())) return tooManyRequests();
+        if (cooldownActive(user.getMfaLastSentAt()))
+            throw tooManyRequests();
 
         String challengeToken = randomToken();
         String code = randomCode();
@@ -138,12 +139,15 @@ public class AuthController {
     @Transactional
     public ResponseEntity<?> verifyEmail(@Valid @RequestBody EmailCodeRequest request) {
         User user = userRepository.findByEmail(request.getEmail()).orElse(null);
-        if (user == null) return invalidCode();
-        if (user.isEmailVerified()) return invalidCode();
-        if (!isValidCode(user.getEmailVerificationCodeHash(), user.getEmailVerificationExpiration(), user.getEmailVerificationAttempts(), request.getCode())) {
+        if (user == null)
+            throw invalidCode();
+        if (user.isEmailVerified())
+            throw invalidCode();
+        if (!isValidCode(user.getEmailVerificationCodeHash(), user.getEmailVerificationExpiration(),
+                user.getEmailVerificationAttempts(), request.getCode())) {
             user.setEmailVerificationAttempts(user.getEmailVerificationAttempts() + 1);
             userRepository.save(user);
-            return invalidCode();
+            throw invalidCode();
         }
 
         user.setEmailVerified(true);
@@ -158,8 +162,10 @@ public class AuthController {
     @Transactional
     public ResponseEntity<?> resendVerification(@Valid @RequestBody EmailRequest request) {
         User user = userRepository.findByEmail(request.getEmail()).orElse(null);
-        if (user == null || user.isEmailVerified()) return ResponseEntity.noContent().build();
-        if (cooldownActive(user.getEmailVerificationLastSentAt())) return tooManyRequests();
+        if (user == null || user.isEmailVerified())
+            return ResponseEntity.noContent().build();
+        if (cooldownActive(user.getEmailVerificationLastSentAt()))
+            throw tooManyRequests();
         issueEmailVerification(user);
         userRepository.save(user);
         return ResponseEntity.noContent().build();
@@ -169,12 +175,13 @@ public class AuthController {
     @Transactional
     public ResponseEntity<?> verifyMfa(@Valid @RequestBody MfaCodeRequest request) {
         User user = userRepository.findByMfaChallengeTokenHash(hash(request.getChallengeToken())).orElse(null);
-        if (user == null || !isValidCode(user.getMfaCodeHash(), user.getMfaCodeExpiration(), user.getMfaAttempts(), request.getCode())) {
+        if (user == null || !isValidCode(user.getMfaCodeHash(), user.getMfaCodeExpiration(), user.getMfaAttempts(),
+                request.getCode())) {
             if (user != null) {
                 user.setMfaAttempts(user.getMfaAttempts() + 1);
                 userRepository.save(user);
             }
-            return invalidCode();
+            throw invalidCode();
         }
 
         clearMfaChallenge(user);
@@ -186,10 +193,12 @@ public class AuthController {
     @Transactional
     public ResponseEntity<?> resendMfa(@Valid @RequestBody MfaChallengeRequest request) {
         User user = userRepository.findByMfaChallengeTokenHash(hash(request.getChallengeToken())).orElse(null);
-        if (user == null || user.getMfaCodeExpiration() == null || user.getMfaCodeExpiration().isBefore(LocalDateTime.now())) {
-            return invalidCode();
+        if (user == null || user.getMfaCodeExpiration() == null
+                || user.getMfaCodeExpiration().isBefore(LocalDateTime.now())) {
+            throw invalidCode();
         }
-        if (cooldownActive(user.getMfaLastSentAt())) return tooManyRequests();
+        if (cooldownActive(user.getMfaLastSentAt()))
+            throw tooManyRequests();
 
         String code = randomCode();
         user.setMfaCodeHash(hash(code));
@@ -227,8 +236,9 @@ public class AuthController {
     @Transactional
     public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         User user = userRepository.findByResetToken(hash(request.getToken())).orElse(null);
-        if (user == null || user.getResetTokenExpiration() == null || user.getResetTokenExpiration().isBefore(LocalDateTime.now())) {
-            return ResponseEntity.badRequest().body(Map.of("message", "This reset link is invalid or expired."));
+        if (user == null || user.getResetTokenExpiration() == null
+                || user.getResetTokenExpiration().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Link de redefinição inválido ou expirado.");
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
@@ -245,7 +255,7 @@ public class AuthController {
             @AuthenticationPrincipal User user,
             @Valid @RequestBody ChangePasswordRequest request) {
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
-            return ResponseEntity.badRequest().body(Map.of("message", "A senha atual está incorreta."));
+            throw new IllegalArgumentException("A senha atual está incorreta.");
         }
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         user.setResetToken(null);
@@ -269,7 +279,8 @@ public class AuthController {
                 && expiration != null
                 && expiration.isAfter(LocalDateTime.now())
                 && attempts < MAX_CODE_ATTEMPTS
-                && MessageDigest.isEqual(storedHash.getBytes(StandardCharsets.UTF_8), hash(code).getBytes(StandardCharsets.UTF_8));
+                && MessageDigest.isEqual(storedHash.getBytes(StandardCharsets.UTF_8),
+                        hash(code).getBytes(StandardCharsets.UTF_8));
     }
 
     private boolean cooldownActive(LocalDateTime lastSentAt) {
@@ -308,18 +319,23 @@ public class AuthController {
         }
     }
 
-    private static ResponseEntity<?> invalidCode() {
-        return ResponseEntity.badRequest().body(Map.of("message", "The code is invalid, expired, or has too many attempts."));
+    private static IllegalArgumentException invalidCode() {
+        return new IllegalArgumentException("Código inválido, expirado ou com limite de tentativas excedido.");
     }
 
-    private static ResponseEntity<?> tooManyRequests() {
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                .body(Map.of("message", "A new code can be requested in 60 seconds."));
+    private static org.springframework.web.server.ResponseStatusException tooManyRequests() {
+        return new org.springframework.web.server.ResponseStatusException(
+                HttpStatus.TOO_MANY_REQUESTS, "A new code can be requested in 60 seconds.");
     }
 
-    public record ChallengeResponse(String status, String email, String challengeToken) {}
-    public record AuthResponse(String status, String token, UserResponse user) {}
-    public record MessageResponse(String message) {}
+    public record ChallengeResponse(String status, String email, String challengeToken) {
+    }
+
+    public record AuthResponse(String status, String token, UserResponse user) {
+    }
+
+    public record MessageResponse(String message) {
+    }
 
     public record UserResponse(java.util.UUID id, String name, String email, String phone, Role role) {
         public UserResponse(User user) {
@@ -328,98 +344,271 @@ public class AuthController {
     }
 
     public static class EmailRequest {
-        @NotBlank @Email private String email;
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
+        @NotBlank
+        @Email
+        private String email;
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
     }
 
     public static class EmailCodeRequest extends EmailRequest {
-        @NotBlank @Pattern(regexp = "\\d{6}") private String code;
-        public String getCode() { return code; }
-        public void setCode(String code) { this.code = code; }
+        @NotBlank
+        @Pattern(regexp = "\\d{6}")
+        private String code;
+
+        public String getCode() {
+            return code;
+        }
+
+        public void setCode(String code) {
+            this.code = code;
+        }
     }
 
     public static class MfaChallengeRequest {
-        @NotBlank private String challengeToken;
-        public String getChallengeToken() { return challengeToken; }
-        public void setChallengeToken(String challengeToken) { this.challengeToken = challengeToken; }
+        @NotBlank
+        private String challengeToken;
+
+        public String getChallengeToken() {
+            return challengeToken;
+        }
+
+        public void setChallengeToken(String challengeToken) {
+            this.challengeToken = challengeToken;
+        }
     }
 
     public static class MfaCodeRequest extends MfaChallengeRequest {
-        @NotBlank @Pattern(regexp = "\\d{6}") private String code;
-        public String getCode() { return code; }
-        public void setCode(String code) { this.code = code; }
+        @NotBlank
+        @Pattern(regexp = "\\d{6}")
+        private String code;
+
+        public String getCode() {
+            return code;
+        }
+
+        public void setCode(String code) {
+            this.code = code;
+        }
     }
 
     public static class ResetPasswordRequest {
-        @NotBlank private String token;
-        @NotBlank @Size(min = 8, max = 128) @Pattern(regexp = "(?=.*[A-Za-z])(?=.*\\d).+") private String newPassword;
-        public String getToken() { return token; }
-        public void setToken(String token) { this.token = token; }
-        public String getNewPassword() { return newPassword; }
-        public void setNewPassword(String newPassword) { this.newPassword = newPassword; }
+        @NotBlank
+        private String token;
+        @NotBlank
+        @Size(min = 8, max = 128)
+        @Pattern(regexp = "(?=.*[A-Za-z])(?=.*\\d).+")
+        private String newPassword;
+
+        public String getToken() {
+            return token;
+        }
+
+        public void setToken(String token) {
+            this.token = token;
+        }
+
+        public String getNewPassword() {
+            return newPassword;
+        }
+
+        public void setNewPassword(String newPassword) {
+            this.newPassword = newPassword;
+        }
     }
 
     public static class ChangePasswordRequest {
-        @NotBlank private String currentPassword;
-        @NotBlank @Size(min = 8, max = 128) @Pattern(regexp = "(?=.*[A-Za-z])(?=.*\\d).+") private String newPassword;
-        public String getCurrentPassword() { return currentPassword; }
-        public void setCurrentPassword(String currentPassword) { this.currentPassword = currentPassword; }
-        public String getNewPassword() { return newPassword; }
-        public void setNewPassword(String newPassword) { this.newPassword = newPassword; }
+        @NotBlank
+        private String currentPassword;
+        @NotBlank
+        @Size(min = 8, max = 128)
+        @Pattern(regexp = "(?=.*[A-Za-z])(?=.*\\d).+")
+        private String newPassword;
+
+        public String getCurrentPassword() {
+            return currentPassword;
+        }
+
+        public void setCurrentPassword(String currentPassword) {
+            this.currentPassword = currentPassword;
+        }
+
+        public String getNewPassword() {
+            return newPassword;
+        }
+
+        public void setNewPassword(String newPassword) {
+            this.newPassword = newPassword;
+        }
     }
 
     public static class RegisterRequest {
-        @NotBlank(message = "Name is required") @Size(max = 120) private String name;
-        @NotBlank(message = "Email is required") @Email(message = "Invalid email format") @Size(max = 150) private String email;
-        @NotBlank(message = "Password is required") @Size(min = 8, max = 128) @Pattern(regexp = "(?=.*[A-Za-z])(?=.*\\d).+") private String password;
+        @NotBlank(message = "Name is required")
+        @Size(max = 120)
+        private String name;
+        @NotBlank(message = "Email is required")
+        @Email(message = "Invalid email format")
+        @Size(max = 150)
+        private String email;
+        @NotBlank(message = "Password is required")
+        @Size(min = 8, max = 128)
+        @Pattern(regexp = "(?=.*[A-Za-z])(?=.*\\d).+")
+        private String password;
         private String phone;
-        @NotBlank @Pattern(regexp = "\\d{11}") private String cpf;
-        @Valid private AddressRequest address;
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
-        public String getPassword() { return password; }
-        public void setPassword(String password) { this.password = password; }
-        public String getPhone() { return phone; }
-        public void setPhone(String phone) { this.phone = phone; }
-        public String getCpf() { return cpf; }
-        public void setCpf(String cpf) { this.cpf = cpf; }
-        public AddressRequest getAddress() { return address; }
-        public void setAddress(AddressRequest address) { this.address = address; }
+        @NotBlank
+        @Pattern(regexp = "\\d{11}")
+        private String cpf;
+        @Valid
+        private AddressRequest address;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        public String getPhone() {
+            return phone;
+        }
+
+        public void setPhone(String phone) {
+            this.phone = phone;
+        }
+
+        public String getCpf() {
+            return cpf;
+        }
+
+        public void setCpf(String cpf) {
+            this.cpf = cpf;
+        }
+
+        public AddressRequest getAddress() {
+            return address;
+        }
+
+        public void setAddress(AddressRequest address) {
+            this.address = address;
+        }
     }
 
     public static class AddressRequest {
-        @NotBlank private String street;
-        @NotBlank private String number;
+        @NotBlank
+        private String street;
+        @NotBlank
+        private String number;
         private String complement;
-        @NotBlank private String neighborhood;
-        @NotBlank private String city;
-        @NotBlank private String state;
-        @NotBlank private String zipCode;
-        public String getStreet() { return street; }
-        public void setStreet(String street) { this.street = street; }
-        public String getNumber() { return number; }
-        public void setNumber(String number) { this.number = number; }
-        public String getComplement() { return complement; }
-        public void setComplement(String complement) { this.complement = complement; }
-        public String getNeighborhood() { return neighborhood; }
-        public void setNeighborhood(String neighborhood) { this.neighborhood = neighborhood; }
-        public String getCity() { return city; }
-        public void setCity(String city) { this.city = city; }
-        public String getState() { return state; }
-        public void setState(String state) { this.state = state; }
-        public String getZipCode() { return zipCode; }
-        public void setZipCode(String zipCode) { this.zipCode = zipCode; }
+        @NotBlank
+        private String neighborhood;
+        @NotBlank
+        private String city;
+        @NotBlank
+        private String state;
+        @NotBlank
+        private String zipCode;
+
+        public String getStreet() {
+            return street;
+        }
+
+        public void setStreet(String street) {
+            this.street = street;
+        }
+
+        public String getNumber() {
+            return number;
+        }
+
+        public void setNumber(String number) {
+            this.number = number;
+        }
+
+        public String getComplement() {
+            return complement;
+        }
+
+        public void setComplement(String complement) {
+            this.complement = complement;
+        }
+
+        public String getNeighborhood() {
+            return neighborhood;
+        }
+
+        public void setNeighborhood(String neighborhood) {
+            this.neighborhood = neighborhood;
+        }
+
+        public String getCity() {
+            return city;
+        }
+
+        public void setCity(String city) {
+            this.city = city;
+        }
+
+        public String getState() {
+            return state;
+        }
+
+        public void setState(String state) {
+            this.state = state;
+        }
+
+        public String getZipCode() {
+            return zipCode;
+        }
+
+        public void setZipCode(String zipCode) {
+            this.zipCode = zipCode;
+        }
     }
 
     public static class LoginRequest {
-        @NotBlank @Email private String email;
-        @NotBlank private String password;
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
-        public String getPassword() { return password; }
-        public void setPassword(String password) { this.password = password; }
+        @NotBlank
+        @Email
+        private String email;
+        @NotBlank
+        private String password;
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
     }
 }

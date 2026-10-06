@@ -4,8 +4,11 @@ import com.dnstore.backend.model.Category;
 import com.dnstore.backend.model.PhysicalProduct;
 import com.dnstore.backend.model.Product;
 import com.dnstore.backend.model.ProductImage;
+import com.dnstore.backend.model.ProductVariant;
+import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.repository.CategoryRepository;
 import com.dnstore.backend.repository.ProductRepository;
+import com.dnstore.backend.repository.ProductVariantRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -30,6 +33,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final ProductVariantRepository productVariantRepository;
 
     // --- R: Read ---
     public List<Product> findAll() {
@@ -43,9 +47,11 @@ public class ProductService {
     // --- C: Create ---
     public Product create(Product product) {
         normalizeProductColor(product);
+        validateProduct(product);
+
         if (product.getCategory() != null && product.getCategory().getId() != null) {
             Category cat = categoryRepository.findById(product.getCategory().getId())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
             product.setCategory(cat);
         }
         if (product.getImages() != null) {
@@ -53,16 +59,19 @@ public class ProductService {
                 img.setProduct(product);
             }
         }
-        return productRepository.save(product);
+        Product saved = productRepository.save(product);
+        ensureLegacyDefaultVariant(saved);
+        return saved;
     }
 
     // --- Batch Create ---
     public List<Product> createAll(List<PhysicalProduct> products) {
         for (Product product : products) {
             normalizeProductColor(product);
+            validateProduct(product);
             if (product.getCategory() != null && product.getCategory().getId() != null) {
                 Category cat = categoryRepository.findById(product.getCategory().getId())
-                    .orElseThrow(() -> new RuntimeException("Category not found"));
+                        .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
                 product.setCategory(cat);
             }
             if (product.getImages() != null) {
@@ -73,13 +82,17 @@ public class ProductService {
         }
         List<Product> saved = new java.util.ArrayList<>();
         for (PhysicalProduct p : products) {
-            saved.add(productRepository.save(p));
+            Product savedProduct = productRepository.save(p);
+            ensureLegacyDefaultVariant(savedProduct);
+            saved.add(savedProduct);
         }
         return saved;
     }
 
     // --- U: Update ---
     public Optional<Product> update(UUID id, Product updatedData) {
+        validateProduct(updatedData);
+
         return productRepository.findById(id).map(existing -> {
             existing.setName(updatedData.getName());
             existing.setPrice(updatedData.getPrice());
@@ -91,7 +104,7 @@ public class ProductService {
 
             if (updatedData.getCategory() != null && updatedData.getCategory().getId() != null) {
                 Category cat = categoryRepository.findById(updatedData.getCategory().getId())
-                    .orElseThrow(() -> new RuntimeException("Category not found"));
+                        .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
                 existing.setCategory(cat);
             } else {
                 existing.setCategory(null);
@@ -114,8 +127,11 @@ public class ProductService {
                 existingPhysical.setWidth(updatedPhysical.getWidth());
                 existingPhysical.setHeight(updatedPhysical.getHeight());
                 existingPhysical.setDepth(updatedPhysical.getDepth());
+                existingPhysical.setStock(updatedPhysical.getStock());
             }
-            return productRepository.save(existing);
+            Product saved = productRepository.save(existing);
+            ensureLegacyDefaultVariant(saved);
+            return saved;
         });
     }
 
@@ -137,27 +153,20 @@ public class ProductService {
         Specification<Product> spec = Specification.where(null);
 
         if (search != null && !search.isBlank()) {
-            spec = spec.and((root, query, cb) ->
-                    cb.like(cb.lower(root.get("name")), "%" + search.toLowerCase(java.util.Locale.ROOT) + "%")
-            );
+            spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("name")),
+                    "%" + search.toLowerCase(java.util.Locale.ROOT) + "%"));
         }
 
         if (categoryId != null) {
-            spec = spec.and((root, query, cb) ->
-                    cb.equal(root.get("category").get("id"), categoryId)
-            );
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("category").get("id"), categoryId));
         }
 
         if (minPrice != null) {
-            spec = spec.and((root, query, cb) ->
-                    cb.greaterThanOrEqualTo(root.get("price"), minPrice)
-            );
+            spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("price"), minPrice));
         }
 
         if (maxPrice != null) {
-            spec = spec.and((root, query, cb) ->
-                    cb.lessThanOrEqualTo(root.get("price"), maxPrice)
-            );
+            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("price"), maxPrice));
         }
 
         Sort sort = Sort.unsorted();
@@ -172,7 +181,58 @@ public class ProductService {
         return productRepository.findAll(spec, sort);
     }
 
+    private void validateProduct(Product product) {
+        if (product == null) {
+            throw new IllegalArgumentException("Produto é obrigatório.");
+        }
+        if (product.getName() == null || product.getName().isBlank()) {
+            throw new IllegalArgumentException("Nome do produto é obrigatório.");
+        }
+        if (product.getPrice() == null) {
+            throw new IllegalArgumentException("Preço do produto é obrigatório.");
+        }
+        if (product.getPrice().compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Preço do produto não pode ser negativo.");
+        }
+        if (product instanceof PhysicalProduct physicalProduct && physicalProduct.getStock() < 0) {
+            throw new IllegalArgumentException("Estoque do produto não pode ser negativo.");
+        }
+        if (product.getCategory() != null && product.getCategory().getId() != null) {
+            categoryRepository.findById(product.getCategory().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
+        }
+    }
+
     // --- D: Delete ---
+    private void ensureLegacyDefaultVariant(Product product) {
+        if (!(product instanceof PhysicalProduct physicalProduct)) {
+            return;
+        }
+
+        List<ProductVariant> existingVariants = productVariantRepository.findByProductId(product.getId());
+        ProductVariant defaultVariant = existingVariants.stream()
+                .filter(variant -> variant.getSize() != null && variant.getSize().equalsIgnoreCase("Único"))
+                .findFirst()
+                .orElse(null);
+
+        if (defaultVariant != null) {
+            defaultVariant.setColor(product.getColor());
+            defaultVariant.setProduct(product);
+            defaultVariant.setStock(Math.max(0, physicalProduct.getStock()));
+            productVariantRepository.save(defaultVariant);
+            physicalProduct.setStock(defaultVariant.getStock());
+            productRepository.save(physicalProduct);
+            return;
+        }
+
+        ProductVariant variant = new ProductVariant();
+        variant.setProduct(product);
+        variant.setSize("Único");
+        variant.setColor(product.getColor());
+        variant.setStock(Math.max(0, physicalProduct.getStock()));
+        productVariantRepository.save(variant);
+    }
+
     public boolean delete(UUID id) {
         if (productRepository.existsById(id)) {
             productRepository.deleteById(id);

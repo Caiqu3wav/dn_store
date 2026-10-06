@@ -29,16 +29,13 @@ public class UserController {
     public ResponseEntity<User> updateRole(@PathVariable UUID id, @RequestBody Map<String, String> body) {
         String roleStr = body.get("role");
         if (roleStr == null) {
-            return ResponseEntity.badRequest().build();
+            throw new IllegalArgumentException("Role é obrigatória.");
         }
-        try {
-            Role newRole = Role.valueOf(roleStr.toUpperCase(java.util.Locale.ROOT));
-            return userService.updateRole(id, newRole)
-                    .map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.notFound().build());
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
+        Role newRole = Role.valueOf(roleStr.toUpperCase(java.util.Locale.ROOT));
+        return userService.updateRole(id, newRole)
+                .map(ResponseEntity::ok)
+                .orElseThrow(() -> new com.dnstore.backend.exception.ResourceNotFoundException(
+                        "Usuário não encontrado."));
     }
 
     @DeleteMapping("/{id}")
@@ -46,6 +43,6 @@ public class UserController {
         if (userService.delete(id)) {
             return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.notFound().build();
+        throw new com.dnstore.backend.exception.ResourceNotFoundException("Usuário não encontrado.");
     }
 }

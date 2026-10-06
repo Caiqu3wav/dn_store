@@ -1,7 +1,6 @@
 package com.dnstore.backend.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -14,7 +13,6 @@ import org.hibernate.annotations.JdbcTypeCode;
 @Setter
 @Entity
 @Table(name = "addresses")
-@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class Address {

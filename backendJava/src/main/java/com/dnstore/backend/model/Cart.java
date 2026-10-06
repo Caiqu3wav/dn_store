@@ -1,7 +1,7 @@
 package com.dnstore.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -24,7 +24,6 @@ import org.hibernate.annotations.JdbcTypeCode;
 @Setter
 @Entity
 @Table(name = "carts")
-@Data
 @NoArgsConstructor
 public class Cart {
 
@@ -37,6 +36,7 @@ public class Cart {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
+    @JsonManagedReference("cart-items")
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<CartItem> items = new ArrayList<>();
 
@@ -49,6 +49,13 @@ public class Cart {
     }
 
     public void addItem(ProductVariant productVariant, int quantity) {
+        if (productVariant == null) {
+            throw new IllegalArgumentException("Produto inválido.");
+        }
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Quantidade inválida.");
+        }
+
         Optional<CartItem> existing = items.stream()
                 .filter(i -> i.getProductVariant().getId().equals(productVariant.getId()))
                 .findFirst();
