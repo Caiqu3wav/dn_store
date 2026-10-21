@@ -46,6 +46,8 @@ export default function CheckoutPage() {
     const [payment, setPayment] = useState<PaymentData>(EMPTY_PAYMENT);
     const [orderId, setOrderId] = useState<string>('');
     const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
+    const [confirmedItems, setConfirmedItems] = useState(items);
+    const [confirmedTotal, setConfirmedTotal] = useState(total);
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -103,7 +105,10 @@ export default function CheckoutPage() {
                     : null,
             });
 
+            setConfirmedItems([...items]);
+            setConfirmedTotal(total);
             clearCart();
+
             return paymentRes.data as PaymentResult;
         } catch (error: unknown) {
             const responseMessage = (error as { response?: { data?: { message?: string } } })
@@ -179,7 +184,11 @@ export default function CheckoutPage() {
 
                     {/* Sidebar */}
                     <div className="lg:col-span-1">
-                        <OrderSummary items={items} total={total} shipping={shipping} />
+                        <OrderSummary
+                        items={step === 3 ? confirmedItems : items}
+                        total={step === 3 ? confirmedTotal : total}
+                        shipping={shipping}
+                        />
                     </div>
                 </div>
             </div>
