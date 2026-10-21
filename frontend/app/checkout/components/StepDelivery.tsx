@@ -235,7 +235,7 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
             <button
                 onClick={onNext}
                 disabled={!isValid || loadingCep}
-                className="w-full bg-brand-primary text-white font-bold py-4 rounded-xl hover:bg-brand-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full bg-red-500 text-white font-bold py-4 rounded-xl hover:bg-brand-secondary transition-colors disabled:cursor-not-allowed"
             >
                 Continuar para Pagamento →
             </button>

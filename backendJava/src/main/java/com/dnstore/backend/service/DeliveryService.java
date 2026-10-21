@@ -6,25 +6,39 @@ import com.dnstore.backend.service.shipping.ShippingGateway;
 import com.dnstore.backend.service.shipping.ShippingGateway.ShippingItem;
 import com.dnstore.backend.service.shipping.ShippingGateway.ShippingRequest;
 import com.dnstore.backend.service.shipping.ShippingQuote;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
+import java.util.Map;
 
-/**
- * 🚚 DeliveryService (Serviço de Entregas)
- * 
- * Valida os dados de envio e delega cotações ao gateway configurado.
- */
 @Service
-@RequiredArgsConstructor
 public class DeliveryService {
 
     private final ShippingGateway shippingGateway;
 
     @Value("${shipping.origin-zip:}")
     private String originZip;
+
+    public DeliveryService(ShippingGateway shippingGateway) {
+        this.shippingGateway = java.util.Objects.requireNonNull(
+                shippingGateway,
+                "ShippingGateway não pode ser nulo."
+        );
+    }
+
+    @Autowired
+    public DeliveryService(
+            @Value("${shipping.gateway:simulated}") String gatewayName,
+            Map<String, ShippingGateway> gateways
+    ) {
+        String beanName = gatewayName + "ShippingGateway";
+        this.shippingGateway = gateways.get(beanName);
+        if (this.shippingGateway == null) {
+            throw new IllegalStateException("ShippingGateway bean not found: " + beanName);
+        }
+    }
 
     public ShippingQuote calculateShipping(String destinationZip, List<ShippingItem> items, String service) {
         if (service == null || service.isBlank()) {

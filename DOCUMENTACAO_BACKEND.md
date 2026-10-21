@@ -1,5 +1,9 @@
 # Documentação da API Backend (Java/Spring Boot)
 
+Comando pra rodar: 
+
+.\mvnw.cmd spring-boot:run
+
 Esta documentação descreve os endpoints disponíveis na API do backend Java da DN Store.
 
 ## Informações Gerais
@@ -61,6 +65,19 @@ SHIPPING_ORIGIN_ZIP=12600-000
 ```
 
 Não coloque `DB_USER` ou `DB_PASS` dentro de `DB_URL`; eles são informados separadamente. O arquivo `.env` contém segredos e deve permanecer fora do Git.
+
+Para pagamentos, configure também as variáveis do Asaas no mesmo `.env`:
+
+```env
+PAYMENT_GATEWAY=asaas
+ASAAS_API_KEY=<chave-gerada-no-ambiente-asaas-escolhido>
+ASAAS_SANDBOX=true
+ASAAS_WEBHOOK_TOKEN=<token-configurado-no-webhook>
+```
+
+`ASAAS_SANDBOX=true` usa `https://api-sandbox.asaas.com/v3`; nesse modo, use uma chave criada no ambiente de testes do Asaas. Para produção, use a chave de produção e `ASAAS_SANDBOX=false`. A chave e o ambiente precisam corresponder. Reinicie o backend depois de alterar essas variáveis.
+
+Se a criação do PIX falhar, consulte o log do backend: ele informa a etapa (consulta/criação de cliente, criação da cobrança ou leitura do QR Code) e, quando disponível, o status HTTP retornado pelo Asaas. A API não devolve o detalhe interno do provedor ao navegador. Verifique também se o CPF/CNPJ informado é válido e se o pedido está com valor positivo. Após criar uma cobrança PIX, o backend busca o QR Code e o código copia-e-cola no endpoint `/payments/{id}/pixQrCode`.
 
 Para iniciar o backend, abra o terminal na pasta `backendJava`:
 
@@ -144,9 +161,11 @@ Os códigos expiram em 10 minutos, têm no máximo cinco tentativas e possuem in
 
 ### Frete no checkout
 
-`POST /api/orders/shipping-quotes` recebe `{ "zipCode": "12600-000" }`, calcula opções PAC/SEDEX com peso obtido do carrinho e retorna preço, prazo e origem da cotação. O checkout deve enviar apenas o serviço escolhido em `shippingType`; o backend recalcula valor e prazo ao criar o pedido. A origem provisória é Lorena/SP (`SHIPPING_ORIGIN_ZIP=12600-000`).
+`POST /api/orders/shipping-quotes` recebe `{ "zipCode": "12600-000" }` e retorna opções de frete calculadas no backend a partir do peso do carrinho. O checkout envia apenas o serviço escolhido em `shippingType`; o backend recalcula o valor ao criar o pedido. Configure a origem com `SHIPPING_ORIGIN_ZIP`.
 
-No estado atual, preços e prazos são estimativas internas de teste e vêm marcados como `SIMULATED`; ViaCEP é usado para validar o CEP e descobrir a UF, não para calcular tarifa. Para tarifa oficial é necessário habilitar a API de preço e prazo no contrato Correios, obter credenciais de integração e códigos dos serviços habilitados, e configurá-los no backend. Não use os valores simulados para cobrar clientes em produção.
+Enquanto a integração oficial não estiver autorizada, o backend usa estimativas temporárias PAC/SEDEX (base de R$ 25,90/R$ 42,50 para até 1 kg, com acréscimo por quilo adicional; prazos estimados de 5/2 dias úteis). ViaCEP apenas consulta o endereço e não calcula o frete. Essas estimativas não devem ser usadas para cobrar clientes em produção.
+
+Para ativar cotações reais, configure `SHIPPING_GATEWAY=melhor-envio`, as credenciais OAuth do Melhor Envio (`MELHOR_ENVIO_CLIENT_ID`, `MELHOR_ENVIO_CLIENT_SECRET` e `MELHOR_ENVIO_REDIRECT_URI`) e autorize a integração. A autorização deve ser refeita após reiniciar o backend, pois o token é mantido apenas em memória. O padrão `SHIPPING_GATEWAY=simulated` mantém a simulação ativa.
 
 ---
 

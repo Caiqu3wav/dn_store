@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -74,8 +75,10 @@ public class AsaasGatewayService implements PaymentGateway {
                 throw new PaymentGatewayException("Resposta inválida ao consultar customer Asaas");
             }
         } catch (PaymentGatewayException e) {
+            logAsaasFailure("customer lookup", e);
             throw e;
         } catch (Exception e) {
+            logAsaasFailure("customer lookup", e);
             throw new PaymentGatewayException("Não foi possível consultar customer no Asaas");
         }
 
@@ -96,8 +99,10 @@ public class AsaasGatewayService implements PaymentGateway {
             }
             return id;
         } catch (PaymentGatewayException e) {
+            logAsaasFailure("customer creation", e);
             throw e;
         } catch (Exception e) {
+            logAsaasFailure("customer creation", e);
             throw new PaymentGatewayException("Não foi possível criar customer no Asaas");
         }
     }
@@ -158,8 +163,11 @@ public class AsaasGatewayService implements PaymentGateway {
                     new HttpEntity<>(body, headers()),
                     Map.class);
             return parsePaymentResponse(resp.getBody());
+        } catch (PaymentGatewayException e) {
+            logAsaasFailure("payment creation", e);
+            throw e;
         } catch (Exception e) {
-            log.error("Asaas createPayment failed");
+            logAsaasFailure("payment creation", e);
             throw new PaymentGatewayException("Não foi possível criar a cobrança no Asaas");
         }
     }
@@ -184,8 +192,10 @@ public class AsaasGatewayService implements PaymentGateway {
             }
             return parsePaymentResponse((Map<String, Object>) payment);
         } catch (PaymentGatewayException e) {
+            logAsaasFailure("payment lookup", e);
             throw e;
         } catch (Exception e) {
+            logAsaasFailure("payment lookup", e);
             throw new PaymentGatewayException("Não foi possível verificar cobrança existente no Asaas");
         }
     }
@@ -251,10 +261,22 @@ public class AsaasGatewayService implements PaymentGateway {
                         HttpMethod.GET,
                         new HttpEntity<>(headers()),
                         Map.class);
-                pixQrCode = (String) pixResp.getBody().get("encodedImage");
-                pixCopyPaste = (String) pixResp.getBody().get("payload");
+                Map<?, ?> pixBody = pixResp.getBody();
+                Object encodedImage = pixBody == null ? null : pixBody.get("encodedImage");
+                Object payload = pixBody == null ? null : pixBody.get("payload");
+                if (!(encodedImage instanceof String image) || image.isBlank()
+                        || !(payload instanceof String copyPaste) || copyPaste.isBlank()) {
+                    log.error("Asaas PIX QR code response is missing the image or copy-and-paste payload");
+                    throw new PaymentGatewayException("Resposta inválida ao gerar QR Code PIX no Asaas");
+                }
+                pixQrCode = image;
+                pixCopyPaste = copyPaste;
+            } catch (PaymentGatewayException e) {
+                logAsaasFailure("PIX QR code retrieval", e);
+                throw e;
             } catch (Exception e) {
-                log.warn("Asaas: could not fetch Pix QR code", e);
+                logAsaasFailure("PIX QR code retrieval", e);
+                throw new PaymentGatewayException("Não foi possível gerar o QR Code PIX no Asaas");
             }
         }
 
@@ -265,6 +287,17 @@ public class AsaasGatewayService implements PaymentGateway {
 
         return new PaymentResult(externalId, status, paymentMethod, pixQrCode, pixCopyPaste,
                 boletoUrl, boletoBarcode);
+    }
+
+    private void logAsaasFailure(String operation, Exception exception) {
+        if (exception instanceof RestClientResponseException responseException) {
+            log.error("Asaas {} failed with HTTP status {}", operation,
+                    responseException.getStatusCode().value());
+            return;
+        }
+        String reason = exception.getMessage();
+        log.error("Asaas {} failed: {}", operation,
+                reason == null || reason.isBlank() ? exception.getClass().getSimpleName() : reason);
     }
 
     private String asaasBillingType(String method) {

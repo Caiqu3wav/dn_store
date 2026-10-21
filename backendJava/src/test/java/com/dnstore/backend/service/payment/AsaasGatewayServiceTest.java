@@ -5,8 +5,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -63,6 +65,31 @@ class AsaasGatewayServiceTest {
         assertThat(result.pixCopyPaste()).isEqualTo("pix-payload");
         verify(restTemplate, never()).exchange(contains("/customers"), eq(HttpMethod.POST),
                 any(HttpEntity.class), eq(Map.class));
+    }
+
+    @Test
+    void createPayment_whenPixQrCodeCannotBeRetrieved_shouldFailInsteadOfReturningPaymentWithoutPixData() {
+        when(restTemplate.exchange(contains("/payments?externalReference="), eq(HttpMethod.GET),
+                any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(ResponseEntity.ok(Map.of("data", List.of())));
+        when(restTemplate.exchange(contains("/customers?cpfCnpj=52998224725"), eq(HttpMethod.GET),
+                any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(ResponseEntity.ok(Map.of("data", List.of(Map.of("id", "customer-1")))));
+        when(restTemplate.exchange(contains("/payments"), eq(HttpMethod.POST),
+                any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(ResponseEntity.ok(Map.of(
+                        "id", "payment-1",
+                        "status", "PENDING",
+                        "billingType", "PIX")));
+        when(restTemplate.exchange(contains("/pixQrCode"), eq(HttpMethod.GET),
+                any(HttpEntity.class), eq(Map.class)))
+                .thenThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
+
+        assertThatThrownBy(() -> gateway.createPayment(new PaymentGateway.PaymentRequest(
+                UUID.randomUUID(), new BigDecimal("89.90"), "Buyer", "buyer@example.com",
+                "52998224725", "Order", "PIX", null, null)))
+                .isInstanceOf(PaymentGatewayException.class)
+                .hasMessageContaining("QR Code PIX");
     }
 
     @Test
