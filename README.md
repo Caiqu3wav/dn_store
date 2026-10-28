@@ -194,6 +194,28 @@ O banco de dados inclui:
 
 🚧 Em desenvolvimento  
 
+## Executar o backend com Docker
+
+O backend no Docker conecta ao banco MySQL do Aiven; nenhum servidor MySQL local é iniciado. No PowerShell, entre na pasta `backendJava` e configure `.env` com os dados do Aiven. Se ainda não houver um `.env`, copie o exemplo:
+
+```powershell
+cd backendJava
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+```
+
+Edite `.env` com a URL, o usuário e a senha do Aiven. Configure também `JWT_SECRET` e `AUTH_CHALLENGE_SECRET` com valores próprios. Depois, com o Docker Desktop aberto, inicie o backend:
+
+```powershell
+$env:COMPOSE_DISABLE_ENV_FILE = "1"
+docker compose up --build
+```
+
+O Compose passa `.env` ao container como variáveis sem interpretar caracteres especiais como `$`. Mantenha esse comando na mesma janela do PowerShell para os comandos seguintes. O Docker compila o backend com Java 17, então não é necessário instalar ou trocar a versão do Java no Windows. A API fica disponível em `http://localhost:8080`. Na primeira inicialização, o Docker baixa as imagens e compila o projeto, o que pode levar alguns minutos.
+
+Para encerrar, pressione `Ctrl+C`. Para iniciar em segundo plano, use `docker compose up --build -d`; para acompanhar os logs, use `docker compose logs -f backend`.
+
+As credenciais e chaves de `.env` são locais e não devem ser commitadas nem reutilizadas em produção.
+
 ---
 
 ## 🤝 Contribuição
