@@ -6,7 +6,8 @@ import { ShoppingCart, Heart } from 'lucide-react';
 import { Product } from '@/types';
 import { useFavorites } from '@/app/context/FavoritesContext';
 import { useCart } from '@/app/context/CartContext';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { getProductImage } from '@/utils/productImage';
 
 interface ProductCardProps {
   product: Product;
@@ -15,9 +16,10 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const { addFavorite, removeFavorite, isFavorite } = useFavorites();
   const { addItem } = useCart();
-  const [addedToCart, setAddedToCart] = useState(false);
+  const router = useRouter();
 
   const isFav = isFavorite(product.id);
+  const image = getProductImage(product);
 
   const handleToggleFavorite = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -28,32 +30,33 @@ export function ProductCard({ product }: ProductCardProps) {
     }
   };
 
-  const { items } = useCart();
-
-  const existsInCart = items.some(
-    (i) => i.id === product.id && (i.size ?? "") === (product.size?.[0] ?? "")
-  );
-
   const catName = typeof product.category === 'object' && product.category !== null 
     ? product.category.name 
     : (product.category || 'Geral');
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    if (existsInCart) return;
-
-    addItem({
-      id: product.id,
+    const activeVariants = product.variants?.filter(variant => variant.active) ?? [];
+    const variant = activeVariants.length === 1 && activeVariants[0].stock > 0
+      ? activeVariants[0]
+      : undefined;
+    if (!variant) {
+      router.push(`/produtos/${product.id}`);
+      return;
+    }
+    const added = addItem({
+      id: variant.id,
+      productId: product.id,
+      productVariantId: variant.id,
+      availableStock: variant.stock,
       name: product.name,
       price: product.price,
-      image: product.images?.[0]?.imageUrl || '/placeholder.png',
+      image: image ?? '',
       quantity: 1,
-      size: "",
+      size: variant.size,
       category: catName,
     });
-
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2000);
+    if (!added) router.push(`/produtos/${product.id}`);
   };
 
 
@@ -65,13 +68,19 @@ export function ProductCard({ product }: ProductCardProps) {
   href={`/produtos/${product.id}`}
   className="relative aspect-square w-full overflow-hidden bg-gray-50 block"
 >
-  <Image
-    src={product.images?.[0]?.imageUrl || '/placeholder.png'}
-    alt={product.name}
-    fill
-    sizes="(max-width: 768px) 100vw, 320px"
-    className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-  />
+      {image ? (
+    <Image
+      src={image}
+      alt={product.name}
+      fill
+      sizes="(max-width: 768px) 100vw, 320px"
+      className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+    />
+      ) : (
+        <span className="absolute inset-0 flex items-center justify-center text-sm text-gray-500">
+          Imagem indisponível
+        </span>
+      )}
 </Link>
 
         {/* Floating Actions */}
@@ -130,17 +139,8 @@ export function ProductCard({ product }: ProductCardProps) {
 </Link>
 
          <button
-  onClick={() => {
-    addItem({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image: product.images?.[0]?.imageUrl || '/placeholder.png',
-      quantity: 1,
-      size: "",
-      category: catName,
-    });
-  }}
+  onClick={handleAddToCart}
+  aria-label="Adicionar ao carrinho ou escolher tamanho"
   className="w-10 h-10 rounded-full flex items-center justify-center transition-all outline-none shrink-0 bg-gray-100 text-[#1A1B1D] hover:bg-[#1A1B1D] hover:text-white hover:scale-105 focus:ring-2 focus:ring-brand-red-primary focus:ring-offset-2"
 >
   <ShoppingCart className="w-4 h-4" />

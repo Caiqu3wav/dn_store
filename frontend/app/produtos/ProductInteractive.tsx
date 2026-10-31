@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 
 import { Product } from '../../types';
+import { getProductGalleryImages } from '@/utils/productImage';
 
 interface Props {
     product: Product;
@@ -18,39 +19,33 @@ interface Props {
 export default function ProductInteractive({
     product
 }: Props) {
-    const productImages = product.images?.length
-        ? product.images.map((img) =>
-            typeof img === 'string'
-                ? img
-                : img.imageUrl
-        )
-        : ['/assets/products/placeholder.png'];
+    const productImages = getProductGalleryImages(product);
 
-    const sizes = product.size?.length
-        ? product.size
-        : ['Único'];
-
-    const [selectedSize, setSelectedSize] = useState(
-        sizes[0]
+    const variants = product.variants?.filter(variant => variant.active) ?? [];
+    const [selectedVariantId, setSelectedVariantId] = useState(
+        variants.find(variant => variant.active && variant.stock > 0)?.id ?? ''
     );
+    const selectedVariant = variants.find(variant => variant.id === selectedVariantId);
 
     const [currentImage, setCurrentImage] = useState(0);
 
     const { addItem } = useCart();
 
     const handleAddToCart = () => {
-        addItem({
-            id: product.id,
+        if (!selectedVariant || !selectedVariant.active || selectedVariant.stock < 1) return;
+        const added = addItem({
+            id: selectedVariant.id,
+            productId: product.id,
+            productVariantId: selectedVariant.id,
+            availableStock: selectedVariant.stock,
             name: product.name,
             price: product.price,
-            image:
-                productImages[0] ??
-                '/assets/products/placeholder.png',
+            image: productImages[0] ?? '',
             quantity: 1,
-            size: selectedSize
+            size: selectedVariant.size
         });
 
-        alert('Produto adicionado ao carrinho!');
+        alert(added ? 'Produto adicionado ao carrinho!' : 'Estoque insuficiente para o tamanho selecionado.');
     };
 
     return (
@@ -60,12 +55,16 @@ export default function ProductInteractive({
             <div className="space-y-4">
 
                 <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden relative">
-                    <div
-                        className="absolute inset-0 bg-cover bg-center"
-                        style={{
-                            backgroundImage: `url(${productImages[currentImage]})`
-                        }}
-                    />
+                    {productImages[currentImage] ? (
+                        <div
+                            className="absolute inset-0 bg-cover bg-center"
+                            style={{ backgroundImage: `url(${productImages[currentImage]})` }}
+                        />
+                    ) : (
+                        <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500">
+                            Fotografia do produto indisponível
+                        </div>
+                    )}
                 </div>
 
                 {productImages.length > 1 && (
@@ -134,30 +133,42 @@ export default function ProductInteractive({
                         Tamanho
                     </h3>
 
-                    <div className="flex gap-3">
-                        {sizes.map((size) => (
-                            <button
-                                key={size}
-                                type="button"
-                                onClick={() =>
-                                    setSelectedSize(size)
-                                }
-                                className={`
-                                    w-12 h-12 rounded-full
-                                    flex items-center justify-center
-                                    border font-medium transition-all
-
-                                    ${
-                                        selectedSize === size
-                                            ? 'bg-black text-white border-black'
-                                            : 'bg-white text-black border-gray-200 hover:border-black'
-                                    }
-                                `}
-                            >
-                                {size}
-                            </button>
-                        ))}
+                    <div className="flex flex-wrap gap-3">
+                        {variants.map((variant) => {
+                            const available = variant.active && variant.stock > 0;
+                            return (
+                                <button
+                                    key={variant.id}
+                                    type="button"
+                                    disabled={!available}
+                                    aria-pressed={selectedVariantId === variant.id}
+                                    aria-label={`${variant.size}${available ? '' : ', esgotado'}`}
+                                    onClick={() => setSelectedVariantId(variant.id)}
+                                    className={`
+                                        min-w-12 min-h-12 px-3 rounded-full
+                                        inline-flex flex-col items-center justify-center
+                                        border font-medium transition-all
+                                        ${
+                                            selectedVariantId === variant.id
+                                                ? 'bg-black text-white border-black'
+                                                : available
+                                                    ? 'bg-white text-black border-gray-200 hover:border-black'
+                                                    : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                        }
+                                    `}
+                                >
+                                    <span className={!available ? 'line-through' : ''}>{variant.size}</span>
+                                    {!available && <span className="text-[9px] uppercase">Esgotado</span>}
+                                </button>
+                            );
+                        })}
                     </div>
+                    {variants.length === 0 && (
+                        <p role="status" className="text-sm text-amber-700">Tamanhos ainda não cadastrados para este produto.</p>
+                    )}
+                    {selectedVariant && selectedVariant.stock > 0 && (
+                        <p className="mt-2 text-sm text-gray-500">Disponível: {selectedVariant.stock}</p>
+                    )}
                 </div>
 
                 {/* Actions */}
@@ -166,11 +177,12 @@ export default function ProductInteractive({
                     <Button
                         size="lg"
                         className="flex-1 text-lg h-14"
+                        disabled={!selectedVariant || !selectedVariant.active || selectedVariant.stock < 1}
                         onClick={handleAddToCart}
                     >
                         <ShoppingCart className="w-5 h-5 mr-2" />
 
-                        Adicionar ao Carrinho
+                        {selectedVariant && selectedVariant.stock > 0 ? 'Adicionar ao Carrinho' : 'Indisponível'}
                     </Button>
 
                     <Button

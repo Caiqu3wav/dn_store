@@ -2,6 +2,7 @@
 
 import { CartItem } from '../../context/CartContext';
 import { ShippingOption } from './StepDelivery';
+import { getProductImageUrl } from '@/utils/productImage';
 
 interface Props {
     items: CartItem[];
@@ -18,22 +19,31 @@ export function OrderSummary({ items, total, shipping }: Props) {
             <h3 className="font-bold text-brand-primary text-lg">Resumo do Pedido</h3>
 
             <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                {items.map(item => (
-                    <div key={`${item.id}-${item.size}`} className="flex gap-3 items-center">
-                        <div
-                            className="w-14 h-14 rounded-xl bg-cover bg-center bg-gray-100 shrink-0"
-                            style={{ backgroundImage: `url(${item.image})` }}
-                        />
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-brand-primary truncate">{item.name}</p>
-                            {item.size && <p className="text-xs text-gray-400">Tam: {item.size}</p>}
-                            <p className="text-xs text-gray-500">Qtd: {item.quantity}</p>
+                {items.map(item => {
+                    const image = getProductImageUrl(item.name);
+                    return (
+                        <div key={`${item.id}-${item.size}`} className="flex gap-3 items-center">
+                            {image ? (
+                                <div
+                                    className="w-14 h-14 rounded-xl bg-cover bg-center bg-gray-100 shrink-0"
+                                    style={{ backgroundImage: `url(${image})` }}
+                                />
+                            ) : (
+                                <div className="w-14 h-14 rounded-xl bg-gray-100 shrink-0 flex items-center justify-center text-center text-[8px] text-gray-500" role="img" aria-label="Fotografia do produto indisponível">
+                                    Sem imagem
+                                </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-brand-primary truncate">{item.name}</p>
+                                {item.size && <p className="text-xs text-gray-400">Tam: {item.size}</p>}
+                                <p className="text-xs text-gray-500">Qtd: {item.quantity}</p>
+                            </div>
+                            <p className="text-sm font-bold text-brand-primary shrink-0">
+                                {fmt(item.price * item.quantity)}
+                            </p>
                         </div>
-                        <p className="text-sm font-bold text-brand-primary shrink-0">
-                            {fmt(item.price * item.quantity)}
-                        </p>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             <div className="border-t border-gray-100 pt-4 space-y-2 text-sm">

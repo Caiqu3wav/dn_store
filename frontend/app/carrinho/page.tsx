@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext';
 import { Button } from '../components/ui/Button';
 import Link from 'next/link';
 import { Trash2, ArrowRight } from 'lucide-react';
+import { getProductImageUrl } from '@/utils/productImage';
 
 export default function CartPage() {
     const { items, removeItem, updateQuantity, total } = useCart();
@@ -28,34 +29,38 @@ export default function CartPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-4">
-                        {items.map((item) => (
-                            <div key={`${item.id}-${item.size}`} className="bg-white p-4 rounded-lg shadow-sm flex gap-4 items-center">
-                                <div
-                                    className="w-24 h-24 bg-cover bg-center rounded-md bg-gray-100 flex-shrink-0"
-                                    style={{ backgroundImage: `url(${item.image})` }}
-                                />
-                                <div className="flex-1">
-                                    <h3 className="font-bold text-lg">{item.name}</h3>
-                                    <p className="text-sm text-gray-500">Tamanho: {item.size}</p>
-                                    <p className="font-bold text-brand-red mt-1">
-                                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.price)}
-                                    </p>
-                                </div>
-                                <div className="flex flex-col items-end gap-2">
-                                    <button
-                                        onClick={() => removeItem(item.id)}
-                                        className="text-gray-400 hover:text-red-500 p-2"
-                                    >
-                                        <Trash2 className="w-5 h-5" />
-                                    </button>
-                                    <div className="flex items-center gap-2">
-                                       
-                                     
-                                       
+                        {items.map((item) => {
+                            const image = getProductImageUrl(item.name);
+                            return (
+                                <div key={`${item.id}-${item.size}`} className="bg-white p-4 rounded-lg shadow-sm flex gap-4 items-center">
+                                    {image ? (
+                                        <div
+                                            className="w-24 h-24 bg-cover bg-center rounded-md bg-gray-100 flex-shrink-0"
+                                            style={{ backgroundImage: `url(${image})` }}
+                                        />
+                                    ) : (
+                                        <div className="w-24 h-24 rounded-md bg-gray-100 flex-shrink-0 flex items-center justify-center text-center text-xs text-gray-500" role="img" aria-label="Fotografia do produto indisponível">
+                                            Imagem indisponível
+                                        </div>
+                                    )}
+                                    <div className="flex-1">
+                                        <h3 className="font-bold text-lg">{item.name}</h3>
+                                        <p className="text-sm text-gray-500">Tamanho: {item.size}</p>
+                                        <p className="font-bold text-brand-red mt-1">
+                                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.price)}
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-2">
+                                        <button
+                                            onClick={() => removeItem(item.id)}
+                                            className="text-gray-400 hover:text-red-500 p-2"
+                                        >
+                                            <Trash2 className="w-5 h-5" />
+                                        </button>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     <div className="lg:col-span-1">

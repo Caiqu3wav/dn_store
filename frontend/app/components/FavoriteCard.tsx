@@ -2,11 +2,13 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Trash2, Heart, ShoppingCart } from 'lucide-react';
+import { Trash2, ShoppingCart } from 'lucide-react';
 import { Product } from '@/types';
 import { useFavorites } from '@/app/context/FavoritesContext';
 import { useCart } from '@/app/context/CartContext';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { getProductImage } from '@/utils/productImage';
 
 interface FavoriteCardProps {
     product: Product;
@@ -15,24 +17,39 @@ interface FavoriteCardProps {
 export function FavoriteCard({ product }: FavoriteCardProps) {
     const { removeFavorite } = useFavorites();
     const { addItem } = useCart();
-    const [selectedSize, setSelectedSize] = useState<string>(product.size?.[0] || '');
     const [isAdded, setIsAdded] = useState(false);
+    const router = useRouter();
+    const image = getProductImage(product);
 
     const catName = typeof product.category === 'object' && product.category !== null 
         ? product.category.name 
         : (product.category || 'Geral');
 
     const handleAddToCart = () => {
-        if (!selectedSize) return;
-        
-        addItem({
-            id: product.id,
+        const activeVariants = product.variants?.filter(variant => variant.active) ?? [];
+        const variant = activeVariants.length === 1 && activeVariants[0].stock > 0
+            ? activeVariants[0]
+            : undefined;
+        if (!variant) {
+            router.push(`/produtos/${product.id}`);
+            return;
+        }
+        const added = addItem({
+            id: variant.id,
+            productId: product.id,
+            productVariantId: variant.id,
+            availableStock: variant.stock,
             name: product.name,
             price: product.price,
-            image: product.images?.[0]?.imageUrl || '/placeholder.png',
+            image: image ?? '',
             quantity: 1,
+            size: variant.size,
             category: catName,
         });
+        if (!added) {
+            router.push(`/produtos/${product.id}`);
+            return;
+        }
         
         setIsAdded(true);
         setTimeout(() => setIsAdded(false), 2000);
@@ -46,12 +63,18 @@ export function FavoriteCard({ product }: FavoriteCardProps) {
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full">
             {/* Product Image */}
             <Link href={`/produtos/${product.id}`} className="relative w-full h-48 overflow-hidden bg-white group">
-                <Image
-                    src={product.images?.[0]?.imageUrl || '/placeholder.png'}
-                    alt={product.name}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                />
+                {image ? (
+                    <Image
+                        src={image}
+                        alt={product.name}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                ) : (
+                    <span className="absolute inset-0 flex items-center justify-center text-sm text-gray-500">
+                        Imagem indisponível
+                    </span>
+                )}
                 <button
                     onClick={(e) => {
                         e.preventDefault();
@@ -96,7 +119,6 @@ export function FavoriteCard({ product }: FavoriteCardProps) {
                 {/* Add to Cart Button */}
                 <button
                     onClick={handleAddToCart}
-                    disabled={!selectedSize}
                     className={`w-full py-2 px-3 rounded font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
                         isAdded
                             ? 'bg-green-600 text-black'
@@ -104,7 +126,7 @@ export function FavoriteCard({ product }: FavoriteCardProps) {
                     }`}
                 >
                     <ShoppingCart className="w-4 h-4" />
-                    {isAdded ? 'Adicionado!' : 'Adicionar ao Carrinho'}
+                    {isAdded ? 'Adicionado!' : 'Adicionar / escolher tamanho'}
                 </button>
             </div>
         </div>
