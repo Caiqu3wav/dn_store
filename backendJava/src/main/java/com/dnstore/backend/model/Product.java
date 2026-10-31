@@ -65,6 +65,10 @@ public abstract class Product {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductImage> images = new ArrayList<>();
 
+    @JsonManagedReference("product-variants")
+    @OneToMany(mappedBy = "product", cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+    private List<ProductVariant> variants = new ArrayList<>();
+
     /**
      * Método abstrato que força as subclasses a definir como calcular o peso para
      * frete.

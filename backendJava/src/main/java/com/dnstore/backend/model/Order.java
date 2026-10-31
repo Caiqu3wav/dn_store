@@ -50,6 +50,9 @@ public class Order {
     @Column(nullable = false, length = 50)
     private String status;
 
+    @Column(name = "stock_released", nullable = false)
+    private boolean stockReleased;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

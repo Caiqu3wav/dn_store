@@ -25,14 +25,17 @@ public class PaymentService {
     private final PaymentGateway gateway;
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
+    private final OrderInventoryService orderInventoryService;
 
     public PaymentService(
             @Qualifier("asaas") PaymentGateway gateway,
             PaymentRepository paymentRepository,
-            OrderRepository orderRepository) {
+            OrderRepository orderRepository,
+            OrderInventoryService orderInventoryService) {
         this.gateway = gateway;
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
+        this.orderInventoryService = orderInventoryService;
     }
 
     @Transactional
@@ -110,11 +113,21 @@ public class PaymentService {
                     return new ResourceNotFoundException("Pagamento não encontrado.");
                 });
 
+        Order order = orderRepository.findByIdForUpdate(payment.getOrder().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Pedido não encontrado."));
+        payment.setOrder(order);
+
         PaymentStatus currentStatus = PaymentStatus.valueOf(payment.getStatus());
         PaymentStatus nextStatus = PaymentStatus.valueOf(result.normalizedStatus());
         if (currentStatus == nextStatus || currentStatus == PaymentStatus.REFUNDED
                 || (currentStatus == PaymentStatus.PAID && nextStatus != PaymentStatus.REFUNDED)) {
             return;
+        }
+
+        if (nextStatus == PaymentStatus.PAID && order.isStockReleased()) {
+            orderInventoryService.reserveReleasedStock(order);
+        } else if (nextStatus == PaymentStatus.FAILED && "PENDING_PAYMENT".equals(order.getStatus())) {
+            orderInventoryService.releaseReservedStock(order);
         }
 
         payment.setStatus(nextStatus.name());

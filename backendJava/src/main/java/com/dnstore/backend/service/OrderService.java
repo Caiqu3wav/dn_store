@@ -46,6 +46,7 @@ public class OrderService {
     private final CouponService couponService;
     private final CouponRepository couponRepository;
     private final ProductVariantRepository productVariantRepository;
+    private final OrderInventoryService orderInventoryService;
 
     public record AddressData(
             String street, String number, String complement,
@@ -75,7 +76,7 @@ public class OrderService {
             throw new IllegalArgumentException("Usuário autenticado é obrigatório.");
         }
 
-        Cart cart = cartRepository.findByUser(user)
+        Cart cart = cartRepository.findByUserForUpdate(user)
                 .orElseThrow(() -> new ConflictException("O carrinho está vazio."));
 
         if (cart.getItems() == null || cart.getItems().isEmpty()) {
@@ -143,6 +144,9 @@ public class OrderService {
             ProductVariant variant = lockedVariants.get(cartItem.getProductVariant().getId());
             if (variant == null) {
                 throw new ResourceNotFoundException("Produto não encontrado.");
+            }
+            if (!variant.isActive() || !variant.getProduct().isActive()) {
+                throw new ConflictException("Uma variação do carrinho não está mais disponível.");
             }
             if (variant.getStock() < cartItem.getQuantity()) {
                 throw new ConflictException(
@@ -244,6 +248,7 @@ public class OrderService {
     private List<ShippingItem> shippingItems(Cart cart) {
         return cart.getItems().stream().map(item -> {
             if (item == null || item.getProductVariant() == null
+                    || !item.getProductVariant().isActive()
                     || !(item.getProductVariant().getProduct() instanceof PhysicalProduct product)) {
                 throw new IllegalArgumentException("Produto físico inválido para cotação de frete.");
             }
@@ -286,13 +291,20 @@ public class OrderService {
         return orderRepository.findByUserId(userId);
     }
 
+    @Transactional
     public java.util.Optional<Order> updateStatus(UUID id, String status) {
         if (!VALID_STATUSES.contains(status)) {
             throw new IllegalArgumentException("Status inválido: " + status);
         }
-        return orderRepository.findById(id).map(order -> {
-            order.setStatus(status);
-            return orderRepository.save(order);
-        });
+        java.util.Optional<Order> found = orderRepository.findByIdForUpdate(id);
+        if (found.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        Order order = found.get();
+        if ("CANCELLED".equals(status) && "PENDING_PAYMENT".equals(order.getStatus())) {
+            orderInventoryService.releaseReservedStock(order);
+        }
+        order.setStatus(status);
+        return java.util.Optional.of(orderRepository.save(order));
     }
 }

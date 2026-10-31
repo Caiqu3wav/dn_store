@@ -1,5 +1,6 @@
 package com.dnstore.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,6 +23,7 @@ public class ProductVariant {
     @JdbcTypeCode(java.sql.Types.VARCHAR)
     private UUID id;
 
+    @JsonBackReference("product-variants")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
@@ -37,6 +39,9 @@ public class ProductVariant {
 
     @Column(nullable = false)
     private int stock = 0;
+
+    @Column(nullable = false)
+    private boolean active = true;
 
     @Column(length = 100, unique = true)
     private String sku;

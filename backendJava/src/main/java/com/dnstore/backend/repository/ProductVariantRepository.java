@@ -27,6 +27,6 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
     Optional<ProductVariant> findByIdForUpdate(@Param("id") UUID id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT pv FROM ProductVariant pv WHERE pv.id IN :ids ORDER BY pv.product.id, pv.id")
+    @Query("SELECT pv FROM ProductVariant pv WHERE pv.id IN :ids ORDER BY pv.id")
     List<ProductVariant> findAllByIdInForUpdate(@Param("ids") Collection<UUID> ids);
 }
