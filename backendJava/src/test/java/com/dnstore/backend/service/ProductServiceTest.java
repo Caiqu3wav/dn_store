@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceTest {
@@ -48,6 +49,8 @@ class ProductServiceTest {
         category.setId(UUID.randomUUID());
         category.setName("Roupas");
         category.setSlug("roupas");
+        lenient().when(productVariantRepository.save(any(ProductVariant.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -139,6 +142,67 @@ class ProductServiceTest {
         productService.create(product);
 
         verify(productVariantRepository).save(existingVariant);
-        assertThat(existingVariant.getStock()).isEqualTo(6);
+        assertThat(existingVariant.getStock()).isEqualTo(3);
+    }
+
+    @Test
+    void create_withExplicitVariant_shouldPersistSelectedSizeAndStock() {
+        PhysicalProduct product = new PhysicalProduct();
+        product.setName("Camiseta");
+        product.setPrice(new BigDecimal("59.90"));
+        product.setCategory(category);
+        ProductVariant variant = new ProductVariant();
+        variant.setSize("BL P");
+        variant.setStock(0);
+        product.setVariants(List.of(variant));
+
+        when(categoryRepository.findById(category.getId())).thenReturn(Optional.of(category));
+        when(productRepository.save(any(PhysicalProduct.class))).thenAnswer(invocation -> {
+            PhysicalProduct saved = invocation.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            return saved;
+        });
+
+        productService.create(product);
+
+        assertThat(variant.getProduct()).isSameAs(product);
+        assertThat(variant.getSize()).isEqualTo("BL P");
+        assertThat(variant.getStock()).isZero();
+        assertThat(variant.getSku()).startsWith("DN-");
+        verify(productVariantRepository).save(variant);
+    }
+
+    @Test
+    void create_withDuplicateVariantSizes_shouldFail() {
+        PhysicalProduct product = new PhysicalProduct();
+        product.setName("Camiseta");
+        product.setPrice(new BigDecimal("59.90"));
+        product.setCategory(category);
+        ProductVariant first = new ProductVariant();
+        first.setSize("P");
+        ProductVariant second = new ProductVariant();
+        second.setSize("P");
+        product.setVariants(List.of(first, second));
+        when(categoryRepository.findById(category.getId())).thenReturn(Optional.of(category));
+
+        assertThatThrownBy(() -> productService.create(product))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("duplicados");
+    }
+
+    @Test
+    void create_withInvalidVariantSize_shouldFail() {
+        PhysicalProduct product = new PhysicalProduct();
+        product.setName("Camiseta");
+        product.setPrice(new BigDecimal("59.90"));
+        product.setCategory(category);
+        ProductVariant variant = new ProductVariant();
+        variant.setSize("XXL");
+        product.setVariants(List.of(variant));
+        when(categoryRepository.findById(category.getId())).thenReturn(Optional.of(category));
+
+        assertThatThrownBy(() -> productService.create(product))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Tamanho");
     }
 }

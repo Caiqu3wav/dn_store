@@ -52,6 +52,9 @@ class OrderServiceTest {
         @Mock
         private ProductVariantRepository productVariantRepository;
 
+        @Mock
+        private OrderInventoryService orderInventoryService;
+
         @InjectMocks
         private OrderService orderService;
 
@@ -105,6 +108,7 @@ class OrderServiceTest {
                 cart.getItems().add(cartItem);
 
                 lenient().when(cartRepository.findByUser(user)).thenReturn(Optional.of(cart));
+                lenient().when(cartRepository.findByUserForUpdate(user)).thenReturn(Optional.of(cart));
                 lenient().when(deliveryService.calculateShipping(anyString(), anyList(), eq("PAC")))
                                 .thenReturn(new ShippingQuote("PAC", new BigDecimal("10.00"), 3));
                 lenient().when(addressRepository.findByIdAndUser_Id(address.getId(), user.getId()))
@@ -211,6 +215,17 @@ class OrderServiceTest {
         void checkout_whenStockIsInsufficient_shouldFailBeforePersistingOrder() {
                 CartItem cartItem = cart.getItems().get(0);
                 cartItem.setQuantity(10);
+
+                assertThatThrownBy(() -> orderService.checkout(user, null, "PAC", null, address.getId()))
+                                .isInstanceOf(ConflictException.class)
+                                .hasMessageContaining("Estoque insuficiente");
+
+                verify(orderRepository, never()).save(any(Order.class));
+        }
+
+        @Test
+        void checkout_whenStockIsZero_shouldFailBeforePersistingOrder() {
+                variant.setStock(0);
 
                 assertThatThrownBy(() -> orderService.checkout(user, null, "PAC", null, address.getId()))
                                 .isInstanceOf(ConflictException.class)

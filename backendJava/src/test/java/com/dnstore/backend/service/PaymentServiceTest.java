@@ -41,6 +41,9 @@ class PaymentServiceTest {
     @Mock
     private OrderRepository orderRepository;
 
+    @Mock
+    private OrderInventoryService orderInventoryService;
+
     @InjectMocks
     private PaymentService paymentService;
 
@@ -143,6 +146,7 @@ class PaymentServiceTest {
         when(gateway.processWebhook(anyString(), anyString()))
                 .thenReturn(new PaymentGateway.WebhookResult("asaas-123", "PAID"));
         when(paymentRepository.findByExternalIdForUpdate("asaas-123")).thenReturn(Optional.of(payment));
+        when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
 
         paymentService.handleWebhook("{}", "token");
 
@@ -163,6 +167,7 @@ class PaymentServiceTest {
         when(gateway.processWebhook(anyString(), anyString()))
                 .thenReturn(new PaymentGateway.WebhookResult("asaas-confirmed", "PAID"));
         when(paymentRepository.findByExternalIdForUpdate("asaas-confirmed")).thenReturn(Optional.of(payment));
+        when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
         when(paymentRepository.save(payment)).thenReturn(payment);
         when(orderRepository.save(order)).thenReturn(order);
 
@@ -174,6 +179,31 @@ class PaymentServiceTest {
         assertThat(order.getStatus()).isEqualTo("PAID");
         verify(paymentRepository, times(1)).save(payment);
         verify(orderRepository, times(1)).save(order);
+    }
+
+    @Test
+    void handleWebhook_whenPaymentFails_shouldReleaseReservedStockOnce() {
+        Order order = new Order();
+        order.setId(UUID.randomUUID());
+        order.setStatus("PENDING_PAYMENT");
+        Payment payment = new Payment();
+        payment.setOrder(order);
+        payment.setExternalId("asaas-failed");
+        payment.setStatus("PENDING");
+
+        when(gateway.processWebhook(anyString(), anyString()))
+                .thenReturn(new PaymentGateway.WebhookResult("asaas-failed", "FAILED"));
+        when(paymentRepository.findByExternalIdForUpdate("asaas-failed")).thenReturn(Optional.of(payment));
+        when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
+        when(paymentRepository.save(payment)).thenReturn(payment);
+        when(orderRepository.save(order)).thenReturn(order);
+
+        paymentService.handleWebhook("{}", "token");
+        paymentService.handleWebhook("{}", "token");
+
+        assertThat(payment.getStatus()).isEqualTo("FAILED");
+        assertThat(order.getStatus()).isEqualTo("PAYMENT_FAILED");
+        verify(orderInventoryService, times(1)).releaseReservedStock(order);
     }
 
     @Test
