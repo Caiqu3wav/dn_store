@@ -10,6 +10,7 @@ import { Category } from '@/types';
 import { toast } from 'react-hot-toast';
 import { uploadToCloudinary } from '@/utils/cloudinary';
 import { normalizeProductColor, productColorOptions } from '@/utils/productColor';
+import { VariantDraft, VariantStockEditor } from '../VariantStockEditor';
 
 export default function NovoProdutoPage() {
     const router = useRouter();
@@ -25,7 +26,7 @@ export default function NovoProdutoPage() {
     const [description, setDescription] = useState('');
     const [price, setPrice] = useState('');
     const [promotionalPrice, setPromotionalPrice] = useState('');
-    const [stock, setStock] = useState('');
+    const [variants, setVariants] = useState<VariantDraft[]>([]);
     const [active, setActive] = useState(true);
 
     const [weight, setWeight] = useState('');
@@ -76,6 +77,10 @@ export default function NovoProdutoPage() {
             toast.error('Selecione uma cor válida da lista.');
             return;
         }
+        if (variants.length === 0) {
+            toast.error('Adicione ao menos um tamanho para o produto.');
+            return;
+        }
         setLoading(true);
 
         try {
@@ -94,7 +99,7 @@ export default function NovoProdutoPage() {
                 description,
                 price: parseFloat(price),
                 promotionalPrice: promotionalPrice ? parseFloat(promotionalPrice) : null,
-                stock: parseInt(stock),
+                variants,
                 active,
                 weight: weight ? parseFloat(weight) : null,
                 width: width ? parseFloat(width) : null,
@@ -206,17 +211,6 @@ export default function NovoProdutoPage() {
                                 placeholder="0.00"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-300">Estoque Un. *</label>
-                            <input 
-                                required
-                                value={stock}
-                                onChange={(e) => setStock(e.target.value)}
-                                type="number" 
-                                className="w-full bg-[#1A1B1D] border border-white/10 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary"
-                                placeholder="0"
-                            />
-                        </div>
                     </div>
                     
                     <div className="flex items-center gap-3 pt-2">
@@ -229,6 +223,8 @@ export default function NovoProdutoPage() {
                         <span className="text-sm font-medium text-white">Produto Ativo na Loja</span>
                     </div>
                 </div>
+
+                <VariantStockEditor variants={variants} onChange={setVariants} />
 
                 {/* Dimensões (Opcional) */}
                 <div className="bg-[#2A2A2A] border border-white/5 p-4 sm:p-6 rounded-xl shadow-sm space-y-5 sm:space-y-6">

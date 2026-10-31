@@ -10,6 +10,18 @@ export interface Category {
   description?: string;
 }
 
+export interface ProductVariant {
+  id: string;
+  size: string;
+  type?: string;
+  color?: string;
+  stock: number;
+  active: boolean;
+  sku?: string;
+}
+
+export const PRODUCT_VARIANT_SIZES = ['PP', 'P', 'M', 'G', 'GG', 'BL P', 'BL M', 'BL G', 'Único'] as const;
+
 export interface Product {
   id: string;
   name: string;
@@ -23,6 +35,7 @@ export interface Product {
   height?: number;
   depth?: number;
   images: ProductImage[];
+  variants?: ProductVariant[];
   category?: Category | string;
   color?: string;
   size?: string[];
@@ -40,8 +53,8 @@ export interface User {
 
 export interface CartItem {
   id: string;
-  productVariantId?: string; // Dependendo de como está o backend
   productId?: string;
+  productVariantId?: string;
   quantity: number;
   price: number;
   product: Product;

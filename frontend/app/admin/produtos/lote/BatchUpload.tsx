@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Upload, FileSpreadsheet, Image as ImageIcon, Loader2, X, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import useSWR from 'swr';
 import { fetcher } from '@/services/productService';
-import { Category } from '@/types';
+import { Category, PRODUCT_VARIANT_SIZES } from '@/types';
 import { toast } from 'react-hot-toast';
 import { uploadToCloudinary } from '@/utils/cloudinary';
 import Papa from 'papaparse';
@@ -19,7 +19,7 @@ interface DraftProduct {
     categoryId: string;
     price: string;
     promotionalPrice: string;
-    stock: string;
+    variants: string;
     description: string;
     color: string;
     weight: string;
@@ -48,7 +48,7 @@ export default function BatchUpload() {
 
     const addDraft = () => {
         setDrafts(prev => [...prev, {
-            id: generateId(), name: '', categoryId: '', price: '', promotionalPrice: '', stock: '', description: '', color: '',
+            id: generateId(), name: '', categoryId: '', price: '', promotionalPrice: '', variants: '', description: '', color: '',
             weight: '', width: '', height: '', depth: '', active: true, files: [], previews: [], isExpanded: true
         }]);
     };
@@ -75,7 +75,7 @@ export default function BatchUpload() {
                         name: row.name || row.nome || '',
                         price: row.price || row.preco || row.preço || '',
                         promotionalPrice: row.promotionalPrice || row.precoPromocional || row.preçoPromocional || '',
-                        stock: row.stock || row.estoque || row.quantidade || '',
+                        variants: row.variants || row.variations || row.variacoes || row['variações'] || '',
                         description: row.description || row.descricao || row.descrição || '',
                         color: row.color || row.cor || '',
                         weight: row.weight || row.peso || '',
@@ -122,7 +122,7 @@ export default function BatchUpload() {
         const newDrafts = files.map(file => ({
             id: generateId(),
             name: file.name.split('.')[0], // Use filename as default name
-            categoryId: '', price: '', promotionalPrice: '', stock: '', description: '', color: '',
+            categoryId: '', price: '', promotionalPrice: '', variants: '', description: '', color: '',
             weight: '', width: '', height: '', depth: '',
             active: true,
             files: [file],
@@ -178,11 +178,38 @@ export default function BatchUpload() {
 
     const handleSubmit = async () => {
         if (drafts.length === 0) return toast.error('Nenhum produto para salvar');
-        
-        // Validate
-        const invalid = drafts.find(d => !d.name || !d.price || !d.categoryId || !d.stock);
-        if (invalid) {
-            toast.error(`Produto "${invalid.name || 'Sem nome'}" possui campos obrigatórios vazios.`);
+
+        const parsedVariants = drafts.map(draft => {
+            const parts = draft.variants.split(';').map(part => part.trim()).filter(Boolean);
+            const variants = parts.map(part => {
+                const separator = part.lastIndexOf(':');
+                const size = part.slice(0, separator).trim();
+                const stockText = part.slice(separator + 1).trim();
+                return {
+                    size,
+                    stock: /^\d+$/.test(stockText) ? Number(stockText) : Number.NaN,
+                    active: true
+                };
+            });
+            const uniqueSizes = new Set(variants.map(variant => variant.size));
+            const valid = variants.length > 0
+                && variants.every(variant =>
+                    (PRODUCT_VARIANT_SIZES as readonly string[]).includes(variant.size)
+                    && Number.isSafeInteger(variant.stock)
+                    && variant.stock >= 0)
+                && uniqueSizes.size === variants.length;
+            return valid ? variants : null;
+        });
+
+        const invalid = drafts.findIndex(d => !d.name || !d.price || !d.categoryId);
+        if (invalid !== -1) {
+            toast.error(`Produto "${drafts[invalid].name || 'Sem nome'}" possui campos obrigatórios vazios.`);
+            return;
+        }
+
+        const invalidVariants = parsedVariants.findIndex(variants => variants === null);
+        if (invalidVariants !== -1) {
+            toast.error(`Informe tamanhos e estoques válidos para "${drafts[invalidVariants].name || 'Sem nome'}" (ex.: P:5; M:2).`);
             return;
         }
 
@@ -196,7 +223,8 @@ export default function BatchUpload() {
         try {
             const payload = [];
 
-            for (const draft of drafts) {
+            for (const [index, draft] of drafts.entries()) {
+                const variants = parsedVariants[index]!;
                 // Upload images
                 const imageUrls = await Promise.all(draft.files.map(f => uploadToCloudinary(f)));
                 const imagesPayload = imageUrls.map((url, i) => ({ imageUrl: url, main: i === 0 }));
@@ -206,7 +234,8 @@ export default function BatchUpload() {
                     category: { id: draft.categoryId },
                     price: parseFloat(draft.price),
                     promotionalPrice: draft.promotionalPrice ? parseFloat(draft.promotionalPrice) : null,
-                    stock: parseInt(draft.stock),
+                    stock: variants.reduce((total, variant) => total + variant.stock, 0),
+                    variants,
                     description: draft.description,
                     color: normalizeProductColor(draft.color),
                     active: draft.active,
@@ -311,8 +340,8 @@ export default function BatchUpload() {
                                             <input type="number" step="0.01" value={draft.price} onChange={e => updateDraft(draft.id, 'price', e.target.value)} className="w-full bg-[#1A1B1D] border border-white/10 rounded px-3 py-2 text-sm" />
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="text-xs text-gray-400">Estoque *</label>
-                                            <input type="number" value={draft.stock} onChange={e => updateDraft(draft.id, 'stock', e.target.value)} className="w-full bg-[#1A1B1D] border border-white/10 rounded px-3 py-2 text-sm" />
+                                            <label className="text-xs text-gray-400">Tamanhos e estoques *</label>
+                                            <input value={draft.variants} onChange={e => updateDraft(draft.id, 'variants', e.target.value)} placeholder="P:5; M:2; BL P:1" className="w-full bg-[#1A1B1D] border border-white/10 rounded px-3 py-2 text-sm" />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mt-3">

@@ -10,6 +10,7 @@ import { fetcher, productService } from '@/services/productService';
 import { Category, Product, ProductImage } from '@/types';
 import { uploadToCloudinary } from '@/utils/cloudinary';
 import { normalizeProductColor, productColorOptions } from '@/utils/productColor';
+import { VariantDraft, VariantStockEditor } from '../VariantStockEditor';
 
 type ProductForm = {
     name: string;
@@ -18,7 +19,6 @@ type ProductForm = {
     description: string;
     price: string;
     promotionalPrice: string;
-    stock: string;
     active: boolean;
     weight: string;
     width: string;
@@ -28,7 +28,7 @@ type ProductForm = {
 
 const emptyForm: ProductForm = {
     name: '', categoryId: '', color: '', description: '', price: '',
-    promotionalPrice: '', stock: '0', active: true,
+    promotionalPrice: '', active: true,
     weight: '', width: '', height: '', depth: ''
 };
 
@@ -40,6 +40,7 @@ export default function EditProductPage() {
     const { data: categories } = useSWR<Category[]>('/categories', fetcher);
     const [form, setForm] = useState<ProductForm>(emptyForm);
     const [images, setImages] = useState<ProductImage[]>([]);
+    const [variants, setVariants] = useState<VariantDraft[]>([]);
     const [files, setFiles] = useState<File[]>([]);
     const [loadingData, setLoadingData] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -60,7 +61,6 @@ export default function EditProductPage() {
                     description: product.description || '',
                     price: String(product.price ?? ''),
                     promotionalPrice: product.promotionalPrice == null ? '' : String(product.promotionalPrice),
-                    stock: String(product.stock ?? 0),
                     active: product.active,
                     weight: physical.weight == null ? '' : String(physical.weight),
                     width: physical.width == null ? '' : String(physical.width),
@@ -68,6 +68,12 @@ export default function EditProductPage() {
                     depth: physical.depth == null ? '' : String(physical.depth)
                 });
                 setImages(product.images || []);
+                setVariants((product.variants ?? []).map(variant => ({
+                    id: variant.id,
+                    size: variant.size,
+                    stock: variant.stock,
+                    active: variant.active !== false
+                })));
             })
             .catch(error => {
                 console.error('Erro ao carregar produto:', error);
@@ -102,6 +108,10 @@ export default function EditProductPage() {
             toast.error('Selecione uma cor válida da lista.');
             return;
         }
+        if (variants.length === 0) {
+            toast.error('Adicione ao menos um tamanho para o produto.');
+            return;
+        }
         setSaving(true);
         try {
             const uploadedUrls = await Promise.all(files.map(uploadToCloudinary));
@@ -117,7 +127,7 @@ export default function EditProductPage() {
                 description: form.description,
                 price: Number(form.price),
                 promotionalPrice: form.promotionalPrice ? Number(form.promotionalPrice) : null,
-                stock: Number(form.stock),
+                variants,
                 active: form.active,
                 weight: form.weight ? Number(form.weight) : 0,
                 width: form.width ? Number(form.width) : 0,
@@ -176,9 +186,6 @@ export default function EditProductPage() {
                         <label className="space-y-1.5 text-xs text-gray-400">Preço promocional (R$)
                             <input min="0" step="0.01" type="number" value={form.promotionalPrice} onChange={event => updateField('promotionalPrice', event.target.value)} className={fieldClass} />
                         </label>
-                        <label className="space-y-1.5 text-xs text-gray-400">Estoque *
-                            <input required min="0" step="1" type="number" value={form.stock} onChange={event => updateField('stock', event.target.value)} className={fieldClass} />
-                        </label>
                     </div>
                     <label className="block space-y-1.5 text-xs text-gray-400">Descrição
                         <textarea rows={3} value={form.description} onChange={event => updateField('description', event.target.value)} className={`${fieldClass} resize-y`} />
@@ -188,6 +195,8 @@ export default function EditProductPage() {
                         Produto ativo na loja
                     </label>
                 </section>
+
+                <VariantStockEditor variants={variants} onChange={setVariants} />
 
                 <section className="space-y-4 rounded-lg border border-white/10 bg-[#222325] p-4 sm:p-5">
                     <h2 className="border-b border-white/10 pb-3 text-sm font-semibold uppercase tracking-wide text-gray-300">Dimensões para frete</h2>

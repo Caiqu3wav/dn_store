@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
 import api from '@/lib/axios';
+import axios from 'axios';
 
 export interface ShippingOption {
     typeName: string;
@@ -22,7 +23,13 @@ export interface DeliveryData {
 }
 
 interface Props {
-    items: { id: string; size?: string; quantity: number }[];
+    items: {
+        id: string;
+        productId?: string;
+        productVariantId?: string;
+        size?: string;
+        quantity: number;
+    }[];
     data: DeliveryData;
     onChange: (data: DeliveryData) => void;
     shipping: ShippingOption | null;
@@ -55,7 +62,8 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
         setShippingError('');
         try {
             await api.put('/cart/sync', items.map(item => ({
-                productId: item.id,
+                productId: item.productId ?? item.id,
+                productVariantId: item.productVariantId,
                 size: item.size,
                 quantity: item.quantity,
             })));
@@ -84,10 +92,13 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
                 onShippingChange(null);
                 setShippingError('Não foi possível cotar o frete para este CEP. Tente novamente.');
             }
-        } catch {
+        } catch (error: unknown) {
             setShippingOptions([]);
             onShippingChange(null);
-            setShippingError('Não foi possível consultar o CEP. Verifique o número e tente novamente.');
+            const backendMessage = axios.isAxiosError(error)
+                ? (error.response?.data as { message?: string } | undefined)?.message
+                : undefined;
+            setShippingError(backendMessage || 'Não foi possível consultar o CEP. Verifique o número e tente novamente.');
         } finally {
             setLoadingCep(false);
         }
