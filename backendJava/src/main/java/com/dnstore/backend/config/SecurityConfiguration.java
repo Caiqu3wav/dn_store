@@ -43,6 +43,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/payment/webhook").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/zip-code/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/products", "/api/products/**")
                         .permitAll()
                         .requestMatchers(

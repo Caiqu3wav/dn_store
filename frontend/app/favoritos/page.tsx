@@ -4,9 +4,11 @@ import { useFavorites } from '@/app/context/FavoritesContext';
 import { FavoriteCard } from '@/app/components/FavoriteCard';
 import Link from 'next/link';
 import { Heart } from 'lucide-react';
+import { useAuth } from '@/app/context/AuthContext';
 
 export default function FavoritosPage() {
-    const { favorites, favoritesCount } = useFavorites();
+    const { favorites, favoritesCount, loading, error, refreshFavorites } = useFavorites();
+    const { user, loading: authLoading } = useAuth();
 
     return (
         <div className="min-h-screen bg-white pt-32 pb-16">
@@ -24,7 +26,30 @@ export default function FavoritosPage() {
                 </div>
 
                 {/* Content */}
-                {favoritesCount === 0 ? (
+                {authLoading || loading ? (
+                    <p role="status" className="py-20 text-center text-gray-600">Carregando favoritos...</p>
+                ) : !user ? (
+                    <div className="py-20 text-center">
+                        <p className="mb-6 text-gray-600">Entre na sua conta para ver seus favoritos.</p>
+                        <Link
+                            href={`/auth?next=${encodeURIComponent('/favoritos')}`}
+                            className="inline-block bg-brand-secondary hover:bg-brand-secondary/90 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
+                        >
+                            Entrar
+                        </Link>
+                    </div>
+                ) : error ? (
+                    <div role="alert" className="py-16 text-center">
+                        <p className="mb-4 text-red-700">Não foi possível carregar seus favoritos.</p>
+                        <button
+                            type="button"
+                            onClick={() => void refreshFavorites()}
+                            className="font-semibold text-brand-secondary underline"
+                        >
+                            Tentar novamente
+                        </button>
+                    </div>
+                ) : favoritesCount === 0 ? (
                     <div className="text-center py-20">
                         <Heart className="w-16 h-16 text-gray-600 mx-auto mb-6 opacity-50" />
                         <h2 className="text-2xl font-bold text-black-300 mb-3">Nenhum favorito ainda</h2>

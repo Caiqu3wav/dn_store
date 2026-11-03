@@ -1,9 +1,11 @@
 package com.dnstore.backend.controller;
 
-import com.dnstore.backend.model.Favorite;
+import com.dnstore.backend.dto.FavoriteResponse;
+import com.dnstore.backend.model.User;
 import com.dnstore.backend.service.FavoriteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,23 +19,22 @@ public class FavoriteController {
     private final FavoriteService favoriteService;
 
     @GetMapping
-    public ResponseEntity<List<Favorite>> list(@RequestParam UUID userId) {
-        return ResponseEntity.ok(favoriteService.findByUser(userId));
+    public ResponseEntity<List<FavoriteResponse>> list(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(favoriteService.findResponsesByUser(user.getId()));
     }
 
     @PostMapping("/{productId}")
-    public ResponseEntity<Favorite> add(
-            @RequestParam UUID userId,
+    public ResponseEntity<FavoriteResponse> add(
+            @AuthenticationPrincipal User user,
             @PathVariable UUID productId) {
-        Favorite favorite = favoriteService.add(userId, productId);
-        return ResponseEntity.ok(favorite);
+        return ResponseEntity.ok(favoriteService.addResponse(user.getId(), productId));
     }
 
     @DeleteMapping("/{productId}")
     public ResponseEntity<Void> remove(
-            @RequestParam UUID userId,
+            @AuthenticationPrincipal User user,
             @PathVariable UUID productId) {
-        favoriteService.remove(userId, productId);
+        favoriteService.remove(user.getId(), productId);
         return ResponseEntity.noContent().build();
     }
 }

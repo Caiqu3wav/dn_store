@@ -9,6 +9,7 @@ import { useCart } from '@/app/context/CartContext';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getProductImage } from '@/utils/productImage';
+import { toast } from 'react-hot-toast';
 
 interface FavoriteCardProps {
     product: Product;
@@ -55,14 +56,20 @@ export function FavoriteCard({ product }: FavoriteCardProps) {
         setTimeout(() => setIsAdded(false), 2000);
     };
 
-    const handleRemoveFavorite = () => {
-        removeFavorite(product.id);
+    const handleRemoveFavorite = async () => {
+        try {
+            await removeFavorite(product.id);
+            toast.success('Produto removido dos favoritos.');
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Não foi possível remover o favorito.');
+        }
     };
 
     return (
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col h-full">
             {/* Product Image */}
-            <Link href={`/produtos/${product.id}`} className="relative w-full h-48 overflow-hidden bg-white group">
+            <div className="relative w-full h-48 overflow-hidden bg-white group">
+                <Link href={`/produtos/${product.id}`} className="absolute inset-0">
                 {image ? (
                     <Image
                         src={image}
@@ -75,17 +82,20 @@ export function FavoriteCard({ product }: FavoriteCardProps) {
                         Imagem indisponível
                     </span>
                 )}
+                </Link>
                 <button
+                    type="button"
                     onClick={(e) => {
                         e.preventDefault();
-                        handleRemoveFavorite();
+                        e.stopPropagation();
+                        void handleRemoveFavorite();
                     }}
-                    className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 p-2 rounded-full transition-colors"
                     aria-label="Remover dos favoritos"
+                    className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 p-2 rounded-full transition-colors"
                 >
                     <Trash2 className="w-4 h-4 text-black" />
                 </button>
-            </Link>
+            </div>
 
             {/* Product Info */}
             <div className="p-4 flex-grow flex flex-col">

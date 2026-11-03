@@ -1,67 +1,118 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
 import { Product } from '@/types';
+import { favoriteService } from '@/services/favoriteService';
+import { useAuth } from './AuthContext';
 
 interface FavoritesContextType {
     favorites: Product[];
-    addFavorite: (product: Product) => void;
-    removeFavorite: (id: string) => void;
+    loading: boolean;
+    error: string | null;
+    refreshFavorites: () => Promise<void>;
+    addFavorite: (product: Product) => Promise<void>;
+    removeFavorite: (id: string) => Promise<void>;
     isFavorite: (id: string) => boolean;
     favoritesCount: number;
 }
 
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
 
+function getErrorMessage(error: unknown) {
+    const responseData = (error as { response?: { data?: { message?: string } | string } }).response?.data;
+    return typeof responseData === 'string'
+        ? responseData
+        : responseData?.message || (error instanceof Error ? error.message : 'Não foi possível atualizar os favoritos.');
+}
+
 export function FavoritesProvider({ children }: { children: ReactNode }) {
+    const { user, loading: authLoading } = useAuth();
     const [favorites, setFavorites] = useState<Product[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-
-        const savedFavorites = localStorage.getItem('favorites');
-        if (savedFavorites) {
-            try {
-                setFavorites(JSON.parse(savedFavorites));
-            } catch (e) {
-                console.error('Failed to parse favorites', e);
-            }
+    const refreshFavorites = useCallback(async () => {
+        if (!user) {
+            setFavorites([]);
+            setError(null);
+            setLoading(false);
+            return;
         }
-    }, []);
 
-    // Save favorites to localStorage whenever they change
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await favoriteService.getFavorites();
+            setFavorites(response.map(favorite => favorite.product));
+        } catch (requestError) {
+            setError(getErrorMessage(requestError));
+        } finally {
+            setLoading(false);
+        }
+    }, [user]);
+
     useEffect(() => {
-        if (typeof window === 'undefined') return;
-        localStorage.setItem('favorites', JSON.stringify(favorites));
-    }, [favorites]);
+        if (authLoading) return;
+        let cancelled = false;
 
-    const addFavorite = (product: Product) => {
-        setFavorites((currentFavorites) => {
-            const exists = currentFavorites.find((fav) => fav.id === product.id);
-            if (exists) {
-                return currentFavorites;
+        const loadFavorites = async () => {
+            if (!user) {
+                setFavorites([]);
+                setError(null);
+                setLoading(false);
+                return;
             }
-            return [...currentFavorites, product];
-        });
-    };
 
-    const removeFavorite = (id: string) => {
-        setFavorites((currentFavorites) =>
-            currentFavorites.filter((fav) => fav.id !== id)
-        );
-    };
+            setLoading(true);
+            setError(null);
+            try {
+                const response = await favoriteService.getFavorites();
+                if (!cancelled) setFavorites(response.map(favorite => favorite.product));
+            } catch (requestError) {
+                if (!cancelled) setError(getErrorMessage(requestError));
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        };
 
-    const isFavorite = (id: string) => {
-        return favorites.some((fav) => fav.id === id);
-    };
+        void loadFavorites();
+        return () => {
+            cancelled = true;
+        };
+    }, [authLoading, user]);
 
+    const addFavorite = useCallback(async (product: Product) => {
+        if (!user) throw new Error('Entre na sua conta para favoritar produtos.');
+        const favorite = await favoriteService.addFavorite(product.id);
+        setFavorites(current => current.some(item => item.id === favorite.product.id)
+            ? current
+            : [...current, favorite.product]);
+    }, [user]);
+
+    const removeFavorite = useCallback(async (id: string) => {
+        if (!user) throw new Error('Entre na sua conta para gerenciar seus favoritos.');
+        await favoriteService.removeFavorite(id);
+        setFavorites(current => current.filter(product => product.id !== id));
+    }, [user]);
+
+    const isFavorite = useCallback(
+        (id: string) => favorites.some(product => product.id === id),
+        [favorites]
+    );
     const favoritesCount = favorites.length;
 
-    return (
-        <FavoritesContext.Provider value={{ favorites, addFavorite, removeFavorite, isFavorite, favoritesCount }}>
-            {children}
-        </FavoritesContext.Provider>
-    );
+    const value = useMemo(() => ({
+        favorites,
+        loading,
+        error,
+        refreshFavorites,
+        addFavorite,
+        removeFavorite,
+        isFavorite,
+        favoritesCount,
+    }), [favorites, loading, error, refreshFavorites, addFavorite, removeFavorite, isFavorite, favoritesCount]);
+
+    return <FavoritesContext.Provider value={value}>{children}</FavoritesContext.Provider>;
 }
 
 export function useFavorites() {
