@@ -3,7 +3,7 @@
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/ui/Button';
 import Link from 'next/link';
-import { Trash2, ArrowRight } from 'lucide-react';
+import { Trash2, ArrowRight, Minus, Plus } from 'lucide-react';
 import { getProductImageUrl } from '@/utils/productImage';
 
 export default function CartPage() {
@@ -32,30 +32,62 @@ export default function CartPage() {
                         {items.map((item) => {
                             const image = item.image || getProductImageUrl(item.name);
                             return (
-                                <div key={`${item.id}-${item.size}`} className="bg-white p-4 rounded-lg shadow-sm flex gap-4 items-center">
+                                <div key={item.productVariantId ?? `${item.productId ?? item.id}:${item.size ?? ''}`} className="bg-white p-4 rounded-lg shadow-sm flex flex-col gap-4 sm:flex-row sm:items-center">
                                     {image ? (
                                         <div
-                                            className="w-24 h-24 bg-cover bg-center rounded-md bg-gray-100 flex-shrink-0"
+                                            className="w-20 h-20 sm:w-24 sm:h-24 bg-cover bg-center rounded-md bg-gray-100 flex-shrink-0"
                                             style={{ backgroundImage: `url(${image})` }}
                                         />
                                     ) : (
-                                        <div className="w-24 h-24 rounded-md bg-gray-100 flex-shrink-0 flex items-center justify-center text-center text-xs text-gray-500" role="img" aria-label="Fotografia do produto indisponível">
+                                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-md bg-gray-100 flex-shrink-0 flex items-center justify-center text-center text-xs text-gray-500" role="img" aria-label="Fotografia do produto indisponível">
                                             Imagem indisponível
                                         </div>
                                     )}
-                                    <div className="flex-1">
+                                    <div className="min-w-0 flex-1">
                                         <h3 className="font-bold text-lg">{item.name}</h3>
                                         <p className="text-sm text-gray-500">Tamanho: {item.size}</p>
                                         <p className="font-bold text-brand-red mt-1">
                                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.price)}
                                         </p>
+                                        <p className="mt-1 text-sm text-gray-600">
+                                            Subtotal do item: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.price * item.quantity)}
+                                        </p>
                                     </div>
-                                    <div className="flex flex-col items-end gap-2">
+                                    <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end">
+                                        <div className="flex items-center gap-2" role="group" aria-label={`Quantidade de ${item.name}${item.size ? `, tamanho ${item.size}` : ''}`}>
+                                            <button
+                                                type="button"
+                                                onClick={() => updateQuantity(item, item.quantity - 1)}
+                                                disabled={item.quantity <= 1 || (item.availableStock != null && item.availableStock < 1)}
+                                                aria-label={`Diminuir quantidade de ${item.name}${item.size ? `, tamanho ${item.size}` : ''}`}
+                                                className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-300 text-gray-800 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-red-primary disabled:cursor-not-allowed disabled:opacity-40"
+                                            >
+                                                <Minus aria-hidden="true" className="h-4 w-4" />
+                                            </button>
+                                            <output
+                                                aria-label={`Quantidade atual de ${item.name}${item.size ? `, tamanho ${item.size}` : ''}`}
+                                                aria-live="polite"
+                                                className="min-w-8 text-center font-semibold tabular-nums"
+                                            >
+                                                {item.quantity}
+                                            </output>
+                                            <button
+                                                type="button"
+                                                onClick={() => updateQuantity(item, item.quantity + 1)}
+                                                disabled={item.availableStock != null && (item.availableStock < 1 || item.quantity >= item.availableStock)}
+                                                aria-label={`Aumentar quantidade de ${item.name}${item.size ? `, tamanho ${item.size}` : ''}`}
+                                                className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-gray-300 text-gray-800 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-red-primary disabled:cursor-not-allowed disabled:opacity-40"
+                                            >
+                                                <Plus aria-hidden="true" className="h-4 w-4" />
+                                            </button>
+                                        </div>
                                         <button
-                                            onClick={() => removeItem(item.id)}
-                                            className="text-gray-400 hover:text-red-500 p-2"
+                                            type="button"
+                                            onClick={() => removeItem(item)}
+                                            aria-label={`Remover ${item.name}${item.size ? `, tamanho ${item.size}` : ''} do carrinho`}
+                                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
                                         >
-                                            <Trash2 className="w-5 h-5" />
+                                            <Trash2 aria-hidden="true" className="w-5 h-5" />
                                         </button>
                                     </div>
                                 </div>

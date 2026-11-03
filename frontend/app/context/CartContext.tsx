@@ -18,8 +18,8 @@ export interface CartItem {
 interface CartContextType {
     items: CartItem[];
     addItem: (item: CartItem) => boolean;
-    removeItem: (id: string) => void;
-    updateQuantity: (id: string, quantity: number) => void;
+    removeItem: (item: CartItem) => void;
+    updateQuantity: (item: CartItem, quantity: number) => void;
     clearCart: () => void;
     total: number;
     itemCount: number;
@@ -106,15 +106,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return true;
     };
 
-    const removeItem = (id: string) => {
-        saveCart(items.filter((item) => item.id !== id));
+    const removeItem = (itemToRemove: CartItem) => {
+        const itemKey = key(itemToRemove);
+        saveCart(items.filter((item) => key(item) !== itemKey));
     };
 
-    const updateQuantity = (id: string, quantity: number) => {
-        if (quantity < 1) return;
-        saveCart(items.map((item) => (item.id === id
-                ? { ...item, quantity: item.availableStock == null ? quantity : Math.min(quantity, item.availableStock) }
-                : item)));
+    const updateQuantity = (targetItem: CartItem, quantity: number) => {
+        if (!Number.isInteger(quantity) || quantity < 1) return;
+
+        const itemKey = key(targetItem);
+        const target = items.find((item) => key(item) === itemKey);
+        if (!target || (target.availableStock != null && quantity > target.availableStock)) return;
+
+        saveCart(items.map((item) => key(item) === itemKey ? { ...item, quantity } : item));
     };
 
     const updateSize = (id: string, size: string) => {
