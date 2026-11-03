@@ -253,7 +253,7 @@ export default function EventosPage() {
               <div className="absolute top-4 right-4 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
 
                 <Link
-                  href={NEXT_EVENT.mapsLink || "#"}
+                  href={NEXT_EVENT.mapsLink}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 bg-white text-foreground font-bold px-4 py-2 rounded-lg shadow-lg hover:bg-gray-50 transition-colors text-sm"
@@ -360,19 +360,28 @@ export default function EventosPage() {
                     </div>
 
                     {isNext ? (
-                      <button className="w-full bg-brand-red-primary text-white font-bold py-3 rounded-lg hover:bg-brand-red-secondary transition-colors text-sm">
+                      <Link
+                        href="https://desafionatureza.com.br"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full bg-brand-red-primary text-white font-bold py-3 rounded-lg hover:bg-brand-red-secondary transition-colors text-sm text-center"
+                      >
                         Inscreva-se
-                      </button>
+                      </Link>
                     ) : isPast ? (
                       <button
-                        className="w-full bg-white/10 text-white font-bold py-3 rounded-lg hover:bg-white/20 transition-colors text-sm"
+                        className="w-full cursor-not-allowed bg-white/10 text-white/60 font-bold py-3 rounded-lg text-sm"
                         disabled
                       >
-                        Ver Cobertura
+                        Cobertura indisponível
                       </button>
                     ) : (
-                      <button className="w-full bg-white text-foreground font-bold py-3 rounded-lg hover:bg-gray-100 transition-colors text-sm">
-                        Saiba Mais
+                      <button
+                        className="w-full cursor-not-allowed bg-white/10 text-white/60 font-bold py-3 rounded-lg text-sm"
+                        disabled
+                        aria-label={`Informações indisponíveis para ${event.name}`}
+                      >
+                        Informações indisponíveis
                       </button>
                     )}
 

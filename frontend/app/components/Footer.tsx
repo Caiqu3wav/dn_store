@@ -109,39 +109,31 @@ export function Footer() {
 
                         <ul className="space-y-3 text-sm">
                             <li>
-                                <Link
-                                    href="/faq"
-                                    className="hover:text-brand-secondary transition-colors"
-                                >
-                                    Dúvidas Frequentes FAQ
-                                </Link>
+                                <span className="flex items-center justify-between gap-2 text-gray-500" aria-disabled="true">
+                                    <span>Dúvidas Frequentes FAQ</span>
+                                    <span className="shrink-0 text-xs">Indisponível</span>
+                                </span>
                             </li>
 
                             <li>
-                                <Link
-                                    href="/trocas"
-                                    className="hover:text-brand-secondary transition-colors"
-                                >
-                                    Trocas e Devoluções
-                                </Link>
+                                <span className="flex items-center justify-between gap-2 text-gray-500" aria-disabled="true">
+                                    <span>Trocas e Devoluções</span>
+                                    <span className="shrink-0 text-xs">Indisponível</span>
+                                </span>
                             </li>
 
                             <li>
-                                <Link
-                                    href="/rastreio"
-                                    className="hover:text-brand-secondary transition-colors"
-                                >
-                                    Rastreie seu Pedido
-                                </Link>
+                                <span className="flex items-center justify-between gap-2 text-gray-500" aria-disabled="true">
+                                    <span>Rastreie seu Pedido</span>
+                                    <span className="shrink-0 text-xs">Indisponível</span>
+                                </span>
                             </li>
 
                             <li>
-                                <Link
-                                    href="/termos"
-                                    className="hover:text-brand-secondary transition-colors"
-                                >
-                                    Termos de Uso
-                                </Link>
+                                <span className="flex items-center justify-between gap-2 text-gray-500" aria-disabled="true">
+                                    <span>Termos de Uso</span>
+                                    <span className="shrink-0 text-xs">Indisponível</span>
+                                </span>
                             </li>
                         </ul>
                     </div>

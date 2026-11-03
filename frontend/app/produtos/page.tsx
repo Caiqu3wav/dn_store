@@ -20,11 +20,18 @@ function ProdutosCatalog() {
   const mobileFilterDialogRef = useRef<HTMLElement>(null);
   const mobileFilterCloseRef = useRef<HTMLButtonElement>(null);
   const wasMobileFiltersOpenRef = useRef(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const searchParam = searchParams.get('search')?.trim() ?? '';
+  const [searchQuery, setSearchQuery] = useState(searchParam);
+  const [appliedSearchParam, setAppliedSearchParam] = useState(searchParam);
   const [priceRange, setPriceRange] = useState<{ min: string; max: string }>({ min: '', max: '' });
   const [sortBy, setSortBy] = useState<SortOption>('relevance');
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('categoryId') ?? '');
   const [selectedSize, setSelectedSize] = useState('');
+
+  if (searchParam !== appliedSearchParam) {
+    setAppliedSearchParam(searchParam);
+    setSearchQuery(searchParam);
+  }
 
   const closeMobileFilters = useCallback(() => {
     setIsMobileFiltersOpen(false);
@@ -100,7 +107,7 @@ function ProdutosCatalog() {
 
   // Monta a query URL baseada nos filtros
   const queryParams = new URLSearchParams();
-  if (searchQuery) queryParams.append('search', searchQuery);
+  if (searchQuery.trim()) queryParams.append('search', searchQuery.trim());
   if (selectedCategory) {
     queryParams.append('categoryId', selectedCategory);
   }
@@ -127,6 +134,9 @@ function ProdutosCatalog() {
   const filteredAndSortedProducts = sortBy === 'nameDesc'
     ? [...matchingProducts].reverse()
     : matchingProducts;
+  const hasActiveFilters = Boolean(
+    searchQuery.trim() || selectedCategory || priceRange.min || priceRange.max || selectedSize
+  );
 
 
   return (
@@ -422,7 +432,7 @@ function ProdutosCatalog() {
                 <h3 className="text-xl font-bold text-red-800 mb-2">Não foi possível carregar o catálogo</h3>
                 <p className="text-red-700">Verifique sua conexão e tente novamente.</p>
               </div>
-            ) : (productsData ?? []).length === 0 ? (
+            ) : (productsData ?? []).length === 0 && !hasActiveFilters ? (
               <div className="py-16 px-4 text-center bg-gray-50 rounded-3xl border border-gray-100">
                 <h3 className="text-xl font-bold text-[#1A1B1D] mb-2">Catálogo vazio</h3>
                 <p className="text-gray-600">Não há produtos disponíveis no momento.</p>

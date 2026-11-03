@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ShoppingCart, Menu, X, Search, UserRound, Heart, ChevronDown, Package, MapPin, LogOut, LogIn, UserPlus, ShieldCheck } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { cn } from './ui/Button';
 import { useCart } from '../context/CartContext';
 import { useFavorites } from '../context/FavoritesContext';
@@ -117,11 +118,31 @@ function AccountDropdown({ mobile = false, onNavigate }: { mobile?: boolean; onN
 }
 
 export function Navbar() {
+    const router = useRouter();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
     const mobileMenuToggleRef = useRef<HTMLButtonElement>(null);
     const { itemCount } = useCart();
     const { favoritesCount } = useFavorites();
+
+    const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const term = searchTerm.trim();
+        const params = new URLSearchParams();
+
+        if (window.location.pathname === '/produtos') {
+            const currentParams = new URLSearchParams(window.location.search);
+            currentParams.delete('search');
+            currentParams.forEach((value, key) => params.set(key, value));
+        }
+
+        if (term) params.set('search', term);
+        const query = params.toString();
+        router.push(`/produtos${query ? `?${query}` : ''}`);
+        setSearchTerm(term);
+        setIsMobileMenuOpen(false);
+    };
 
     useEffect(() => {
         const handleScroll = () => {
@@ -192,14 +213,17 @@ export function Navbar() {
     xl:-translate-x-[20rem]
     xl:w-[28rem]
     xl:max-w-[calc(100%-32rem)]
-"><div className="relative w-full">
-                    <input 
-                        type="text" 
-                        placeholder="Buscar produtos..." 
+"><form onSubmit={handleSearchSubmit} role="search" className="relative w-full">
+                    <input
+                        type="search"
+                        aria-label="Buscar produtos"
+                        value={searchTerm}
+                        onChange={event => setSearchTerm(event.target.value)}
+                        placeholder="Buscar produtos..."
                         className="w-full bg-gray-100 border-transparent focus:bg-white focus:border-brand-secondary focus:ring-2 focus:ring-brand-secondary/20 rounded-full py-2 sm:py-2.5 pl-9 sm:pl-11 pr-2 sm:pr-4 text-xs sm:text-sm transition-all outline-none text-brand"
                     />
-                     <Search className="w-4 h-4 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2" />
-                    </div>
+                    <Search aria-hidden="true" className="w-4 h-4 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2" />
+                    </form>
                 </div>
 
                 {/* Navigation & Icons */}
@@ -257,14 +281,17 @@ export function Navbar() {
                 hidden={!isMobileMenuOpen}
                 className="xl:hidden absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-lg py-4 px-4 flex flex-col gap-4"
             >
-                    <div className="relative w-full mb-2">
-                        <input 
-                            type="text" 
-                            placeholder="Buscar produtos..." 
+                    <form onSubmit={handleSearchSubmit} role="search" className="relative w-full mb-2">
+                        <input
+                            type="search"
+                            aria-label="Buscar produtos"
+                            value={searchTerm}
+                            onChange={event => setSearchTerm(event.target.value)}
+                            placeholder="Buscar produtos..."
                             className="w-full bg-gray-100 rounded-full py-2.5 pl-11 pr-4 text-sm outline-none"
                         />
-                        <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                    </div>
+                        <Search aria-hidden="true" className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                    </form>
                     <Link href="/" className="text-gray-800 font-medium py-2 border-b border-gray-100">Home</Link>
                     <Link href="/produtos" className="text-gray-800 font-medium py-2 border-b border-gray-100">Produtos</Link>
                     <Link href="/eventos" className="text-gray-800 font-medium py-2 border-b border-gray-100">Eventos</Link>
