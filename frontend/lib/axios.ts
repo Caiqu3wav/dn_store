@@ -2,9 +2,13 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 
 const authenticatedRoutes = ['/checkout', '/conta', '/admin'];
+const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+const isProduction = process.env.NODE_ENV === 'production';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api',
+  // Configure NEXT_PUBLIC_API_URL in the frontend environment; local development
+  // defaults to localhost, while production intentionally has no localhost fallback.
+  baseURL: apiUrl || (isProduction ? undefined : 'http://localhost:8080/api'),
   headers: {
     'Content-Type': 'application/json',
   },
@@ -13,6 +17,10 @@ const api = axios.create({
 // Interceptor de requisição: anexa o token JWT se existir
 api.interceptors.request.use(
   (config) => {
+    if (isProduction && !apiUrl) {
+      return Promise.reject(new Error('NEXT_PUBLIC_API_URL must be configured for production.'));
+    }
+
     const token = Cookies.get('auth_token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;

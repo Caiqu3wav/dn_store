@@ -8,25 +8,41 @@ import { useFavorites } from '@/app/context/FavoritesContext';
 import { useCart } from '@/app/context/CartContext';
 import { useRouter } from 'next/navigation';
 import { getProductImage } from '@/utils/productImage';
+import { useAuth } from '@/app/context/AuthContext';
+import { toast } from 'react-hot-toast';
 
 interface ProductCardProps {
   product: Product;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const { addFavorite, removeFavorite, isFavorite } = useFavorites();
+  const { addFavorite, removeFavorite, isFavorite, loading: favoritesLoading } = useFavorites();
+  const { user, loading: authLoading } = useAuth();
   const { addItem } = useCart();
   const router = useRouter();
 
   const isFav = isFavorite(product.id);
   const image = getProductImage(product);
 
-  const handleToggleFavorite = (e: React.MouseEvent) => {
+  const handleToggleFavorite = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    if (isFav) {
-      removeFavorite(product.id);
-    } else {
-      addFavorite(product);
+    e.stopPropagation();
+    if (authLoading || favoritesLoading) return;
+    if (!user) {
+      router.push(`/auth?next=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
+
+    try {
+      if (isFav) {
+        await removeFavorite(product.id);
+        toast.success('Produto removido dos favoritos.');
+      } else {
+        await addFavorite(product);
+        toast.success('Produto adicionado aos favoritos.');
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível atualizar os favoritos.');
     }
   };
 
@@ -87,6 +103,10 @@ export function ProductCard({ product }: ProductCardProps) {
         <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <button
             onClick={handleToggleFavorite}
+            type="button"
+            disabled={authLoading || favoritesLoading}
+            aria-pressed={isFav}
+            aria-label={isFav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
             className={`w-9 h-9 rounded-full flex items-center justify-center hover:scale-110 transition-all shadow-sm ${
               isFav
                 ? "bg-red-500 text-white"

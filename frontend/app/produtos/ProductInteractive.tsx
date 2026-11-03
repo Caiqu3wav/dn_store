@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { useCart } from '../context/CartContext';
+import { useFavorites } from '../context/FavoritesContext';
+import { useAuth } from '../context/AuthContext';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 import {
     ShoppingCart,
     Heart,
@@ -30,6 +34,11 @@ export default function ProductInteractive({
     const [currentImage, setCurrentImage] = useState(0);
 
     const { addItem } = useCart();
+    const { user, loading: authLoading } = useAuth();
+    const { addFavorite, removeFavorite, isFavorite, loading: favoritesLoading } = useFavorites();
+    const router = useRouter();
+    const [isSharing, setIsSharing] = useState(false);
+    const favorite = isFavorite(product.id);
 
     const handleAddToCart = () => {
         if (!selectedVariant || !selectedVariant.active || selectedVariant.stock < 1) return;
@@ -46,6 +55,46 @@ export default function ProductInteractive({
         });
 
         alert(added ? 'Produto adicionado ao carrinho!' : 'Estoque insuficiente para o tamanho selecionado.');
+    };
+
+    const handleToggleFavorite = async () => {
+        if (authLoading || favoritesLoading) return;
+        if (!user) {
+            router.push(`/auth?next=${encodeURIComponent(`/produtos/${product.id}`)}`);
+            return;
+        }
+
+        try {
+            if (favorite) {
+                await removeFavorite(product.id);
+                toast.success('Produto removido dos favoritos.');
+            } else {
+                await addFavorite(product);
+                toast.success('Produto adicionado aos favoritos.');
+            }
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Não foi possível atualizar os favoritos.');
+        }
+    };
+
+    const handleShare = async () => {
+        setIsSharing(true);
+        try {
+            const url = window.location.href;
+            if (navigator.share) {
+                await navigator.share({ title: product.name, text: product.name, url });
+                toast.success('Produto compartilhado.');
+            } else if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(url);
+                toast.success('Link do produto copiado.');
+            } else {
+                throw new Error('Este navegador não permite compartilhar ou copiar o link.');
+            }
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Não foi possível compartilhar o produto.');
+        } finally {
+            setIsSharing(false);
+        }
     };
 
     return (
@@ -189,17 +238,26 @@ export default function ProductInteractive({
                         variant="outline"
                         size="lg"
                         className="h-14 w-14 p-0"
+                        type="button"
+                        aria-label={favorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                        aria-pressed={favorite}
+                        disabled={authLoading || favoritesLoading}
+                        onClick={handleToggleFavorite}
                     >
-                        <Heart className="w-6 h-6" />
+                        <Heart className={`w-6 h-6 ${favorite ? 'fill-current text-brand-red' : ''}`} />
                     </Button>
 
                 </div>
 
-                <div className="flex items-center gap-2 text-sm text-gray-500">
+                <button
+                    type="button"
+                    onClick={handleShare}
+                    disabled={isSharing}
+                    className="flex items-center gap-2 text-sm text-gray-500 hover:text-black disabled:opacity-60"
+                >
                     <Share2 className="w-4 h-4" />
-
-                    Compartilhar este produto
-                </div>
+                    <span>{isSharing ? 'Compartilhando...' : 'Compartilhar este produto'}</span>
+                </button>
 
             </div>
 

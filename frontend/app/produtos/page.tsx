@@ -1,24 +1,25 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, SlidersHorizontal, X, ChevronDown, Loader2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { ProductCard } from '../components/ui/ProductCard';
 import useSWR from 'swr';
 import { fetcher } from '@/services/productService';
 import { Product, Category } from '@/types';
-import { normalizeProductColor, productColorOptions } from '@/utils/productColor';
 
-type SortOption = 'relevance' | 'price-asc' | 'price-desc' | 'name-asc' | 'name-desc';
+type SortOption = 'relevance' | 'priceAsc' | 'priceDesc' | 'name' | 'nameDesc';
 
-export default function ProdutosPage() {
+const AVAILABLE_VARIANT_SIZES = ['PP', 'P', 'M', 'G', 'GG', 'BL P', 'BL M', 'BL G', 'Único'] as const;
+
+function ProdutosCatalog() {
+  const searchParams = useSearchParams();
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<{ min: string; max: string }>({ min: '', max: '' });
   const [sortBy, setSortBy] = useState<SortOption>('relevance');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedColor, setSelectedColor] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('categoryId') ?? '');
   const [selectedSize, setSelectedSize] = useState('');
 
   // Prevent background scroll when mobile filters are open
@@ -30,8 +31,12 @@ export default function ProdutosPage() {
     }
   }, [isMobileFiltersOpen]);
 
-  const { data: categories } = useSWR<Category[]>('/categories', fetcher);
-  const selectedCategoryName = categories?.find(c => c.id === selectedCategory)?.name || '';
+  const {
+    data: categories,
+    error: categoriesError,
+    isLoading: categoriesLoading,
+    mutate: reloadCategories,
+  } = useSWR<Category[]>('/categories', fetcher);
 
   // Monta a query URL baseada nos filtros
   const queryParams = new URLSearchParams();
@@ -41,18 +46,27 @@ export default function ProdutosPage() {
   }
   if (priceRange.min) queryParams.append('minPrice', priceRange.min);
   if (priceRange.max) queryParams.append('maxPrice', priceRange.max);
-  if (sortBy !== 'relevance') queryParams.append('sortBy', sortBy);
+  const apiSortBy = sortBy === 'nameDesc' ? 'name' : sortBy;
+  if (apiSortBy !== 'relevance') queryParams.append('sortBy', apiSortBy);
 
   const { data: productsData, isLoading, error } = useSWR<Product[]>(
     `/products?${queryParams.toString()}`,
     fetcher
   );
 
-  const filteredAndSortedProducts = (productsData || []).filter(product => {
-    if (!selectedColor) return true;
-    const color = normalizeProductColor(product.color);
-    return color === selectedColor || (color?.split(' e ').includes(selectedColor) ?? false);
-  });
+  const availableSizes = AVAILABLE_VARIANT_SIZES.filter(size =>
+    productsData?.some(product =>
+      product.variants?.some(variant => variant.size === size && variant.active && variant.stock > 0)
+    )
+  );
+  const matchingProducts = (productsData || []).filter(product =>
+    !selectedSize || product.variants?.some(variant =>
+      variant.size === selectedSize && variant.active && variant.stock > 0
+    )
+  );
+  const filteredAndSortedProducts = sortBy === 'nameDesc'
+    ? [...matchingProducts].reverse()
+    : matchingProducts;
 
 
   return (
@@ -132,14 +146,12 @@ export default function ProdutosPage() {
                     {/* Sidebar Header with Clear All */}
                     <div className="flex items-center justify-between">
                       <h3 className="font-bold text-[#1A1B1D] uppercase text-sm tracking-wider">Filtros</h3>
-                      {(searchQuery || selectedCategories.length > 0 || priceRange.min || priceRange.max || selectedColor || selectedSize) && (
+                      {(searchQuery || selectedCategory || priceRange.min || priceRange.max || selectedSize) && (
                         <button
                           onClick={() => {
                             setSearchQuery('');
-                            setSelectedCategories([]);
                             setPriceRange({ min: '', max: '' });
                             setSelectedCategory('');
-                            setSelectedColor('');
                             setSelectedSize('');
                           }}
                           className="text-xs font-bold text-brand-secondary hover:underline transition-all"
@@ -170,41 +182,54 @@ export default function ProdutosPage() {
     Categorias
   </h4>
 
-  <div className="space-y-2">
-    {[{ id: '', name: 'Todos' }, ...(categories || [])].map(cat => (
-      <label
-        key={cat.id || 'todos'}
-        onClick={() => {
-          setSelectedCategory(cat.id);
-
-          // limpa filtros antigos
-          setSelectedColor('');
-          setSelectedSize('');
-        }}
-        className="flex items-center gap-3 cursor-pointer group"
+  {categoriesLoading ? (
+    <p role="status" className="text-sm text-gray-500">Carregando categorias...</p>
+  ) : categoriesError ? (
+    <div role="alert" className="space-y-2 text-sm text-red-700">
+      <p>Não foi possível carregar as categorias.</p>
+      <button
+        type="button"
+        onClick={() => void reloadCategories()}
+        className="font-semibold underline"
       >
-        <div
-          className={`
-            w-5 h-5 rounded border flex items-center justify-center transition-all duration-200
-            ${
-              selectedCategory === cat.id
-                ? 'bg-brand-secondary border-brand-secondary'
-                : 'bg-white border-gray-300 group-hover:border-brand-secondary'
-            }
-          `}
+        Tentar novamente
+      </button>
+    </div>
+  ) : (
+    <div role="radiogroup" aria-label="Filtrar por categoria" className="space-y-2">
+      {[{ id: '', name: 'Todos' }, ...(categories ?? [])].map(category => (
+        <button
+          key={category.id || 'todos'}
+          type="button"
+          role="radio"
+          aria-checked={selectedCategory === category.id}
+          onClick={() => {
+            setSelectedCategory(category.id);
+            setSelectedSize('');
+          }}
+          className="flex w-full items-center gap-3 text-left group"
         >
-          {selectedCategory === cat.id && (
-            <X className="w-3 h-3 text-white" />
-          )}
-        </div>
-
-        <span className="text-sm text-gray-600 group-hover:text-[#1A1B1D]">
-          {cat.name}
-        </span>
-      </label>
-    ))}
-  </div>
-</div>
+          <span
+            aria-hidden="true"
+            className={`
+              w-5 h-5 rounded border flex items-center justify-center transition-all duration-200
+              ${
+                selectedCategory === category.id
+                  ? 'bg-brand-secondary border-brand-secondary'
+                  : 'bg-white border-gray-300 group-hover:border-brand-secondary'
+              }
+            `}
+          >
+            {selectedCategory === category.id && <X className="w-3 h-3 text-white" />}
+          </span>
+          <span className="text-sm text-gray-600 group-hover:text-[#1A1B1D]">
+            {category.name}
+          </span>
+        </button>
+      ))}
+    </div>
+  )}
+                   </div>
                      
                 
  
@@ -231,109 +256,24 @@ export default function ProdutosPage() {
                       </div>
                     </div>
 
-                    {/* Dynamic Filters */}
-{selectedCategoryName === 'Camisa Poliamida' && (
-  <div className="space-y-4">
-
-    <div>
-      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
-        Cor
-      </h4>
-
-      <select
-        value={selectedColor}
-        onChange={(e) => setSelectedColor(e.target.value)}
-        className="w-full border border-gray-200 rounded-xl p-3"
-      >
-        <option value="">Todas</option>
-        {productColorOptions.map(color => <option key={color} value={color}>{color}</option>)}
-      </select>
-    </div>
-
-    <div>
-      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
-        Tamanho
-      </h4>
-
-      <select
-        value={selectedSize}
-        onChange={(e) => setSelectedSize(e.target.value)}
-        className="w-full border border-gray-200 rounded-xl p-3"
-      >
-        <option value="">Todos</option>
-        <option value="P">P</option>
-        <option value="M">M</option>
-        <option value="G">G</option>
-      </select>
-    </div>
-
-  </div>
-)}
-
-{selectedCategoryName === 'Camisas de Ciclismo' && (
-  <div className="space-y-4">
-
-    <div>
-      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
-        Cor
-      </h4>
-
-      <select
-        value={selectedColor}
-        onChange={(e) => setSelectedColor(e.target.value)}
-        className="w-full border border-gray-200 rounded-xl p-3"
-      >
-        <option value="">Todas</option>
-        {productColorOptions.map(color => <option key={color} value={color}>{color}</option>)}
-
-      </select>
-    </div>
-
-    <div>
-      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
-        Tamanho
-      </h4>
-
-      <select
-        value={selectedSize}
-        onChange={(e) => setSelectedSize(e.target.value)}
-        className="w-full border border-gray-200 rounded-xl p-3"
-      >
-        <option value="">Todos</option>
-        <option value="P">P</option>
-        <option value="M">M</option>
-        <option value="G">G</option>
-      </select>
-    </div>
-
-  </div>
-)}
-
-
-
-
-{selectedCategoryName === 'Bonés & Meias' && (
-  <div className="space-y-4">
-
-    <div>
-      <h4 className="font-semibold text-gray-500 text-xs uppercase tracking-tight mb-2">
-        Cor
-      </h4>
-
-      <select
-        value={selectedColor}
-        onChange={(e) => setSelectedColor(e.target.value)}
-        className="w-full border border-gray-200 rounded-xl p-3"
-      >
-        <option value="">Todas</option>
-        {productColorOptions.map(color => <option key={color} value={color}>{color}</option>)}
-      </select>
-    </div>
-
-   
-
-  </div>
-)}
+                    {availableSizes.length > 0 && (
+                      <div className="space-y-3">
+                        <label htmlFor="product-size-filter" className="font-semibold text-gray-500 text-xs uppercase tracking-tight">
+                          Tamanho disponível
+                        </label>
+                        <select
+                          id="product-size-filter"
+                          value={selectedSize}
+                          onChange={(event) => setSelectedSize(event.target.value)}
+                          className="w-full border border-gray-200 rounded-xl p-3"
+                        >
+                          <option value="">Todos</option>
+                          {availableSizes.map(size => (
+                            <option key={size} value={size}>{size}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
 
 
@@ -372,10 +312,10 @@ export default function ProdutosPage() {
                     className="appearance-none bg-white border border-gray-200 text-[#1A1B1D] text-sm font-medium rounded-xl py-2 pl-4 pr-10 outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary transition-all cursor-pointer"
                   >
                     <option value="relevance">Relevância</option>
-                    <option value="price-asc">Menor Preço</option>
-                    <option value="price-desc">Maior Preço</option>
-                    <option value="name-asc">Nome (A-Z)</option>
-                    <option value="name-desc">Nome (Z-A)</option>
+                    <option value="priceAsc">Menor Preço</option>
+                    <option value="priceDesc">Maior Preço</option>
+                    <option value="name">Nome (A-Z)</option>
+                    <option value="nameDesc">Nome (Z-A)</option>
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600 pointer-events-none" />
                 </div>
@@ -392,17 +332,32 @@ export default function ProdutosPage() {
                   className="w-full appearance-none bg-white border border-gray-200 text-[#1A1B1D] text-sm font-medium rounded-xl py-2.5 pl-4 pr-10 outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary transition-all cursor-pointer shadow-sm"
                 >
                   <option value="relevance">Relevância</option>
-                  <option value="price-asc">Menor Preço</option>
-                  <option value="price-desc">Maior Preço</option>
-                  <option value="name-asc">Nome (A-Z)</option>
-                  <option value="name-desc">Nome (Z-A)</option>
+                  <option value="priceAsc">Menor Preço</option>
+                  <option value="priceDesc">Maior Preço</option>
+                  <option value="name">Nome (A-Z)</option>
+                  <option value="nameDesc">Nome (Z-A)</option>
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600 pointer-events-none" />
               </div>
             </div>
 
             {/* Product Grid */}
-            {filteredAndSortedProducts.length > 0 ? (
+            {isLoading ? (
+              <div role="status" className="flex items-center justify-center gap-3 py-20 text-gray-600">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span>Carregando produtos...</span>
+              </div>
+            ) : error ? (
+              <div role="alert" className="py-16 px-4 text-center bg-red-50 rounded-3xl border border-red-100">
+                <h3 className="text-xl font-bold text-red-800 mb-2">Não foi possível carregar o catálogo</h3>
+                <p className="text-red-700">Verifique sua conexão e tente novamente.</p>
+              </div>
+            ) : (productsData ?? []).length === 0 ? (
+              <div className="py-16 px-4 text-center bg-gray-50 rounded-3xl border border-gray-100">
+                <h3 className="text-xl font-bold text-[#1A1B1D] mb-2">Catálogo vazio</h3>
+                <p className="text-gray-600">Não há produtos disponíveis no momento.</p>
+              </div>
+            ) : filteredAndSortedProducts.length > 0 ? (
               <motion.div
                 layout
                 className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6"
@@ -436,10 +391,8 @@ export default function ProdutosPage() {
                 <button
                   onClick={() => {
                     setSearchQuery('');
-                    setSelectedCategories([]);
                     setPriceRange({ min: '', max: '' });
                     setSelectedCategory('');
-                    setSelectedColor('');
                     setSelectedSize('');
                   }}
                   className="mt-6 font-bold text-brand-secondary hover:text-[#1A1B1D] transition-colors border-b-2 border-brand-secondary hover:border-[#1A1B1D] pb-1"
@@ -453,5 +406,13 @@ export default function ProdutosPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProdutosPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white pt-8 pb-16" />}>
+      <ProdutosCatalog />
+    </Suspense>
   );
 }

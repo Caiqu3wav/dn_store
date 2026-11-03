@@ -1,10 +1,14 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { CATEGORIES } from '../../../lib/data';
 import Link from 'next/link';
+import useSWR from 'swr';
+import { fetcher } from '@/services/productService';
+import { Category } from '@/types';
 
 export function Categories() {
+    const { data: categories } = useSWR<Category[]>('/categories', fetcher);
+
     return (
         <section className="py-12 bg-white pb-24">
             <div className="container mx-auto px-4 lg:px-8">
@@ -26,8 +30,8 @@ export function Categories() {
                         </motion.span>
                     </Link>
 
-                    {CATEGORIES.map((category, index) => (
-                        <Link key={category.id} href={`/produtos?categoria=${category.slug}`} className="group">
+                    {(categories ?? []).map((category, index) => (
+                        <Link key={category.id} href={`/produtos?categoryId=${encodeURIComponent(category.id)}`} className="group">
                             <motion.span
                                 initial={{ opacity: 0, y: 10 }}
                                 whileInView={{ opacity: 1, y: 0 }}

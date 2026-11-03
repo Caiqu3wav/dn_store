@@ -31,11 +31,23 @@ export function getProductImageUrl(name: string) {
     return OFFICIAL_PRODUCT_IMAGES[normalizeProductName(name)];
 }
 
-export function getProductImage(product: Pick<Product, 'name'>) {
-    return getProductImageUrl(product.name);
+type ProductWithOptionalImages = Pick<Product, 'name'> & Partial<Pick<Product, 'images'>>;
+
+export function getProductImage(product: ProductWithOptionalImages) {
+    const mainImage = product.images?.find(image => image.main)
+        ?? product.images?.[0];
+    return mainImage?.imageUrl || getProductImageUrl(product.name);
 }
 
-export function getProductGalleryImages(product: Pick<Product, 'name'>) {
+export function getProductGalleryImages(product: ProductWithOptionalImages) {
+    const images = product.images
+        ?.slice()
+        .sort((left, right) => Number(right.main) - Number(left.main))
+        .map(image => image.imageUrl)
+        .filter(Boolean) ?? [];
+    if (images.length > 0) {
+        return images;
+    }
     const mainImage = getProductImage(product);
     return mainImage ? [mainImage] : [];
 }

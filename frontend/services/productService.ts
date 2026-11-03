@@ -24,5 +24,10 @@ export const productService = {
   getProductById: async (id: string) => {
     const response = await api.get(`/products/${id}`);
     return response.data;
+  },
+
+  getAdminProductById: async (id: string) => {
+    const response = await api.get(`/products/admin/${id}`);
+    return response.data;
   }
 };
