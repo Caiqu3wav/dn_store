@@ -23,7 +23,7 @@ public class DatabaseSeeder implements CommandLineRunner {
             log.info("Sem categorias encontradas no banco de dados. Semeando dados padrão...");
 
             List<Category> defaultCategories = Arrays.asList(
-                Category.builder().name("Camisa Poliamida").slug("camisa-poliamida").description("Camisetas casuais e esportivas 100% poliamida.").build(),
+                Category.builder().name("Camiseta Poliamida").slug("camisa-poliamida").description("Camisetas casuais e esportivas 100% poliamida.").build(),
                 Category.builder().name("Camisas de Ciclismo").slug("camisas-de-ciclismo").description("Camisas profissionais e semi-profissionais para ciclismo.").build(),
                 Category.builder().name("Bonés & Meias").slug("bones-e-meias").description("Bonés de aba curva, aba reta e meias de ciclismo/corrida.").build(),
                 Category.builder().name("Vestuário").slug("vestuario").description("Vestuário esportivo e casual em geral.").build(),
