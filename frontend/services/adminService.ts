@@ -34,13 +34,9 @@ export interface AdminOrder {
 interface AdminOrderItem {
     id: string;
     quantity: number;
-    subtotal?: number;
-    productVariant?: {
-        product?: {
-            name?: string;
-            price?: number;
-        };
-    };
+    price: number;
+    totalPrice: number;
+    productName: string | null;
 }
 
 export const adminService = {

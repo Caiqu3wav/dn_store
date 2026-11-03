@@ -1,6 +1,7 @@
 package com.dnstore.backend.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -62,5 +63,12 @@ public class OrderItem {
             return price.multiply(BigDecimal.valueOf(quantity));
         }
         return BigDecimal.ZERO;
+    }
+
+    @JsonProperty("productName")
+    public String getProductName() {
+        return productVariant != null && productVariant.getProduct() != null
+                ? productVariant.getProduct().getName()
+                : null;
     }
 }

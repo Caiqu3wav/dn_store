@@ -205,14 +205,14 @@ export default function AdminOrdersPage() {
                                         <div key={item.id} className="flex justify-between items-center bg-[#1A1B1D] p-3 rounded-lg text-sm">
                                             <div className="space-y-0.5">
                                                 <div className="font-semibold text-white">
-                                                    {item.productVariant?.product?.name || 'Produto'}
+                                                    {item.productName || 'Produto'}
                                                 </div>
                                                 <div className="text-xs text-gray-400">
-                                                    Qtd: {item.quantity} x R$ {item.productVariant?.product?.price?.toFixed(2)}
+                                                    Qtd: {item.quantity} x R$ {item.price.toFixed(2).replace('.', ',')}
                                                 </div>
                                             </div>
                                             <div className="font-bold text-white">
-                                                R$ {item.subtotal?.toFixed(2).replace('.', ',')}
+                                                R$ {item.totalPrice.toFixed(2).replace('.', ',')}
                                             </div>
                                         </div>
                                     ))}
