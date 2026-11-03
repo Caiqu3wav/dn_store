@@ -22,7 +22,7 @@ export default function AdminProductsPage() {
     if (maxPrice) productQuery.set('maxPrice', maxPrice);
 
     const { data: productsData, mutate, isLoading } = useSWR<Product[]>(
-        `/products?${productQuery.toString()}`,
+        `/products/admin?${productQuery.toString()}`,
         fetcher
     );
 

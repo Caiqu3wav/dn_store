@@ -47,7 +47,7 @@ export default function EditProductPage() {
 
     useEffect(() => {
         let cancelled = false;
-        productService.getProductById(id)
+        productService.getAdminProductById(id)
             .then((product: Product) => {
                 if (cancelled) return;
                 const categoryId = typeof product.category === 'object' && product.category
