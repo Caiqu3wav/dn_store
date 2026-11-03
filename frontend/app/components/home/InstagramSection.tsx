@@ -37,7 +37,7 @@ export default function InstagramSection() {
         <div>
 
           {/* Cabeçalho */}
-          <div className="mb-7 flex items-center justify-between">
+          <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
 
             {/* Perfil */}
             <a
@@ -118,7 +118,7 @@ export default function InstagramSection() {
         <div>
 
           {/* Cabeçalho */}
-          <div className="mb-7 flex items-center justify-between">
+          <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
 
             {/* Perfil */}
             <a

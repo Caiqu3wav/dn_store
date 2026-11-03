@@ -5,7 +5,7 @@ import { Instagram, Phone, MapPin, Mail } from 'lucide-react';
 export function Footer() {
     return (
         <footer className="bg-background flex flex-col items-center text-gray-300 border-t border-gray-800">
-            <div className="mx-auto">
+            <div className="mx-auto w-full max-w-7xl px-4 lg:px-8">
                 
                 <div className="grid mx-auto mt-10 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
 
@@ -167,9 +167,9 @@ export function Footer() {
                                 <span>(12) 98159-2841</span>
                             </li>
 
-                            <li className="flex items-center gap-3">
+                            <li className="flex min-w-0 items-center gap-3">
                                 <Mail className="w-5 h-5 text-brand-secondary shrink-0" />
-                                <span>
+                                <span className="min-w-0 break-all">
                                     contato@desafionatureza.com.br
                                 </span>
                             </li>
@@ -185,14 +185,14 @@ export function Footer() {
                         Formas de pagamento
                     </p>
 
-                    <div className="flex items-center gap-6">
+                    <div className="flex w-full flex-wrap items-center justify-center gap-3 sm:gap-6">
 
                         <Image
                             src="/assets/pagamentos/pix.svg"
                             alt="Pix"
                             width={70}
                             height={42}
-                            className="object-contain opacity-80 hover:opacity-100 transition"
+                            className="h-auto w-14 object-contain opacity-80 transition hover:opacity-100 sm:w-[70px]"
                         />
 
                         <Image
@@ -200,7 +200,7 @@ export function Footer() {
                             alt="Visa"
                             width={70}
                             height={42}
-                            className="object-contain opacity-80 hover:opacity-100 transition"
+                            className="h-auto w-14 object-contain opacity-80 transition hover:opacity-100 sm:w-[70px]"
                         />
 
                         <Image
@@ -208,7 +208,7 @@ export function Footer() {
                             alt="Mastercard"
                             width={80}
                             height={48}
-                            className="object-contain opacity-80 hover:opacity-100 transition"
+                            className="h-auto w-16 object-contain opacity-80 transition hover:opacity-100 sm:w-20"
                         />
 
                         <Image
@@ -216,14 +216,14 @@ export function Footer() {
                             alt="Mercado Pago"
                             width={70}
                             height={42}
-                            className="object-contain opacity-80 hover:opacity-100 transition"
+                            className="h-auto w-14 object-contain opacity-80 transition hover:opacity-100 sm:w-[70px]"
                         />
 
                     </div>
                 </div>
 
                 {/* Copyright */}
-                <div className="border-t w-full self-center border-gray-800 pt-8 flex flex-col md:flex-row items-center justify-center gap-4 text-white text-xs text-center md:text-left bg-black py-8">
+                <div className="border-t w-full self-center border-gray-800 pt-8 flex flex-col md:flex-row items-center justify-center gap-4 text-white text-xs text-center md:text-left bg-black py-8 -mx-4 px-4 lg:-mx-8 lg:px-8">
                     <p>
                         Copyright 2018 Desafio Natureza® - Todos os direitos reservados.
                     </p>

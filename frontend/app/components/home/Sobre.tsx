@@ -84,7 +84,7 @@ export function Sobre({ images }: SobreProps) {
 
                     {/* Content Area */}
                     <motion.div
-                        initial={{ opacity: 0, x: 40 }}
+                        initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.8 }}
@@ -95,7 +95,7 @@ export function Sobre({ images }: SobreProps) {
                         className="text-brand-secondary text-outline self-center tracking-widest uppercase text-5xl mb-4 block"
                         >Sobre a Marca
                         </span>
-                        <div className="relative w-90 h-90 overflow-hidden flex items-center justify-center">
+                        <div className="relative aspect-square w-full max-w-[360px] overflow-hidden flex items-center justify-center">
                         <Image 
                             src="/assets/Images/novo-logotipo.png" 
                             alt="DN Store Logo" 

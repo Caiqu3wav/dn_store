@@ -19,7 +19,12 @@ export function FeaturedProducts() {
     const [startX, setStartX] = useState(0);
     const [scrollLeftState, setScrollLeftState] = useState(0);
 
-    const { data: productsData } = useSWR<Product[]>('/products', fetcher);
+    const {
+        data: productsData,
+        error,
+        isLoading,
+        mutate,
+    } = useSWR<Product[]>('/products', fetcher);
     const featuredProducts = productsData?.slice(0, 8) || [];
 
     const checkScroll = () => {
@@ -119,32 +124,52 @@ export function FeaturedProducts() {
                         </button>
                     )}
 
-                    {/* Carousel Container */}
-                    <div
-                        ref={scrollRef}
-                        onScroll={checkScroll}
-                        onMouseDown={handleMouseDown}
-                        onMouseLeave={handleMouseLeave}
-                        onMouseUp={handleMouseUp}
-                        onMouseMove={handleMouseMove}
-                        className={`flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth pb-4 ${
-                            isDown ? 'cursor-grabbing select-none' : 'cursor-grab'
-                        }`}
-                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                    >
-                        {featuredProducts.map((product, index) => (
-                            <motion.div
-                                key={product.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: index * 0.1 }}
-                                className="flex-shrink-0 w-80 pointer-events-auto"
+                    {isLoading ? (
+                        <p role="status" className="py-12 text-center text-gray-600">
+                            Carregando produtos...
+                        </p>
+                    ) : error ? (
+                        <div role="alert" className="py-12 text-center text-gray-700">
+                            <p>Não foi possível carregar os produtos em destaque.</p>
+                            <button
+                                type="button"
+                                onClick={() => void mutate()}
+                                className="mt-2 font-semibold text-brand-red-primary underline"
                             >
-                                <ProductCard product={product} />
-                            </motion.div>
-                        ))}
-                    </div>
+                                Tentar novamente
+                            </button>
+                        </div>
+                    ) : featuredProducts.length === 0 ? (
+                        <p className="py-12 text-center text-gray-600">
+                            Nenhum produto em destaque no momento.
+                        </p>
+                    ) : (
+                        <div
+                            ref={scrollRef}
+                            onScroll={checkScroll}
+                            onMouseDown={handleMouseDown}
+                            onMouseLeave={handleMouseLeave}
+                            onMouseUp={handleMouseUp}
+                            onMouseMove={handleMouseMove}
+                            className={`flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth pb-4 ${
+                                isDown ? 'cursor-grabbing select-none' : 'cursor-grab'
+                            }`}
+                            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                        >
+                            {featuredProducts.map((product, index) => (
+                                <motion.div
+                                    key={product.id}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: index * 0.1 }}
+                                    className="flex-shrink-0 w-80 pointer-events-auto"
+                                >
+                                    <ProductCard product={product} />
+                                </motion.div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 <div className="mt-12 text-center md:hidden">
