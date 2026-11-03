@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useState, useEffect, ReactNode } from 'react';
 import Cookies from 'js-cookie';
 import { User } from '@/types';
 
@@ -16,6 +16,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const logout = useCallback(() => {
+    Cookies.remove('auth_token');
+    localStorage.removeItem('user_data');
+    setUser(null);
+    window.location.href = '/auth';
+  }, []);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -38,19 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     checkAuth();
-  }, []);
+  }, [logout]);
 
   const login = (token: string, userData: User) => {
     Cookies.set('auth_token', token, { expires: 1 }); // Expira em 1 dia
     localStorage.setItem('user_data', JSON.stringify(userData));
     setUser(userData);
-  };
-
-  const logout = () => {
-    Cookies.remove('auth_token');
-    localStorage.removeItem('user_data');
-    setUser(null);
-    window.location.href = '/auth'; // Redireciona para tela de login
   };
 
   return (

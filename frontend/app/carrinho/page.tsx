@@ -30,7 +30,7 @@ export default function CartPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-4">
                         {items.map((item) => {
-                            const image = getProductImageUrl(item.name);
+                            const image = item.image || getProductImageUrl(item.name);
                             return (
                                 <div key={`${item.id}-${item.size}`} className="bg-white p-4 rounded-lg shadow-sm flex gap-4 items-center">
                                     {image ? (

@@ -30,11 +30,12 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const cartListeners = new Set<() => void>();
 const SERVER_CART_SNAPSHOT = '[]';
+const CART_STORAGE_KEY = 'dn-store-cart-v2';
 
 function getCartSnapshot() {
     return typeof window === 'undefined'
         ? SERVER_CART_SNAPSHOT
-        : localStorage.getItem('cart') ?? SERVER_CART_SNAPSHOT;
+        : localStorage.getItem(CART_STORAGE_KEY) ?? SERVER_CART_SNAPSHOT;
 }
 
 function subscribeToCart(listener: () => void) {
@@ -49,7 +50,7 @@ function subscribeToCart(listener: () => void) {
 }
 
 function saveCart(items: CartItem[]) {
-    localStorage.setItem('cart', JSON.stringify(items));
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
     cartListeners.forEach(listener => listener());
 }
 

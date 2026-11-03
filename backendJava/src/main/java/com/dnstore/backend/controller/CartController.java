@@ -40,7 +40,18 @@ public class CartController {
                     newCart.setUser(user);
                     return cartRepository.save(newCart);
                 });
-        return ResponseEntity.ok(cart);
+
+        Cart visibleCart = new Cart();
+        visibleCart.setId(cart.getId());
+        visibleCart.setUser(cart.getUser());
+        visibleCart.setCreatedAt(cart.getCreatedAt());
+        visibleCart.setItems(cart.getItems().stream()
+                .filter(item -> item.getProductVariant() != null
+                        && item.getProductVariant().isActive()
+                        && item.getProductVariant().getProduct() != null
+                        && item.getProductVariant().getProduct().isActive())
+                .toList());
+        return ResponseEntity.ok(visibleCart);
     }
 
     @PostMapping("/items")

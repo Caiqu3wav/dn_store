@@ -20,7 +20,7 @@ export function OrderSummary({ items, total, shipping }: Props) {
 
             <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
                 {items.map(item => {
-                    const image = getProductImageUrl(item.name);
+                    const image = item.image || getProductImageUrl(item.name);
                     return (
                         <div key={`${item.id}-${item.size}`} className="flex gap-3 items-center">
                             {image ? (

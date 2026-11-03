@@ -55,7 +55,7 @@ class CartControllerTest {
         product.setName("Camiseta DN");
         product.setActive(true);
         variant.setProduct(product);
-        when(cartRepository.findByUserForUpdate(user)).thenReturn(Optional.of(cart));
+        lenient().when(cartRepository.findByUserForUpdate(user)).thenReturn(Optional.of(cart));
         lenient().when(productVariantRepository.findById(variant.getId())).thenReturn(Optional.of(variant));
         lenient().when(productVariantRepository.findByIdForUpdate(variant.getId())).thenReturn(Optional.of(variant));
         lenient().when(productVariantRepository.save(any(ProductVariant.class)))
@@ -141,6 +141,30 @@ class CartControllerTest {
         assertThatThrownBy(() -> controller.addItem(user, request))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Variação");
+    }
+
+    @Test
+    void getCart_hidesItemsWhoseProductIsInactiveWithoutChangingStoredCart() {
+        when(cartRepository.findByUser(user)).thenReturn(Optional.of(cart));
+        ProductVariant inactiveProductVariant = new ProductVariant();
+        inactiveProductVariant.setId(UUID.randomUUID());
+        inactiveProductVariant.setSize("P");
+        inactiveProductVariant.setStock(3);
+        PhysicalProduct inactiveProduct = new PhysicalProduct();
+        inactiveProduct.setId(UUID.randomUUID());
+        inactiveProduct.setName("Produto inativo");
+        inactiveProduct.setActive(false);
+        inactiveProductVariant.setProduct(inactiveProduct);
+
+        cart.addItem(variant, 1);
+        cart.addItem(inactiveProductVariant, 1);
+
+        Cart visibleCart = controller.getCart(user).getBody();
+
+        assertThat(visibleCart).isNotNull();
+        assertThat(visibleCart.getItems()).hasSize(1);
+        assertThat(visibleCart.getItems().get(0).getProductVariant()).isSameAs(variant);
+        assertThat(cart.getItems()).hasSize(2);
     }
 
     private CartController.CartItemRequest request(UUID variantId, UUID productId, String size, int quantity) {
