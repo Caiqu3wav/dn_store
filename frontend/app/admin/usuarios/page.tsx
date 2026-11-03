@@ -20,7 +20,7 @@ export default function AdminUsersPage() {
             await adminService.updateUserRole(user.id, newRole);
             toast.success(`Cargo de ${user.name} atualizado para ${newRole}!`);
             mutate();
-        } catch (error: any) {
+        } catch {
             toast.error('Erro ao atualizar cargo do usuário.');
         }
     };
@@ -32,7 +32,7 @@ export default function AdminUsersPage() {
             await adminService.deleteUser(user.id);
             toast.success(`Usuário ${user.name} removido.`);
             mutate();
-        } catch (error: any) {
+        } catch {
             toast.error('Erro ao excluir usuário.');
         }
     };

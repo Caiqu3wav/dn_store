@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Image as ImageIcon, Loader2, X } from 'lucide-react';
@@ -257,7 +258,7 @@ export default function NovoProdutoPage() {
                         <div className="flex gap-4 overflow-x-auto pb-4">
                             {imagePreviews.map((preview, index) => (
                                 <div key={index} className="relative w-32 h-32 rounded-lg overflow-hidden shrink-0 border border-white/10">
-                                    <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                                    <Image src={preview} alt={`Prévia da imagem ${index + 1} do produto`} width={128} height={128} unoptimized className="h-full w-full object-cover" />
                                     <button 
                                         type="button"
                                         onClick={() => removeImage(index)}

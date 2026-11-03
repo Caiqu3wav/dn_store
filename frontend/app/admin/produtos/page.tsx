@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Plus, Search, Edit, Trash2, Filter, X, Package, Image as ImageIcon } from 'lucide-react';
 import { useState } from 'react';
 import useSWR from 'swr';
@@ -113,8 +114,8 @@ export default function AdminProductsPage() {
                             {filteredProducts.map(product => <tr key={product.id} className="transition hover:bg-white/3">
                                 <td className="px-4 py-2.5">
                                     <div className="flex min-w-0 items-center gap-3">
-                                        <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-md border border-white/10 bg-[#1A1B1D]">
-                                            {product.images?.[0]?.imageUrl ? <img src={product.images[0].imageUrl} alt="" className="h-full w-full object-cover" /> : <ImageIcon className="h-4 w-4 text-gray-600" />}
+                                        <div className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-md border border-white/10 bg-[#1A1B1D]">
+                                            {product.images?.[0]?.imageUrl ? <Image src={product.images[0].imageUrl} alt="" fill sizes="40px" unoptimized className="object-cover" /> : <ImageIcon className="h-4 w-4 text-gray-600" />}
                                         </div>
                                         <div className="min-w-0"><p className="max-w-[280px] truncate text-sm font-medium text-white">{product.name}</p><p className="text-xs text-gray-500">#{product.id.slice(0, 8)}</p></div>
                                     </div>
@@ -133,8 +134,8 @@ export default function AdminProductsPage() {
 
                     <div className="divide-y divide-white/5 md:hidden">
                         {filteredProducts.map(product => <article key={product.id} className="flex items-start gap-3 p-3">
-                            <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-md border border-white/10 bg-[#1A1B1D]">
-                                {product.images?.[0]?.imageUrl ? <img src={product.images[0].imageUrl} alt="" className="h-full w-full object-cover" /> : <ImageIcon className="h-5 w-5 text-gray-600" />}
+                            <div className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-md border border-white/10 bg-[#1A1B1D]">
+                                {product.images?.[0]?.imageUrl ? <Image src={product.images[0].imageUrl} alt="" fill sizes="56px" unoptimized className="object-cover" /> : <ImageIcon className="h-5 w-5 text-gray-600" />}
                             </div>
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-start justify-between gap-2"><h2 className="truncate text-sm font-semibold">{product.name}</h2><span className={`shrink-0 text-xs ${product.active ? 'text-emerald-400' : 'text-gray-500'}`}>{product.active ? 'Ativo' : 'Inativo'}</span></div>

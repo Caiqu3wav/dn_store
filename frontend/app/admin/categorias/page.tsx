@@ -7,6 +7,24 @@ import { fetcher } from '@/services/productService';
 import { categoryService } from '@/services/categoryService';
 import { Category } from '@/types';
 import { toast } from 'react-hot-toast';
+import axios from 'axios';
+
+function getErrorMessage(error: unknown, fallback: string) {
+    if (!axios.isAxiosError(error)) return fallback;
+
+    const responseData: unknown = error.response?.data;
+    if (typeof responseData === 'string') return responseData;
+    if (
+        typeof responseData === 'object'
+        && responseData !== null
+        && 'message' in responseData
+        && typeof responseData.message === 'string'
+    ) {
+        return responseData.message;
+    }
+
+    return error.message || fallback;
+}
 
 export default function AdminCategoriesPage() {
     const { data: categories, mutate } = useSWR<Category[]>('/categories', fetcher);
@@ -30,8 +48,8 @@ export default function AdminCategoriesPage() {
             setName('');
             setDescription('');
             mutate();
-        } catch (error: any) {
-            toast.error(error.response?.data || 'Erro ao criar categoria.');
+        } catch (error: unknown) {
+            toast.error(getErrorMessage(error, 'Erro ao criar categoria.'));
         } finally {
             setIsSaving(false);
         }
@@ -56,8 +74,8 @@ export default function AdminCategoriesPage() {
             toast.success('Categoria atualizada!');
             setEditingId(null);
             mutate();
-        } catch (error: any) {
-            toast.error(error.response?.data || 'Erro ao atualizar categoria.');
+        } catch (error: unknown) {
+            toast.error(getErrorMessage(error, 'Erro ao atualizar categoria.'));
         } finally {
             setIsSaving(false);
         }
@@ -70,7 +88,7 @@ export default function AdminCategoriesPage() {
             await categoryService.deleteCategory(id);
             toast.success('Categoria excluída!');
             mutate();
-        } catch (error: any) {
+        } catch {
             toast.error('Erro ao excluir categoria.');
         }
     };

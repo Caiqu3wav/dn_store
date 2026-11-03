@@ -2,13 +2,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 interface CategoryCardProps {
-  id: string;
   name: string;
   image: string;
   slug: string;
 }
 
-export function CategoryCard({ id, name, image, slug }: CategoryCardProps) {
+export function CategoryCard({ name, image, slug }: CategoryCardProps) {
   return (
     <Link href={`/categoria/${slug}`} className="group block relative w-full h-[250px] sm:h-[300px] lg:h-[350px] rounded-2xl overflow-hidden">
       {/* Background Image */}

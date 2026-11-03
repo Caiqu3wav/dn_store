@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Upload, FileSpreadsheet, Image as ImageIcon, Loader2, X, Plus, ChevronDown, ChevronUp } from 'lucide-react';
@@ -299,7 +300,7 @@ export default function BatchUpload() {
                             <div className="flex items-center gap-4">
                                 <span className="text-brand-secondary font-bold">#{index + 1}</span>
                                 {draft.previews[0] ? (
-                                    <img src={draft.previews[0]} className="w-10 h-10 object-cover rounded" />
+                                    <Image src={draft.previews[0]} alt={`Prévia do produto ${draft.name || 'sem nome'}`} width={40} height={40} unoptimized className="h-10 w-10 rounded object-cover" />
                                 ) : (
                                     <div className="w-10 h-10 bg-black/30 rounded flex items-center justify-center"><ImageIcon className="w-5 h-5 text-gray-500" /></div>
                                 )}
@@ -382,8 +383,8 @@ export default function BatchUpload() {
                                     </div>
                                     <div className="grid grid-cols-3 gap-2">
                                         {draft.previews.map((prev, i) => (
-                                            <div key={i} className="relative aspect-square rounded border border-white/10 group">
-                                                <img src={prev} className="w-full h-full object-cover rounded" />
+                                            <div key={i} className="group relative aspect-square overflow-hidden rounded border border-white/10">
+                                                <Image src={prev} alt={`Prévia ${i + 1} do produto ${draft.name || 'sem nome'}`} fill sizes="(max-width: 640px) 33vw, 160px" unoptimized className="rounded object-cover" />
                                                 <button onClick={() => removeImage(draft.id, i)} className="absolute -top-1 -right-1 p-1 bg-red-500 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
                                                     <X className="w-3 h-3" />
                                                 </button>

@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CreditCard, QrCode, FileText, Copy, Check, Loader2 } from 'lucide-react';
-import Image from 'next/image';
+import { CreditCard, QrCode, FileText, Loader2 } from 'lucide-react';
 
 export type PaymentMethod = 'CREDIT_CARD' | 'DEBIT_CARD' | 'PIX' | 'BOLETO';
 
@@ -58,10 +57,9 @@ function formatCpf(value: string) {
 
 export function StepPayment({ data, onChange, total, onConfirm, onNext, onBack }: Props) {
     const [loading, setLoading] = useState(false);
-    const [copied, setCopied] = useState(false);
     const [error, setError] = useState('');
 
-    const set = (field: keyof PaymentData, value: unknown) =>
+    const set = <Field extends keyof PaymentData>(field: Field, value: PaymentData[Field]) =>
         onChange({ ...data, [field]: value });
 
     const setCard = (field: keyof CardData, value: string) =>
@@ -87,12 +85,6 @@ export function StepPayment({ data, onChange, total, onConfirm, onNext, onBack }
         } finally {
             setLoading(false);
         }
-    };
-
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
     };
 
     const installmentOptions = data.method === 'CREDIT_CARD'

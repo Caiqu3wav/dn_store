@@ -1,6 +1,7 @@
 'use client';
 
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
@@ -219,7 +220,7 @@ export default function EditProductPage() {
                     </div>
                     {images.length === 0 && files.length === 0 ? <div className="flex min-h-24 items-center justify-center gap-2 text-sm text-gray-500"><ImageIcon className="h-4 w-4" /> Nenhuma imagem adicionada</div> : <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
                         {images.map((image, index) => <div key={image.id || image.imageUrl} className="group relative aspect-square overflow-hidden rounded-md border border-white/10 bg-[#1A1B1D]">
-                            <img src={image.imageUrl} alt={`Imagem ${index + 1} do produto`} className="h-full w-full object-cover" />
+                            <Image src={image.imageUrl} alt={`Imagem ${index + 1} do produto`} fill sizes="(max-width: 640px) 50vw, 128px" unoptimized className="object-cover" />
                             <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-1 text-[10px] text-white">{index === 0 ? 'Principal' : `Imagem ${index + 1}`}</span>
                             <button type="button" onClick={() => removeImage(index)} aria-label={`Remover imagem ${index + 1}`} className="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded bg-black/70 text-white transition hover:bg-red-600"><Trash2 className="h-4 w-4" /></button>
                         </div>)}

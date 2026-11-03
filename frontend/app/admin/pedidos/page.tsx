@@ -2,24 +2,26 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import { ShoppingBag, Eye, Edit3, Loader2, Calendar, User, MapPin } from 'lucide-react';
+import { ShoppingBag, Eye, Loader2, Calendar, User, MapPin } from 'lucide-react';
 import { fetcher } from '@/services/productService';
-import { adminService } from '@/services/adminService';
+import { adminService, AdminOrder } from '@/services/adminService';
 import { toast } from 'react-hot-toast';
 
 export default function AdminOrdersPage() {
-    const { data: orders, mutate } = useSWR<any[]>('/orders/all', fetcher);
-    const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+    const { data: orders, mutate } = useSWR<AdminOrder[]>('/orders/all', fetcher);
+    const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
 
     const handleUpdateStatus = async (orderId: string, newStatus: string) => {
         try {
             await adminService.updateOrderStatus(orderId, newStatus);
             toast.success('Status do pedido atualizado!');
             mutate();
-            if (selectedOrder && selectedOrder.id === orderId) {
-                setSelectedOrder((prev: any) => ({ ...prev, status: newStatus }));
-            }
-        } catch (error: any) {
+            setSelectedOrder((previousOrder) => (
+                previousOrder?.id === orderId
+                    ? { ...previousOrder, status: newStatus }
+                    : previousOrder
+            ));
+        } catch {
             toast.error('Erro ao atualizar status do pedido.');
         }
     };
@@ -199,7 +201,7 @@ export default function AdminOrdersPage() {
                             <div className="space-y-3">
                                 <h3 className="text-sm font-bold text-gray-400">Itens do Pedido</h3>
                                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                                    {selectedOrder.items?.map((item: any) => (
+                                    {selectedOrder.items?.map((item) => (
                                         <div key={item.id} className="flex justify-between items-center bg-[#1A1B1D] p-3 rounded-lg text-sm">
                                             <div className="space-y-0.5">
                                                 <div className="font-semibold text-white">

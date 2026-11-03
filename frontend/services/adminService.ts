@@ -9,6 +9,40 @@ export interface AdminDashboardData {
     averageTicket: number;
 }
 
+export interface AdminOrder {
+    id: string;
+    status: string;
+    total?: number;
+    createdAt?: string;
+    discountAmount?: number;
+    user?: {
+        name?: string;
+        email?: string;
+        phone?: string;
+    };
+    address?: {
+        street?: string;
+        number?: string;
+        neighborhood?: string;
+        city?: string;
+        state?: string;
+        zipCode?: string;
+    };
+    items?: AdminOrderItem[];
+}
+
+interface AdminOrderItem {
+    id: string;
+    quantity: number;
+    subtotal?: number;
+    productVariant?: {
+        product?: {
+            name?: string;
+            price?: number;
+        };
+    };
+}
+
 export const adminService = {
     getDashboardData: async (): Promise<AdminDashboardData> => {
         const response = await api.get('/admin/dashboard');
@@ -21,7 +55,7 @@ export const adminService = {
         return response.data;
     },
 
-    updateUserRole: async (id: string, role: string): Promise<User> => {
+    updateUserRole: async (id: string, role: User['role']): Promise<User> => {
         const response = await api.put(`/users/${id}/role`, { role });
         return response.data;
     },
@@ -31,12 +65,12 @@ export const adminService = {
     },
 
     // Order Management
-    getAllOrders: async (): Promise<any[]> => {
+    getAllOrders: async (): Promise<AdminOrder[]> => {
         const response = await api.get('/orders/all');
         return response.data;
     },
 
-    updateOrderStatus: async (id: string, status: string): Promise<any> => {
+    updateOrderStatus: async (id: string, status: string): Promise<AdminOrder> => {
         const response = await api.put(`/orders/${id}/status`, { status });
         return response.data;
     }

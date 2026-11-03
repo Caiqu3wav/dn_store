@@ -36,7 +36,7 @@ export default function AdminDashboard() {
         { title: 'Total Usuários', value: '0', icon: Users, trend: '', isPositive: true },
     ];
 
-    const recentOrders: any[] = []; // Removido mock temporariamente
+    const recentOrders: { id: string; customer: string; date: string; status: string; total: string }[] = [];
 
     return (
         <div className="space-y-8 text-white">

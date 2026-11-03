@@ -71,7 +71,7 @@ export default function Home() {
       heroImages = ['/assets/bg_hero.png'];
     }
 
-  } catch (e) {
+  } catch {
     brandImages = ['/assets/desafionatureza1.jpg'];
     heroImages = ['/assets/bg_hero.png'];
   }
