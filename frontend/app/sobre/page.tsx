@@ -89,12 +89,12 @@ export default function SobrePage() {
                             className="w-full md:w-1/2"
                         >
 
-                            <h2
+                            <h1
                                 style={{ fontFamily: 'DN' }}
                                 className="text-4xl mb-6 text-black border-b-2 border-brand-secondary inline-block pb-2"
                             >
                                 Sobre Nós
-                            </h2>
+                            </h1>
 
                             <p className="text-black leading-relaxed mb-4">
                                 A DN Store nasceu da mesma paixão que move o Desafio Natureza desde 2011:

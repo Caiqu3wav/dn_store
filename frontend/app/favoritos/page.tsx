@@ -20,7 +20,7 @@ export default function FavoritosPage() {
                         <h1 style={{ fontFamily: 'DN'  }}
                         className="text-5xl text-black">Meus Favoritos</h1>
                     </div>
-                    <p className="text-gray-400">
+                    <p className="text-gray-600">
                         {favoritesCount} {favoritesCount === 1 ? 'item' : 'itens'} marcado{favoritesCount === 1 ? '' : 's'}
                     </p>
                 </div>

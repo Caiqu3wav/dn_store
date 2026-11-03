@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Pause, Play } from 'lucide-react';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 
 interface HeroProps {
     images?: string[];
@@ -12,30 +13,42 @@ interface HeroProps {
 
 export function Hero({ images = [] }: HeroProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [rotationPreference, setRotationPreference] = useState<'auto' | 'paused' | 'playing'>('auto');
+    const prefersReducedMotion = usePrefersReducedMotion();
 
     const safeImages = images.length > 0 ? images : ['/assets/bg_hero.png'];
+    const shouldRotate = rotationPreference === 'playing' ||
+        (rotationPreference === 'auto' && prefersReducedMotion === false);
 
-    // Auto-play for carousel
     useEffect(() => {
-        if (safeImages.length > 1) {
+        if (safeImages.length > 1 && shouldRotate) {
             const timer = setInterval(() => {
                 setCurrentIndex((prev) => (prev + 1) % safeImages.length);
-            }, 6000); // 6 seconds per slide
+            }, 6000);
             return () => clearInterval(timer);
         }
-    }, [safeImages.length]);
+    }, [safeImages.length, shouldRotate]);
+
+    const toggleRotation = () => {
+        setRotationPreference(shouldRotate ? 'paused' : 'playing');
+    };
 
     return (
         <section className="relative h-full py-16 w-full flex items-center justify-center overflow-hidden">
             {/* Background Image Carousel */}
-            <div className="absolute inset-0 z-0 bg-black">
+            <div
+                className="absolute inset-0 z-0 bg-black"
+                role="region"
+                aria-roledescription="carrossel"
+                aria-label="Imagens da DN Store"
+            >
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={currentIndex}
-                        initial={{ opacity: 0, scale: 1.05 }}
+                        initial={prefersReducedMotion ? false : { opacity: 0, scale: 1.05 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 1.2, ease: "easeInOut" }}
+                        transition={{ duration: prefersReducedMotion ? 0 : 1.2, ease: "easeInOut" }}
                         className="absolute inset-0"
                     >
                         <Image
@@ -86,31 +99,46 @@ export function Hero({ images = [] }: HeroProps) {
     </div>
 </motion.div>
 
-                <motion.p
-                    initial={{ opacity: 0, y: 20 }}
+                <motion.h1
+                    initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.4 }}
+                    transition={{ duration: prefersReducedMotion ? 0 : 0.8, delay: prefersReducedMotion ? 0 : 0.4 }}
                     className="text-lg md:text-2xl font-light mt-12 max-w-2xl mx-auto text-gray-200"
                 >
                     Vista o desafio. Viva a aventura.
-                </motion.p>
+                </motion.h1>
                 
-                {/* Carousel Indicators (Optional visual cue) */}
                 {safeImages.length > 1 && (
                     <motion.div 
-                        initial={{ opacity: 0 }}
+                        initial={prefersReducedMotion ? false : { opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ delay: 3.2 }}
-                        className="flex items-center gap-2 mt-12"
+                        transition={{ delay: prefersReducedMotion ? 0 : 3.2 }}
+                        className="mt-12 flex max-w-full flex-wrap items-center justify-center gap-1"
+                        role="group"
+                        aria-label="Controles do carrossel"
                     >
                         {safeImages.map((_, idx) => (
                             <button
                                 key={idx}
                                 onClick={() => setCurrentIndex(idx)}
-                                className={`h-1.5 rounded-full transition-all ${idx === currentIndex ? 'w-8 bg-brand-secondary' : 'w-2 bg-white/40 hover:bg-white/60'}`}
+                                type="button"
                                 aria-label={`Ir para a imagem ${idx + 1}`}
-                            />
+                                aria-pressed={idx === currentIndex}
+                                className={`min-h-11 rounded-full transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${idx === currentIndex ? 'w-11 bg-brand-secondary' : 'w-11 bg-white/20 hover:bg-white/40'}`}
+                            >
+                                <span aria-hidden="true" className={`mx-auto block h-1.5 rounded-full ${idx === currentIndex ? 'w-8 bg-white' : 'w-2 bg-white/80'}`} />
+                            </button>
                         ))}
+                        <button
+                            type="button"
+                            onClick={toggleRotation}
+                            aria-label={shouldRotate ? 'Pausar rotação automática' : 'Retomar rotação automática'}
+                            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                        >
+                            {shouldRotate
+                                ? <Pause aria-hidden="true" className="h-5 w-5" />
+                                : <Play aria-hidden="true" className="h-5 w-5" />}
+                        </button>
                     </motion.div>
                 )}
                 {/* Scroll Down Arrow Indicator */}
@@ -126,8 +154,8 @@ export function Hero({ images = [] }: HeroProps) {
                     aria-label="Ver produtos em destaque"
                 >
                     <motion.div
-                        animate={{ y: [0, 10, 0] }}
-                        transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                        animate={prefersReducedMotion ? undefined : { y: [0, 10, 0] }}
+                        transition={prefersReducedMotion ? undefined : { repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
                         className="p-3 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-brand-secondary/20 hover:border-brand-secondary/50 transition-all"
                     >
                         <ChevronDown className="w-6 h-6" />

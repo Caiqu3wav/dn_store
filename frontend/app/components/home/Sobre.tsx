@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 
 interface SobreProps {
     images: string[];
@@ -12,19 +13,26 @@ interface SobreProps {
 
 export function Sobre({ images }: SobreProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [rotationPreference, setRotationPreference] = useState<'auto' | 'paused' | 'playing'>('auto');
+    const prefersReducedMotion = usePrefersReducedMotion();
+    const safeImages = images.length > 0 ? images : ['/assets/Images/novo-logotipo.png'];
+    const shouldRotate = rotationPreference === 'playing' ||
+        (rotationPreference === 'auto' && prefersReducedMotion === false);
 
-    // Auto-play for carousel
     useEffect(() => {
-        if (images.length > 1) {
+        if (safeImages.length > 1 && shouldRotate) {
             const timer = setInterval(() => {
-                setCurrentIndex((prev) => (prev + 1) % images.length);
+                setCurrentIndex((prev) => (prev + 1) % safeImages.length);
             }, 5000);
             return () => clearInterval(timer);
         }
-    }, [images.length]);
+    }, [safeImages.length, shouldRotate]);
 
-    const nextSlide = () => setCurrentIndex((prev) => (prev + 1) % images.length);
-    const prevSlide = () => setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+    const nextSlide = () => setCurrentIndex((prev) => (prev + 1) % safeImages.length);
+    const prevSlide = () => setCurrentIndex((prev) => (prev === 0 ? safeImages.length - 1 : prev - 1));
+    const toggleRotation = () => {
+        setRotationPreference(shouldRotate ? 'paused' : 'playing');
+    };
 
     return (
         <section className="py-24 bg-background">
@@ -32,18 +40,23 @@ export function Sobre({ images }: SobreProps) {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
                     
                     {/* Image Area with Carousel */}
-                    <div className="relative h-[400px] lg:h-[600px] w-full rounded-[2rem] overflow-hidden shadow-2xl group">
+                    <div
+                        className="relative h-[400px] lg:h-[600px] w-full rounded-[2rem] overflow-hidden shadow-2xl group"
+                        role="region"
+                        aria-roledescription="carrossel"
+                        aria-label="Imagens da marca Desafio Natureza"
+                    >
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={currentIndex}
-                                initial={{ opacity: 0, scale: 1.05 }}
+                                initial={prefersReducedMotion ? false : { opacity: 0, scale: 1.05 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0 }}
-                                transition={{ duration: 0.8 }}
+                                transition={{ duration: prefersReducedMotion ? 0 : 0.8 }}
                                 className="absolute inset-0"
                             >
                                 <Image
-                                    src={"/assets/images/pelotaodn.jpeg"}
+                                    src={safeImages[currentIndex]}
                                     alt={`Sobre a DN Store imagem ${currentIndex + 1}`}
                                     fill
                                     className="object-cover"
@@ -52,31 +65,49 @@ export function Sobre({ images }: SobreProps) {
                         </AnimatePresence>
 
                         {/* Carousel Controls (only if > 1 image) */}
-                        {images.length > 1 && (
+                        {safeImages.length > 1 && (
                             <>
                                 <button 
+                                    type="button"
                                     onClick={prevSlide}
-                                    className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60 backdrop-blur-sm"
+                                    aria-label="Imagem anterior"
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/60 text-white flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity hover:bg-black/80 backdrop-blur-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
                                 >
                                     <ChevronLeft className="w-6 h-6" />
                                 </button>
                                 <button 
+                                    type="button"
                                     onClick={nextSlide}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60 backdrop-blur-sm"
+                                    aria-label="Próxima imagem"
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/60 text-white flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity hover:bg-black/80 backdrop-blur-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
                                 >
                                     <ChevronRight className="w-6 h-6" />
                                 </button>
                                 
                                 {/* Indicators */}
-                                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
-                                    {images.map((_, idx) => (
+                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex max-w-[calc(100%-5rem)] flex-wrap items-center justify-center gap-1">
+                                    {safeImages.map((_, idx) => (
                                         <button
                                             key={idx}
+                                            type="button"
                                             onClick={() => setCurrentIndex(idx)}
-                                            className={`h-2 rounded-full transition-all ${idx === currentIndex ? 'w-8 bg-brand-secondary' : 'w-2 bg-white/60'}`}
                                             aria-label={`Ir para a imagem ${idx + 1}`}
-                                        />
+                                            aria-pressed={idx === currentIndex}
+                                            className={`flex min-h-11 w-11 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}
+                                        >
+                                            <span aria-hidden="true" className={`h-2 rounded-full transition-all ${idx === currentIndex ? 'w-8 bg-brand-secondary' : 'w-2 bg-white/80'}`} />
+                                        </button>
                                     ))}
+                                    <button
+                                        type="button"
+                                        onClick={toggleRotation}
+                                        aria-label={shouldRotate ? 'Pausar rotação automática' : 'Retomar rotação automática'}
+                                        className="flex min-h-11 min-w-11 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                                    >
+                                        {shouldRotate
+                                            ? <Pause aria-hidden="true" className="h-5 w-5" />
+                                            : <Play aria-hidden="true" className="h-5 w-5" />}
+                                    </button>
                                 </div>
                             </>
                         )}
@@ -84,17 +115,17 @@ export function Sobre({ images }: SobreProps) {
 
                     {/* Content Area */}
                     <motion.div
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.8 }}
+                        transition={{ duration: prefersReducedMotion ? 0 : 0.8 }}
                         className='flex flex-col items-center'
                     >
-                        <span 
+                        <h2
                         style={{ fontFamily: 'DN'  }}
                         className="text-brand-secondary text-outline self-center tracking-widest uppercase text-5xl mb-4 block"
                         >Sobre a Marca
-                        </span>
+                        </h2>
                         <div className="relative aspect-square w-full max-w-[360px] overflow-hidden flex items-center justify-center">
                         <Image 
                             src="/assets/Images/novo-logotipo.png" 
