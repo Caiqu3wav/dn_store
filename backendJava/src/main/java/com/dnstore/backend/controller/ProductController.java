@@ -2,6 +2,7 @@ package com.dnstore.backend.controller;
 
 import com.dnstore.backend.model.PhysicalProduct;
 import com.dnstore.backend.model.Product;
+import com.dnstore.backend.dto.ProductResponse;
 import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.service.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -34,14 +35,26 @@ public class ProductController {
      * GET /api/products
      */
     @GetMapping
-    public ResponseEntity<List<Product>> listAll(
+    public ResponseEntity<List<ProductResponse>> listAll(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(required = false) String sortBy) {
         return ResponseEntity.ok(
-                productService.search(search, categoryId, minPrice, maxPrice, sortBy));
+                productService.searchResponses(search, categoryId, minPrice, maxPrice, sortBy));
+    }
+
+    @GetMapping("/admin")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ProductResponse>> listAllForAdmin(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) String sortBy) {
+        return ResponseEntity.ok(
+                productService.searchForAdminResponses(search, categoryId, minPrice, maxPrice, sortBy));
     }
 
     /**
@@ -49,8 +62,16 @@ public class ProductController {
      * GET /api/products/{id}
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getById(@PathVariable UUID id) {
-        return productService.findById(id)
+    public ResponseEntity<ProductResponse> getById(@PathVariable UUID id) {
+        return productService.findActiveResponseById(id)
+                .map(ResponseEntity::ok)
+                .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado."));
+    }
+
+    @GetMapping("/admin/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ProductResponse> getByIdForAdmin(@PathVariable UUID id) {
+        return productService.findResponseById(id)
                 .map(ResponseEntity::ok)
                 .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado."));
     }

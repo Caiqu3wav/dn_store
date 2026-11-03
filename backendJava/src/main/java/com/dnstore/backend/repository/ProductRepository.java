@@ -26,6 +26,9 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
     @EntityGraph(attributePaths = "variants")
     Optional<Product> findById(UUID id);
 
+    @EntityGraph(attributePaths = "variants")
+    Optional<Product> findByIdAndActiveTrue(UUID id);
+
     @Override
     @EntityGraph(attributePaths = "variants")
     List<Product> findAll(Specification<Product> spec, Sort sort);

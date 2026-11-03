@@ -3,16 +3,25 @@ package com.dnstore.backend.service;
 import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.model.Category;
 import com.dnstore.backend.model.PhysicalProduct;
+import com.dnstore.backend.model.Product;
 import com.dnstore.backend.model.ProductVariant;
 import com.dnstore.backend.repository.CategoryRepository;
 import com.dnstore.backend.repository.ProductRepository;
 import com.dnstore.backend.repository.ProductVariantRepository;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -204,5 +213,36 @@ class ProductServiceTest {
         assertThatThrownBy(() -> productService.create(product))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Tamanho");
+    }
+
+    @Test
+    void findActiveById_usesActiveProductLookup() {
+        UUID productId = UUID.randomUUID();
+        when(productRepository.findByIdAndActiveTrue(productId)).thenReturn(Optional.empty());
+
+        assertThat(productService.findActiveById(productId)).isEmpty();
+
+        verify(productRepository).findByIdAndActiveTrue(productId);
+        verify(productRepository, never()).findById(productId);
+    }
+
+    @Test
+    void search_addsActivePredicateToPublicCatalogQuery() {
+        when(productRepository.findAll(any(Specification.class), any(Sort.class))).thenReturn(List.of());
+
+        productService.search(null, null, null, null, null);
+
+        ArgumentCaptor<Specification<Product>> specification = ArgumentCaptor.forClass(Specification.class);
+        verify(productRepository).findAll(specification.capture(), eq(Sort.unsorted()));
+
+        CriteriaBuilder criteriaBuilder = mock(CriteriaBuilder.class);
+        Root<Product> root = mock(Root.class);
+        Path<Boolean> activePath = mock(Path.class);
+        Predicate activePredicate = mock(Predicate.class);
+        when(root.<Boolean>get("active")).thenReturn(activePath);
+        when(criteriaBuilder.isTrue(activePath)).thenReturn(activePredicate);
+
+        assertThat(specification.getValue().toPredicate(root, mock(CriteriaQuery.class), criteriaBuilder))
+                .isSameAs(activePredicate);
     }
 }

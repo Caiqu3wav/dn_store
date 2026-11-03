@@ -1,5 +1,6 @@
 package com.dnstore.backend.service;
 
+import com.dnstore.backend.dto.ProductResponse;
 import com.dnstore.backend.model.Category;
 import com.dnstore.backend.model.PhysicalProduct;
 import com.dnstore.backend.model.Product;
@@ -47,6 +48,46 @@ public class ProductService {
 
     public Optional<Product> findById(UUID id) {
         return productRepository.findById(id);
+    }
+
+    public Optional<Product> findActiveById(UUID id) {
+        return productRepository.findByIdAndActiveTrue(id);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductResponse> searchResponses(
+            String search,
+            UUID categoryId,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            String sortBy) {
+        return search(search, categoryId, minPrice, maxPrice, sortBy, true)
+                .stream()
+                .map(ProductResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductResponse> searchForAdminResponses(
+            String search,
+            UUID categoryId,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            String sortBy) {
+        return search(search, categoryId, minPrice, maxPrice, sortBy, false)
+                .stream()
+                .map(ProductResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ProductResponse> findActiveResponseById(UUID id) {
+        return productRepository.findByIdAndActiveTrue(id).map(ProductResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ProductResponse> findResponseById(UUID id) {
+        return productRepository.findById(id).map(ProductResponse::from);
     }
 
     // --- C: Create ---
@@ -252,8 +293,29 @@ public class ProductService {
             BigDecimal minPrice,
             BigDecimal maxPrice,
             String sortBy) {
+        return search(search, categoryId, minPrice, maxPrice, sortBy, true);
+    }
 
+    public List<Product> searchForAdmin(
+            String search,
+            UUID categoryId,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            String sortBy) {
+        return search(search, categoryId, minPrice, maxPrice, sortBy, false);
+    }
+
+    private List<Product> search(
+            String search,
+            UUID categoryId,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            String sortBy,
+            boolean activeOnly) {
         Specification<Product> spec = Specification.where(null);
+        if (activeOnly) {
+            spec = spec.and((root, query, cb) -> cb.isTrue(root.get("active")));
+        }
 
         if (search != null && !search.isBlank()) {
             spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("name")),
