@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, SlidersHorizontal, X, ChevronDown, Loader2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
@@ -16,18 +16,78 @@ const AVAILABLE_VARIANT_SIZES = ['PP', 'P', 'M', 'G', 'GG', 'BL P', 'BL M', 'BL 
 function ProdutosCatalog() {
   const searchParams = useSearchParams();
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const mobileFilterTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileFilterDialogRef = useRef<HTMLElement>(null);
+  const mobileFilterCloseRef = useRef<HTMLButtonElement>(null);
+  const wasMobileFiltersOpenRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [priceRange, setPriceRange] = useState<{ min: string; max: string }>({ min: '', max: '' });
   const [sortBy, setSortBy] = useState<SortOption>('relevance');
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('categoryId') ?? '');
   const [selectedSize, setSelectedSize] = useState('');
 
-  // Prevent background scroll when mobile filters are open
+  const closeMobileFilters = useCallback(() => {
+    setIsMobileFiltersOpen(false);
+  }, []);
+
+  // Keep the page scroll locked only while the mobile filter dialog is mounted.
+  useEffect(() => {
+    if (!isMobileFiltersOpen) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    mobileFilterCloseRef.current?.focus();
+
+    const handleFocusIn = (event: FocusEvent) => {
+      if (!mobileFilterDialogRef.current?.contains(event.target as Node)) {
+        mobileFilterCloseRef.current?.focus();
+      }
+    };
+
+    const handleDialogKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeMobileFilters();
+        return;
+      }
+
+      if (event.key !== 'Tab' || !mobileFilterDialogRef.current) return;
+
+      const focusableElements = Array.from(
+        mobileFilterDialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter(element => element.getClientRects().length > 0);
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (!firstElement || !lastElement) {
+        event.preventDefault();
+        mobileFilterDialogRef.current.focus();
+      } else if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleDialogKeyDown);
+    document.addEventListener('focusin', handleFocusIn);
+    return () => {
+      document.removeEventListener('keydown', handleDialogKeyDown);
+      document.removeEventListener('focusin', handleFocusIn);
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, [isMobileFiltersOpen, closeMobileFilters]);
+
   useEffect(() => {
     if (isMobileFiltersOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
+      wasMobileFiltersOpenRef.current = true;
+    } else if (wasMobileFiltersOpenRef.current) {
+      wasMobileFiltersOpenRef.current = false;
+      mobileFilterTriggerRef.current?.focus();
     }
   }, [isMobileFiltersOpen]);
 
@@ -97,6 +157,10 @@ function ProdutosCatalog() {
               {filteredAndSortedProducts.length} produtos
             </span>
             <button
+              ref={mobileFilterTriggerRef}
+              type="button"
+              aria-expanded={isMobileFiltersOpen}
+              aria-controls={isMobileFiltersOpen ? 'mobile-product-filters' : undefined}
               onClick={() => setIsMobileFiltersOpen(true)}
               className="flex items-center gap-2 text-brand-secondary font-bold px-4 py-2 rounded-xl bg-brand-secondary/10 hover:bg-brand-secondary/20 transition-colors"
             >
@@ -106,7 +170,6 @@ function ProdutosCatalog() {
           </div>
 
           {/* Desktop Sidebar & Mobile Drawer */}
-          <AnimatePresence>
             {(isMobileFiltersOpen || typeof window !== 'undefined' && window.innerWidth >= 1024) && (
               <>
                 {/* Mobile Backdrop */}
@@ -114,16 +177,20 @@ function ProdutosCatalog() {
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={() => setIsMobileFiltersOpen(false)}
+                    onClick={closeMobileFilters}
                     className="fixed inset-0 bg-black/40 z-40 lg:hidden backdrop-blur-sm"
                   />
                 )}
 
                 <motion.aside
+                  ref={mobileFilterDialogRef}
+                  id="mobile-product-filters"
+                  role={isMobileFiltersOpen ? 'dialog' : undefined}
+                  aria-modal={isMobileFiltersOpen ? true : undefined}
+                  aria-labelledby={isMobileFiltersOpen ? 'mobile-product-filters-title' : undefined}
+                  tabIndex={isMobileFiltersOpen ? -1 : undefined}
                   initial={isMobileFiltersOpen ? { x: '100%' } : false}
                   animate={{ x: 0 }}
-                  exit={isMobileFiltersOpen ? { x: '100%' } : undefined}
                   transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                   className={`
                     fixed lg:static inset-y-0 right-0 z-50 w-[300px] lg:w-72 bg-white lg:bg-transparent shadow-2xl lg:shadow-none p-6 lg:p-0 overflow-y-auto lg:overflow-visible shrink-0
@@ -134,9 +201,12 @@ function ProdutosCatalog() {
 
                     {/* Mobile Header */}
                     <div className="flex items-center justify-between lg:hidden mb-6">
-                      <h2 className="text-xl font-black text-[#1A1B1D]">Filtros</h2>
+                      <h2 id="mobile-product-filters-title" className="text-xl font-black text-[#1A1B1D]">Filtros</h2>
                       <button
-                        onClick={() => setIsMobileFiltersOpen(false)}
+                        ref={mobileFilterCloseRef}
+                        type="button"
+                        aria-label="Fechar filtros"
+                        onClick={closeMobileFilters}
                         className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                       >
                         <X className="w-6 h-6 text-gray-600" />
@@ -281,7 +351,8 @@ function ProdutosCatalog() {
                     {/* Mobile Apply Button */}
                     <div className="pt-6 lg:hidden">
                       <button
-                        onClick={() => setIsMobileFiltersOpen(false)}
+                        type="button"
+                        onClick={closeMobileFilters}
                         className="w-full bg-brand-secondary text-white py-3 rounded-xl font-bold hover:bg-[#1A1B1D] transition-colors"
                       >
                         Ver {filteredAndSortedProducts.length} produtos
@@ -292,7 +363,6 @@ function ProdutosCatalog() {
                 </motion.aside>
               </>
             )}
-          </AnimatePresence>
 
           {/* Main Content */}
           <div className="flex-1">

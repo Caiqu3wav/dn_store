@@ -119,6 +119,7 @@ function AccountDropdown({ mobile = false, onNavigate }: { mobile?: boolean; onN
 export function Navbar() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const mobileMenuToggleRef = useRef<HTMLButtonElement>(null);
     const { itemCount } = useCart();
     const { favoritesCount } = useFavorites();
 
@@ -129,6 +130,20 @@ export function Navbar() {
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
+
+    useEffect(() => {
+        if (!isMobileMenuOpen) return;
+
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            setIsMobileMenuOpen(false);
+            mobileMenuToggleRef.current?.focus();
+        };
+
+        document.addEventListener('keydown', closeOnEscape);
+        return () => document.removeEventListener('keydown', closeOnEscape);
+    }, [isMobileMenuOpen]);
 
     return (
         <header
@@ -222,7 +237,12 @@ export function Navbar() {
 
                         {/* Mobile Menu Toggle */}
                         <button
-                            className="xl:hidden p-1 hover:bg-gray-100 rounded-md transition-colors"
+                            ref={mobileMenuToggleRef}
+                            type="button"
+                            aria-label={isMobileMenuOpen ? 'Fechar menu de navegação' : 'Abrir menu de navegação'}
+                            aria-expanded={isMobileMenuOpen}
+                            aria-controls="mobile-navigation-menu"
+                            className="xl:hidden inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-2 hover:bg-gray-100 transition-colors"
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                         >
                             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -232,8 +252,11 @@ export function Navbar() {
             </div>
 
             {/* Mobile Menu Dropdown */}
-            {isMobileMenuOpen && (
-                <div className="xl:hidden absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-lg py-4 px-4 flex flex-col gap-4">
+            <div
+                id="mobile-navigation-menu"
+                hidden={!isMobileMenuOpen}
+                className="xl:hidden absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-lg py-4 px-4 flex flex-col gap-4"
+            >
                     <div className="relative w-full mb-2">
                         <input 
                             type="text" 
@@ -250,8 +273,7 @@ export function Navbar() {
                     <div className="border-t border-gray-100 pt-3">
                         <AccountDropdown mobile onNavigate={() => setIsMobileMenuOpen(false)} />
                     </div>
-                </div>
-            )}
+            </div>
         </header>
     );
 }
