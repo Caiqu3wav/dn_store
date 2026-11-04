@@ -8,6 +8,7 @@ import com.dnstore.backend.service.OrderService;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,11 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * 📦 OrderController - REST Completo
- *
- * Gerencia o ciclo de vida dos pedidos: Criação e Consulta.
- */
+@Slf4j
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
@@ -55,6 +52,7 @@ public class OrderController {
                 request.getShippingType(),
                 request.getCouponCode(),
                 request.getAddressId());
+        log.info("order.created orderId={} userId={} total={}", order.getId(), user.getId(), order.getTotal());
         return ResponseEntity.status(201).body(order);
     }
 
@@ -103,6 +101,7 @@ public class OrderController {
         }
         Order order = orderService.updateStatus(id, status)
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido não encontrado."));
+        log.info("order.status_updated orderId={} status={}", id, status);
         return ResponseEntity.ok(order);
     }
 

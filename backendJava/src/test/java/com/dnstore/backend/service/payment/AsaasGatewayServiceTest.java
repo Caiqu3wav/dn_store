@@ -1,6 +1,5 @@
 package com.dnstore.backend.service.payment;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpEntity;
@@ -32,7 +31,7 @@ class AsaasGatewayServiceTest {
     @BeforeEach
     void setUp() {
         restTemplate = mock(RestTemplate.class);
-        gateway = new AsaasGatewayService(restTemplate, new ObjectMapper());
+        gateway = new AsaasGatewayService(restTemplate);
         ReflectionTestUtils.setField(gateway, "apiKey", "test-api-key");
         ReflectionTestUtils.setField(gateway, "webhookToken", "webhook-secret");
     }
@@ -162,5 +161,15 @@ class AsaasGatewayServiceTest {
                 "{\"payment\":{\"id\":\"payment-1\",\"status\":\"CONFIRMED\"}}",
                 "wrong-token"))
                 .isInstanceOf(WebhookAuthenticationException.class);
+    }
+
+    @Test
+    void processWebhook_withValidToken_shouldNormalizePaymentStatus() {
+        PaymentGateway.WebhookResult result = gateway.processWebhook(
+                "{\"payment\":{\"id\":\"payment-1\",\"status\":\"CONFIRMED\"}}",
+                "webhook-secret");
+
+        assertThat(result.externalId()).isEqualTo("payment-1");
+        assertThat(result.normalizedStatus()).isEqualTo("PAID");
     }
 }

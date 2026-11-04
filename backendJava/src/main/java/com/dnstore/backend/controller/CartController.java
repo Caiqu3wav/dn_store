@@ -9,6 +9,7 @@ import com.dnstore.backend.repository.CartRepository;
 import com.dnstore.backend.repository.ProductVariantRepository;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -18,12 +19,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * 🛒 CartController
- *
- * API RESTful completa para manipulação do Carrinho do usuário autenticado.
- * Suporta: Ver, Adicionar, Atualizar Qtd, Remover Item, Limpar.
- */
+@Slf4j
 @RestController
 @RequestMapping("/api/cart")
 @RequiredArgsConstructor
@@ -83,6 +79,7 @@ public class CartController {
         }
         cart.addItem(productVariant, request.getQuantity());
         cartRepository.save(cart);
+        log.info("cart.item_added userId={} variantId={} qty={}", user.getId(), productVariant.getId(), request.getQuantity());
         return ResponseEntity.ok(cart);
     }
 
@@ -209,6 +206,7 @@ public class CartController {
 
         cart.removeItem(productVariantId);
         cartRepository.save(cart);
+        log.info("cart.item_removed userId={} variantId={}", user.getId(), productVariantId);
         return ResponseEntity.ok(cart);
     }
 
@@ -221,6 +219,7 @@ public class CartController {
 
         cart.clear();
         cartRepository.save(cart);
+        log.info("cart.cleared userId={}", user.getId());
         return ResponseEntity.noContent().build();
     }
 

@@ -19,6 +19,7 @@ import com.dnstore.backend.repository.ProductVariantRepository;
 import com.dnstore.backend.service.shipping.ShippingGateway.ShippingItem;
 import com.dnstore.backend.service.shipping.ShippingQuote;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
  * Orquestra o fechamento do pedido.
  * Une os produtos do carrinho com o cálculo do frete e persiste no banco.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderService {
@@ -149,6 +151,9 @@ public class OrderService {
                 throw new ConflictException("Uma variação do carrinho não está mais disponível.");
             }
             if (variant.getStock() < cartItem.getQuantity()) {
+                log.warn("order.stock_insufficient variantId={} product='{}' available={} requested={}",
+                        variant.getId(), variant.getProduct().getName(),
+                        variant.getStock(), cartItem.getQuantity());
                 throw new ConflictException(
                         "Estoque insuficiente para o produto: " + variant.getProduct().getName()
                                 + " (" + variant.getSize() + ")");
@@ -237,6 +242,8 @@ public class OrderService {
 
         // 5. Persistir
         Order savedOrder = orderRepository.save(order);
+        log.info("order.checkout_complete orderId={} userId={} total={} shipping={}",
+                savedOrder.getId(), user.getId(), savedOrder.getTotal(), savedOrder.getShippingCost());
 
         // 6. Esvaziar carrinho
         cart.clear();
@@ -294,6 +301,7 @@ public class OrderService {
     @Transactional
     public java.util.Optional<Order> updateStatus(UUID id, String status) {
         if (!VALID_STATUSES.contains(status)) {
+            log.warn("order.invalid_status status={}", status);
             throw new IllegalArgumentException("Status inválido: " + status);
         }
         java.util.Optional<Order> found = orderRepository.findByIdForUpdate(id);
@@ -304,7 +312,11 @@ public class OrderService {
         if ("CANCELLED".equals(status) && "PENDING_PAYMENT".equals(order.getStatus())) {
             orderInventoryService.releaseReservedStock(order);
         }
+        log.info("order.status_changed orderId={} from={} to={}", 
+            id, order.getStatus(), status);
+
         order.setStatus(status);
+
         return java.util.Optional.of(orderRepository.save(order));
     }
 }

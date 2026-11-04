@@ -7,8 +7,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 
-@Component
-@ConditionalOnProperty(name = "shipping.gateway", havingValue = "simulated", matchIfMissing = true)
+@Component("simulatedShippingGateway")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "shipping.gateway", havingValue = "simulated", matchIfMissing = true)
 public class SimulatedShippingGateway implements ShippingGateway {
 
     private static final BigDecimal BASE_WEIGHT = BigDecimal.ONE;

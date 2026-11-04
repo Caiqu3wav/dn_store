@@ -6,14 +6,15 @@ import com.dnstore.backend.service.shipping.ShippingGateway;
 import com.dnstore.backend.service.shipping.ShippingGateway.ShippingItem;
 import com.dnstore.backend.service.shipping.ShippingGateway.ShippingRequest;
 import com.dnstore.backend.service.shipping.ShippingQuote;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Autowired;
 
+import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class DeliveryService {
 
     private final ShippingGateway shippingGateway;
@@ -21,23 +22,20 @@ public class DeliveryService {
     @Value("${shipping.origin-zip:}")
     private String originZip;
 
-    public DeliveryService(ShippingGateway shippingGateway) {
-        this.shippingGateway = java.util.Objects.requireNonNull(
-                shippingGateway,
-                "ShippingGateway não pode ser nulo."
-        );
-    }
-
-    @Autowired
-    public DeliveryService(
-            @Value("${shipping.gateway:simulated}") String gatewayName,
-            Map<String, ShippingGateway> gateways
-    ) {
-        String beanName = gatewayName + "ShippingGateway";
-        this.shippingGateway = gateways.get(beanName);
-        if (this.shippingGateway == null) {
-            throw new IllegalStateException("ShippingGateway bean not found: " + beanName);
-        }
+    /**
+     * Overload usado pelo OrderService — recebe peso total em double.
+     * Cria um ShippingItem genérico com dimensões padrão de camiseta/acessório.
+     */
+    public ShippingQuote calculateShipping(String destinationZip, double totalWeightKg, String service) {
+        BigDecimal weight = BigDecimal.valueOf(Math.max(totalWeightKg, 0.1));
+        List<ShippingItem> items = List.of(new ShippingItem(
+                weight,
+                new BigDecimal("20"),
+                new BigDecimal("5"),
+                new BigDecimal("30"),
+                1
+        ));
+        return calculateShipping(destinationZip, items, service);
     }
 
     public ShippingQuote calculateShipping(String destinationZip, List<ShippingItem> items, String service) {
@@ -64,36 +62,37 @@ public class DeliveryService {
         if (items == null || items.isEmpty()) {
             throw new DeliveryException("O carrinho não possui itens para cotação.");
         }
-        for (ShippingItem item : items) {
-            if (item == null || item.quantity() <= 0 || !isPositive(item.weight())
-                    || !isPositive(item.width()) || !isPositive(item.height()) || !isPositive(item.length())) {
-                throw new DeliveryException("Peso, dimensões e quantidade dos produtos devem ser válidos.");
-            }
-        }
+        validatePhysicalDimensions(items);
 
         List<ShippingQuote> quotes = shippingGateway.quote(
                 new ShippingRequest(normalizedOrigin, normalizedDestination, items));
-        if (quotes == null) {
-            throw new ShippingGatewayException("Resposta inválida recebida do serviço de frete.");
-        }
-        if (quotes.isEmpty()) {
+        if (quotes == null || quotes.isEmpty()) {
             throw new DeliveryException("Não há modalidades de entrega disponíveis para este CEP.");
         }
-        if (quotes.stream().anyMatch(quote -> quote == null || quote.service() == null || quote.service().isBlank()
-                || quote.price() == null || quote.price().signum() < 0 || quote.deliveryDays() <= 0)) {
-            throw new ShippingGatewayException("Resposta inválida recebida do serviço de frete.");
+        boolean invalidQuote = quotes.stream().anyMatch(quote -> quote == null
+                || quote.service() == null || quote.service().isBlank()
+                || quote.price() == null || quote.price().signum() < 0
+                || quote.deliveryDays() <= 0);
+        if (invalidQuote) {
+            throw new ShippingGatewayException("Resposta inválida do serviço de frete.");
         }
         return List.copyOf(quotes);
     }
 
+    private void validatePhysicalDimensions(List<ShippingItem> items) {
+        boolean invalidDimensions = items.stream().anyMatch(item -> item == null
+                || item.width() == null || item.width().signum() <= 0
+                || item.height() == null || item.height().signum() <= 0
+                || item.length() == null || item.length().signum() <= 0);
+        if (invalidDimensions) {
+            throw new DeliveryException("As dimensões físicas dos itens devem ser maiores que zero.");
+        }
+    }
+
     private String normalizeZip(String zipCode, String role) {
-        if (zipCode == null || !zipCode.trim().matches("\\d{5}-?\\d{3}")) {
+        if (zipCode == null || !zipCode.trim().replaceAll("-", "").matches("\\d{8}")) {
             throw new DeliveryException("CEP de " + role + " inválido.");
         }
         return zipCode.replace("-", "").trim();
-    }
-
-    private boolean isPositive(java.math.BigDecimal value) {
-        return value != null && value.signum() > 0;
     }
 }

@@ -180,9 +180,12 @@ CREATE TABLE payments (
 
 CREATE TABLE events (
     id VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    name VARCHAR(150),
+    name VARCHAR(150) NOT NULL,
     description TEXT,
-    date DATETIME,
+    date DATE NOT NULL,
     location VARCHAR(150),
-    map_url VARCHAR(300)
+    map_url VARCHAR(500),
+    image_url VARCHAR(500),
+    registration_url VARCHAR(500),
+    active BOOLEAN DEFAULT TRUE
 );

@@ -71,6 +71,7 @@ public class AuthController {
     @Transactional
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
+            LOGGER.warn("auth.register.duplicate email={}", request.getEmail());
             throw new ConflictException("Email já cadastrado.");
         }
         if (request.getAddress() == null) {
@@ -87,6 +88,7 @@ public class AuthController {
         user.setEmailVerified(false);
         issueEmailVerification(user);
         userRepository.save(user);
+        LOGGER.info("auth.register.success email={}", user.getEmail());
 
         Address address = new Address();
         address.setUser(user);
@@ -113,11 +115,18 @@ public class AuthController {
                     .body(new ChallengeResponse("EMAIL_VERIFICATION_REQUIRED", request.getEmail(), null));
         }
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+        } catch (org.springframework.security.core.AuthenticationException e) {
+            LOGGER.warn("auth.login.failed email={}", request.getEmail());
+            throw e;
+        }
         User user = (User) authentication.getPrincipal();
 
         if (!user.isEmailMfaEnabled()) {
+            LOGGER.info("auth.login.success userId={}", user.getId());
             return ResponseEntity.ok(authResponse(user));
         }
         if (cooldownActive(user.getMfaLastSentAt()))
@@ -132,6 +141,7 @@ public class AuthController {
         user.setMfaAttempts(0);
         userRepository.save(user);
         emailService.sendMfaCode(user.getEmail(), code);
+        LOGGER.info("auth.mfa.code_sent userId={}", user.getId());
         return ResponseEntity.ok(new ChallengeResponse("MFA_REQUIRED", user.getEmail(), challengeToken));
     }
 
@@ -155,6 +165,7 @@ public class AuthController {
         user.setEmailVerificationExpiration(null);
         user.setEmailVerificationAttempts(0);
         userRepository.save(user);
+        LOGGER.info("auth.email_verified email={}", user.getEmail());
         return ResponseEntity.ok(authResponse(user));
     }
 
@@ -186,6 +197,7 @@ public class AuthController {
 
         clearMfaChallenge(user);
         userRepository.save(user);
+        LOGGER.info("auth.mfa.verified userId={}", user.getId());
         return ResponseEntity.ok(authResponse(user));
     }
 
@@ -238,6 +250,7 @@ public class AuthController {
         User user = userRepository.findByResetToken(hash(request.getToken())).orElse(null);
         if (user == null || user.getResetTokenExpiration() == null
                 || user.getResetTokenExpiration().isBefore(LocalDateTime.now())) {
+            LOGGER.warn("auth.reset_password.invalid_token");
             throw new IllegalArgumentException("Link de redefinição inválido ou expirado.");
         }
 
@@ -246,6 +259,7 @@ public class AuthController {
         user.setResetTokenExpiration(null);
         clearMfaChallenge(user);
         userRepository.save(user);
+        LOGGER.info("auth.password_reset userId={}", user.getId());
         return ResponseEntity.noContent().build();
     }
 
@@ -255,6 +269,7 @@ public class AuthController {
             @AuthenticationPrincipal User user,
             @Valid @RequestBody ChangePasswordRequest request) {
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            LOGGER.warn("auth.change_password.wrong_current userId={}", user.getId());
             throw new IllegalArgumentException("A senha atual está incorreta.");
         }
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
@@ -262,6 +277,7 @@ public class AuthController {
         user.setResetTokenExpiration(null);
         clearMfaChallenge(user);
         userRepository.save(user);
+        LOGGER.info("auth.password_changed userId={}", user.getId());
         return ResponseEntity.noContent().build();
     }
 

@@ -8,7 +8,8 @@ import {
     Package, 
     ShoppingCart, 
     Users, 
-    Tags, 
+    Tags,
+    CalendarDays,
     Menu, 
     X,
     LogOut
@@ -22,6 +23,7 @@ const adminLinks = [
     { name: 'Produtos', href: '/admin/produtos', icon: Package },
     { name: 'Pedidos', href: '/admin/pedidos', icon: ShoppingCart },
     { name: 'Categorias', href: '/admin/categorias', icon: Tags },
+    { name: 'Eventos', href: '/admin/eventos', icon: CalendarDays },
     { name: 'Usuários', href: '/admin/usuarios', icon: Users },
 ];
 

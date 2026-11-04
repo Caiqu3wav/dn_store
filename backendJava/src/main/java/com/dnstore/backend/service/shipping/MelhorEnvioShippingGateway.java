@@ -14,7 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-@Component
+@Component("melhorEnvioShippingGateway")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "shipping.gateway", havingValue = "melhorEnvio")
 @RequiredArgsConstructor
 public class MelhorEnvioShippingGateway implements ShippingGateway {
 
