@@ -31,7 +31,7 @@ export default function EventosPage() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8 }}
-            className="mb-8 mt-12 flex flex-col items-center opacity-90"
+            className="mb-26   mt-12 flex flex-col items-center opacity-90"
           >
             <Image
               src="/assets/dnstore_logo_white.png"
@@ -64,7 +64,7 @@ export default function EventosPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-            className="text-lg md:text-2xl font-light mt-12 max-w-2xl mx-auto text-gray-200"
+            className="text-lg md:text-2xl font-light mt-25 max-w-2xl mx-auto text-gray-200"
           >
             Onde cada trilha se transforma em uma nova história.
           </motion.h1>
@@ -452,7 +452,7 @@ export default function EventosPage() {
               transition={{ duration: 0.8, delay: 0.4 }}
               className="text-center"
             >
-              <div className="w-20 h-20 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-6">
+              <div className="w-20 h-20 mx-auto bg-brand-red-primary/10 rounded-full flex items-center justify-center mb-6">
                 <Users className="w-10 h-10 text-brand-red-primary" />
               </div>
 

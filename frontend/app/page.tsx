@@ -8,32 +8,10 @@ import  InstagramSection from "./components/home/InstagramSection";
 import { Sobre } from './components/home/Sobre';
 
 export default function Home() {
-  let brandImages: string[] = [];
+  const brandImages = ['/assets/Images/pelotaodn.jpeg'];
   let heroImages: string[] = [];
 
   try {
-    const assetsDir = path.join(process.cwd(), 'public', 'assets');
-    const files = fs.readdirSync(assetsDir);
-
-    // Check for Brand images
-    const matchedBrand = files
-      .filter(
-        f =>
-          f.startsWith('desafionatureza') &&
-          (
-            f.endsWith('.jpg') ||
-            f.endsWith('.png') ||
-            f.endsWith('.jpeg') ||
-            f.endsWith('.webp')
-          )
-      )
-      .sort();
-
-    brandImages =
-      matchedBrand.length > 0
-        ? matchedBrand.map(f => `/assets/${f}`)
-        : ['/assets/desafionatureza1.jpg'];
-
     // Check for Hero images in the nested "dn" folder
     try {
       const dnAssetsDir = path.join(
@@ -70,9 +48,7 @@ export default function Home() {
     if (heroImages.length === 0) {
       heroImages = ['/assets/bg_hero.png'];
     }
-
   } catch {
-    brandImages = ['/assets/desafionatureza1.jpg'];
     heroImages = ['/assets/bg_hero.png'];
   }
 
