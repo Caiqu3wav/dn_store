@@ -187,5 +187,5 @@ CREATE TABLE events (
     map_url VARCHAR(500),
     image_url VARCHAR(500),
     registration_url VARCHAR(500),
-    active BOOLEAN DEFAULT TRUE
+    active BOOLEAN NOT NULL DEFAULT TRUE
 );
