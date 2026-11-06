@@ -23,7 +23,7 @@ public class Event {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false)
+    @Column(name = "event_date")
     private LocalDate date;
 
     @Column(length = 150)
