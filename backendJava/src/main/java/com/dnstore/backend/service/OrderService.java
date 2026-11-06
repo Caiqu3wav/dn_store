@@ -15,7 +15,10 @@ import com.dnstore.backend.repository.AddressRepository;
 import com.dnstore.backend.repository.CartRepository;
 import com.dnstore.backend.repository.CouponRepository;
 import com.dnstore.backend.repository.OrderRepository;
+import com.dnstore.backend.repository.PaymentRepository;
 import com.dnstore.backend.repository.ProductVariantRepository;
+import com.dnstore.backend.model.Payment;
+import com.dnstore.backend.model.enums.PaymentStatus;
 import com.dnstore.backend.service.shipping.ShippingGateway.ShippingItem;
 import com.dnstore.backend.service.shipping.ShippingQuote;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +52,7 @@ public class OrderService {
     private final CouponRepository couponRepository;
     private final ProductVariantRepository productVariantRepository;
     private final OrderInventoryService orderInventoryService;
+    private final PaymentRepository paymentRepository;
 
     public record AddressData(
             String street, String number, String complement,
@@ -309,7 +313,15 @@ public class OrderService {
             return java.util.Optional.empty();
         }
         Order order = found.get();
-        if ("CANCELLED".equals(status) && "PENDING_PAYMENT".equals(order.getStatus())) {
+        if ("CANCELLED".equals(status)
+                && ("PENDING_PAYMENT".equals(order.getStatus())
+                        || "PAYMENT_FAILED".equals(order.getStatus()))) {
+            List<Payment> attempts = paymentRepository.findByOrder_IdOrderByAttemptNumberDesc(id);
+            if (attempts.stream().anyMatch(payment ->
+                    PaymentStatus.valueOf(payment.getStatus()) != PaymentStatus.FAILED)) {
+                throw new ConflictException(
+                        "Não é possível liberar o estoque enquanto houver uma tentativa de pagamento não reconciliada.");
+            }
             orderInventoryService.releaseReservedStock(order);
         }
         log.info("order.status_changed orderId={} from={} to={}", 

@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,11 +21,19 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     @Query("SELECT o FROM Order o WHERE o.id = :orderId")
     java.util.Optional<Order> findByIdForUpdate(@Param("orderId") UUID orderId);
 
+    @Query("SELECT o FROM Order o JOIN FETCH o.user WHERE o.id = :orderId")
+    java.util.Optional<Order> findByIdWithUser(@Param("orderId") UUID orderId);
+
     List<Order> findByUser(User user);
 
     List<Order> findByUserId(UUID userId);
 
     List<Order> findByStatus(String status);
+
+    @Query("SELECT o.id FROM Order o WHERE o.status IN :statuses AND o.createdAt <= :createdBefore")
+    List<UUID> findIdsByStatusInAndCreatedAtBefore(
+            @Param("statuses") List<String> statuses,
+            @Param("createdBefore") LocalDateTime createdBefore);
 
     @Query("SELECT COALESCE(SUM(o.total), 0) FROM Order o")
     BigDecimal sumTotalRevenue();
