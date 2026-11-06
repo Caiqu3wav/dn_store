@@ -17,10 +17,17 @@ public interface PaymentGateway {
 
         WebhookResult processWebhook(String rawPayload, String signatureHeader);
 
+        ProviderPayment findPaymentByReference(String externalReference);
+
+        ProviderPayment getPayment(String externalId);
+
+        ProviderPayment cancelPayment(String externalId);
+
         // ── DTOs ─────────────────────────────────────────────────────────────────
 
         record PaymentRequest(
                         UUID orderId,
+                        String externalReference,
                         BigDecimal amount,
                         String payerName,
                         String payerEmail,
@@ -30,6 +37,19 @@ public interface PaymentGateway {
                         Integer installments,
                         CardData card // null se não for cartão
         ) {
+                public PaymentRequest(
+                                UUID orderId,
+                                BigDecimal amount,
+                                String payerName,
+                                String payerEmail,
+                                String payerCpfCnpj,
+                                String description,
+                                String paymentMethod,
+                                Integer installments,
+                                CardData card) {
+                        this(orderId, orderId.toString(), amount, payerName, payerEmail, payerCpfCnpj,
+                                        description, paymentMethod, installments, card);
+                }
         }
 
         record CardData(
@@ -47,12 +67,54 @@ public interface PaymentGateway {
                         String pixQrCode,
                         String pixCopyPaste,
                         String boletoUrl,
-                        String boletoBarcode) {
+                        String boletoBarcode,
+                        BigDecimal amount,
+                        String externalReference,
+                        String customerId,
+                        String currency) {
+                public PaymentResult(
+                                String externalId,
+                                String status,
+                                String paymentMethod,
+                                String pixQrCode,
+                                String pixCopyPaste,
+                                String boletoUrl,
+                                String boletoBarcode) {
+                        this(externalId, status, paymentMethod, pixQrCode, pixCopyPaste, boletoUrl, boletoBarcode,
+                                        null, null, null, null);
+                }
         }
 
         record WebhookResult(
+                        String eventId,
                         String externalId,
-                        String normalizedStatus // PAID | PENDING | FAILED | REFUNDED
+                        String normalizedStatus,
+                        String externalReference,
+                        BigDecimal amount,
+                        String currency,
+                        String customerId
         ) {
+                public WebhookResult(String externalId, String normalizedStatus) {
+                        this("legacy:" + externalId + ":" + normalizedStatus, externalId, normalizedStatus,
+                                        null, null, null, null);
+                }
+        }
+
+        record ProviderPayment(
+                        String externalId,
+                        String status,
+                        String externalReference,
+                        BigDecimal amount,
+                        String currency,
+                        String customerId,
+                        String paymentMethod,
+                        String pixQrCode,
+                        String pixCopyPaste,
+                        String boletoUrl,
+                        String boletoBarcode) {
+                public PaymentResult toPaymentResult() {
+                        return new PaymentResult(externalId, status, paymentMethod, pixQrCode, pixCopyPaste,
+                                        boletoUrl, boletoBarcode, amount, externalReference, customerId, currency);
+                }
         }
 }
