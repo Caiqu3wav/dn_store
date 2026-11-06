@@ -19,14 +19,15 @@ const EMPTY_DELIVERY: DeliveryData = {
 };
 
 const EMPTY_PAYMENT: PaymentData = {
-    method: 'CREDIT_CARD',
+    method: 'PIX',
     cpfCnpj: '',
-    installments: 1,
-    card: { holderName: '', number: '', expiryMonth: '', expiryYear: '', ccv: '' },
+    idempotencyKey: '',
 };
 
 interface PaymentResult {
     status: string;
+    paymentMethod: PaymentData['method'];
+    amount?: number;
     pixQrCode?: string;
     pixCopyPaste?: string;
     boletoUrl?: string;
@@ -55,6 +56,25 @@ export default function CheckoutPage() {
         }
     }, [authLoading, router, user]);
 
+    useEffect(() => {
+        if (authLoading || !user) return;
+        const savedOrderId = sessionStorage.getItem('dn-store-payment-order');
+        if (!savedOrderId) return;
+
+        api.get(`/payment/order/${savedOrderId}`)
+            .then(({ data }) => {
+                setOrderId(savedOrderId);
+                setPaymentResult(data as PaymentResult);
+                if (items.length > 0) setConfirmedItems(items);
+                setConfirmedTotal(data.amount ?? total);
+                setStep(3);
+            })
+            .catch(() => {
+                setOrderId(savedOrderId);
+                setStep(2);
+            });
+    }, [authLoading, items, total, user]);
+
     if (authLoading || !user) {
         return (
             <div className="min-h-screen bg-gray-50 pt-32 text-center text-gray-600">
@@ -63,7 +83,7 @@ export default function CheckoutPage() {
         );
     }
 
-    if (items.length === 0 && step !== 3) {
+    if (items.length === 0 && step !== 3 && !orderId) {
         return (
             <div className="min-h-screen bg-gray-50 pt-32 pb-20 text-center">
                 <h1 className="text-3xl font-bold mb-4 text-brand-primary">Seu carrinho está vazio</h1>
@@ -74,39 +94,35 @@ export default function CheckoutPage() {
         );
     }
 
-    const handleConfirmPayment = async (): Promise<PaymentResult | null> => {
+    const handleConfirmPayment = async (idempotencyKey: string): Promise<PaymentResult | null> => {
         try {
-            const orderRes = await api.post('/orders', {
-                zipCode: delivery.zipCode.replace(/\D/g, ''),
-                street: delivery.street,
-                number: delivery.number,
-                complement: delivery.complement,
-                neighborhood: delivery.neighborhood,
-                city: delivery.city,
-                state: delivery.state,
-                shippingType: shipping?.typeName,
-            });
-            const order = orderRes.data;
-            setOrderId(order.id);
+            let currentOrderId = orderId;
+            if (!currentOrderId) {
+                const orderRes = await api.post('/orders', {
+                    zipCode: delivery.zipCode.replace(/\D/g, ''),
+                    street: delivery.street,
+                    number: delivery.number,
+                    complement: delivery.complement,
+                    neighborhood: delivery.neighborhood,
+                    city: delivery.city,
+                    state: delivery.state,
+                    shippingType: shipping?.typeName,
+                });
+                currentOrderId = orderRes.data.id as string;
+                setOrderId(currentOrderId);
+                sessionStorage.setItem('dn-store-payment-order', currentOrderId);
+            }
 
             const paymentRes = await api.post('/payment/init', {
-                orderId: order.id,
+                orderId: currentOrderId,
+                idempotencyKey,
                 paymentMethod: payment.method,
                 cpfCnpj: payment.cpfCnpj.replace(/\D/g, ''),
-                installments: payment.installments,
-                card: (payment.method === 'CREDIT_CARD' || payment.method === 'DEBIT_CARD')
-                    ? {
-                        holderName: payment.card.holderName,
-                        number: payment.card.number.replace(/\s/g, ''),
-                        expiryMonth: payment.card.expiryMonth,
-                        expiryYear: payment.card.expiryYear,
-                        ccv: payment.card.ccv,
-                    }
-                    : null,
+                installments: null,
             });
 
-            setConfirmedItems([...items]);
-            setConfirmedTotal(total);
+            if (items.length > 0) setConfirmedItems([...items]);
+            setConfirmedTotal(paymentRes.data.amount ?? total);
             clearCart();
 
             return paymentRes.data as PaymentResult;
@@ -164,7 +180,6 @@ export default function CheckoutPage() {
                             <StepPayment
                                 data={payment}
                                 onChange={setPayment}
-                                total={total + (shipping?.cost ?? 0)}
                                 onConfirm={handleConfirmPayment}
                                 onNext={(result) => {
                                     setPaymentResult(result);
@@ -176,8 +191,15 @@ export default function CheckoutPage() {
                         {step === 3 && paymentResult && (
                             <StepConfirmation
                                 orderId={orderId}
-                                paymentMethod={payment.method}
+                                paymentMethod={paymentResult.paymentMethod}
                                 result={paymentResult}
+                                onRetry={() => {
+                                    setPayment(current => ({
+                                        ...current,
+                                        idempotencyKey: crypto.randomUUID(),
+                                    }));
+                                    setStep(2);
+                                }}
                             />
                         )}
                     </div>

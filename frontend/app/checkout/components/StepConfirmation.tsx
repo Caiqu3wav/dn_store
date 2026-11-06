@@ -8,6 +8,7 @@ import api from '@/lib/axios';
 
 interface PaymentResult {
     status: string;
+    orderStatus?: string;
     pixQrCode?: string;
     pixCopyPaste?: string;
     boletoUrl?: string;
@@ -18,15 +19,23 @@ interface Props {
     orderId: string;
     paymentMethod: string;
     result: PaymentResult;
+    onRetry: () => void;
 }
 
-export function StepConfirmation({ orderId, paymentMethod, result }: Props) {
+export function StepConfirmation({ orderId, paymentMethod, result, onRetry }: Props) {
     const [status, setStatus] = useState(result.status);
+    const [orderStatus, setOrderStatus] = useState(result.orderStatus);
     const [copied, setCopied] = useState(false);
+
+    useEffect(() => {
+        if (status === 'PAID') {
+            sessionStorage.removeItem('dn-store-payment-order');
+        }
+    }, [status]);
 
     // Polling para Pix e Boleto — máx 36 tentativas (3 min)
     useEffect(() => {
-        if (status === 'PAID' || paymentMethod === 'CREDIT_CARD' || paymentMethod === 'DEBIT_CARD') return;
+        if (status === 'PAID') return;
 
         let attempts = 0;
         const MAX_ATTEMPTS = 36;
@@ -36,7 +45,8 @@ export function StepConfirmation({ orderId, paymentMethod, result }: Props) {
             try {
                 const { data } = await api.get(`/payment/order/${orderId}`);
                 setStatus(data.status);
-                if (data.status === 'PAID' || data.status === 'FAILED') {
+                setOrderStatus(data.orderStatus);
+                if (data.status === 'PAID' || data.status === 'FAILED' || data.status === 'REFUNDED') {
                     clearInterval(interval);
                 }
             } catch {
@@ -58,8 +68,12 @@ export function StepConfirmation({ orderId, paymentMethod, result }: Props) {
         return (
             <div className="text-center space-y-4 py-8">
                 <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
-                <h2 className="text-2xl font-black text-brand-primary">Pagamento Confirmado!</h2>
-                <p className="text-gray-500">Seu pedido foi aprovado e está sendo preparado.</p>
+                <h2 className="text-2xl font-black text-brand-primary">Pagamento Confirmado</h2>
+                <p className="text-gray-500">
+                    {orderStatus === 'PAYMENT_REVIEW' || orderStatus === 'EXPIRED'
+                        ? 'O pedido precisa de análise da loja. Ele não será preparado automaticamente.'
+                        : 'Seu pedido foi aprovado.'}
+                </p>
                 <p className="text-xs text-gray-400">Pedido #{orderId}</p>
                 <Link
                     href="/"
@@ -75,11 +89,25 @@ export function StepConfirmation({ orderId, paymentMethod, result }: Props) {
         return (
             <div className="text-center space-y-4 py-8">
                 <XCircle className="w-16 h-16 text-red-500 mx-auto" />
-                <h2 className="text-2xl font-black text-brand-primary">Pagamento Recusado</h2>
-                <p className="text-gray-500">Verifique os dados do cartão ou tente outro método.</p>
-                <Link href="/checkout" className="inline-block mt-4 border-2 border-brand-primary text-brand-primary font-bold px-8 py-4 rounded-xl hover:bg-gray-50 transition-colors">
-                    Tentar Novamente
-                </Link>
+                <h2 className="text-2xl font-black text-brand-primary">
+                    {orderStatus === 'EXPIRED' || orderStatus === 'CANCELLED'
+                        ? 'Prazo para pagamento encerrado'
+                        : 'Pagamento Recusado'}
+                </h2>
+                {orderStatus === 'EXPIRED' || orderStatus === 'CANCELLED' ? (
+                    <p className="text-gray-500">Este pedido não pode ser reativado. Inicie um novo checkout.</p>
+                ) : (
+                    <>
+                        <p className="text-gray-500">Tente novamente no mesmo pedido ou selecione outra forma de pagamento.</p>
+                        <button
+                            type="button"
+                            onClick={onRetry}
+                            className="inline-block mt-4 border-2 border-brand-primary text-brand-primary font-bold px-8 py-4 rounded-xl hover:bg-gray-50 transition-colors"
+                        >
+                            Tentar Novamente
+                        </button>
+                    </>
+                )}
             </div>
         );
     }
@@ -90,6 +118,18 @@ export function StepConfirmation({ orderId, paymentMethod, result }: Props) {
                 <div className="w-8 h-8 rounded-full bg-brand-primary text-white flex items-center justify-center text-sm font-bold">3</div>
                 <h2 className="text-xl font-bold text-brand-primary">Finalizar Pagamento</h2>
             </div>
+
+            {['CREATING', 'RECONCILIATION_REQUIRED'].includes(status) && (
+                <div role="status" className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    Estamos confirmando o resultado com o provedor. Não tente pagar novamente enquanto essa verificação estiver em andamento.
+                </div>
+            )}
+
+            {['REFUND_REQUESTED', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(status) && (
+                <div role="status" className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                    O pagamento está em processo de estorno ou foi estornado. A situação logística do pedido não é alterada automaticamente.
+                </div>
+            )}
 
             {/* Pix */}
             {paymentMethod === 'PIX' && result.pixQrCode && (
@@ -166,14 +206,6 @@ export function StepConfirmation({ orderId, paymentMethod, result }: Props) {
                 </div>
             )}
 
-            {/* Cartão pendente (análise de risco) */}
-            {(paymentMethod === 'CREDIT_CARD' || paymentMethod === 'DEBIT_CARD') && status === 'PENDING' && (
-                <div className="text-center space-y-4 py-8">
-                    <Loader2 className="w-12 h-12 animate-spin text-brand-secondary mx-auto" />
-                    <h3 className="text-lg font-bold text-brand-primary">Analisando pagamento...</h3>
-                    <p className="text-sm text-gray-500">Isso pode levar alguns instantes.</p>
-                </div>
-            )}
         </div>
     );
 }
