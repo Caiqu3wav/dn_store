@@ -1,3 +1,6 @@
+"use client";
+
+import React, { useEffect } from "react";
 import Image from "next/image";
 import { Instagram } from "lucide-react";
 
@@ -7,39 +10,50 @@ const INSTAGRAM_MTB_URL =
 const INSTAGRAM_STORE_URL =
   "https://www.instagram.com/lojadesafionatureza/";
 
-const postsMTB: {
-  id: number;
-  image: string;
-}[] = [];
-
-const postsStore: {
-  id: number;
-  image: string;
-}[] = [];
-
 export default function InstagramSection() {
+  // Carrega os scripts do Elfsight e do Behold no navegador de forma assíncrona
+  useEffect(() => {
+    // 1. Script do Elfsight
+    const elfsightScript = document.createElement("script");
+    elfsightScript.src = "https://elfsightcdn.com/platform.js";
+    elfsightScript.async = true;
+    document.body.appendChild(elfsightScript);
+
+    // 2. Script do Behold
+    if (!window.__bhldScript) {
+      window.__bhldScript = true;
+      const beholdScript = document.createElement("script");
+      beholdScript.type = "module";
+      beholdScript.src = "https://w.behold.so/widget.js";
+      document.head.appendChild(beholdScript);
+    }
+
+    return () => {
+      if (document.body.contains(elfsightScript)) {
+        document.body.removeChild(elfsightScript);
+      }
+    };
+  }, []);
+
   return (
     <section className="w-full bg-white py-16 md:py-20">
-
       <div className="mx-auto w-full max-w-7xl px-5 md:px-8">
+        
+        {/* Título Principal */}
+        <h2
+          className="mb-4 text-center text-2xl text-black sm:text-4xl"
+          style={{ fontFamily: "DN" }}
+        >
+          FALA BIKER! SIGA NOSSAS REDES SOCIAIS
+        </h2>
 
-{/* Título */}
-          <h2
-            className="mb-4 text-center text-2xl text-black sm:text-4xl"
-            style={{ fontFamily: "DN" }}
-          >
-            FALA BIKER! SIGA NOSSAS REDES SOCIAIS
-          </h2>
         {/* ========================================= */}
-        {/* INSTAGRAM - DESAFIO NATUREZA MTB */}
+        {/* INSTAGRAM - DESAFIO NATUREZA MTB (Elfsight) */}
         {/* ========================================= */}
 
         <div>
-
-          {/* Cabeçalho */}
+          {/* Cabeçalho MTB */}
           <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
-
-            {/* Perfil */}
             <a
               href={INSTAGRAM_MTB_URL}
               target="_blank"
@@ -55,17 +69,13 @@ export default function InstagramSection() {
               </div>
 
               <div>
-                <p className="text-sm text-neutral-500">
-                  Instagram
-                </p>
-
+                <p className="text-sm text-neutral-500">Instagram</p>
                 <p className="text-lg font-semibold text-neutral-900 transition-colors group-hover:text-[#c70808]">
                   @desafionaturezamtb
                 </p>
               </div>
             </a>
 
-            {/* Botão Seguir */}
             <a
               href={INSTAGRAM_MTB_URL}
               target="_blank"
@@ -74,53 +84,30 @@ export default function InstagramSection() {
             >
               Seguir
             </a>
-
           </div>
 
-          {/* Mural MTB */}
-          {postsMTB.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:gap-3">
-
-              {postsMTB.map((post) => (
-                <a
-                  key={post.id}
-                  href={INSTAGRAM_MTB_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group relative aspect-square overflow-hidden bg-neutral-100"
-                >
-                  <Image
-                    src={post.image}
-                    alt="Publicação do Desafio Natureza MTB"
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                </a>
-              ))}
-
-            </div>
-          )}
-
+          {/* Mural MTB com o widget do Elfsight */}
+          <div className="w-full">
+            <div 
+              className="elfsight-app-4d0b64ad-46aa-4076-8c2d-d08b0fcc2df5 w-full" 
+              data-elfsight-app-lazy
+            />
+          </div>
         </div>
 
+        {/* ========================================= */}
+        {/* ESPAÇAMENTO ENTRE OS DOIS                  */}
+        {/* ========================================= */}
+
+        <div className="my-5 border-t border-neutral-200" />
 
         {/* ========================================= */}
-        {/* ESPAÇAMENTO ENTRE OS DOIS */}
-        {/* ========================================= */}
-
-        <div className="my-20 border-t border-neutral-200" />
-
-
-        {/* ========================================= */}
-        {/* INSTAGRAM - DN STORE */}
+        {/* INSTAGRAM - DN STORE (Behold)             */}
         {/* ========================================= */}
 
         <div>
-
-          {/* Cabeçalho */}
+          {/* Cabeçalho LOJA */}
           <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
-
-            {/* Perfil */}
             <a
               href={INSTAGRAM_STORE_URL}
               target="_blank"
@@ -136,17 +123,13 @@ export default function InstagramSection() {
               </div>
 
               <div>
-                <p className="text-sm text-neutral-500">
-                  Instagram
-                </p>
-
+                <p className="text-sm text-neutral-500">Instagram</p>
                 <p className="text-lg font-semibold text-neutral-900 transition-colors group-hover:text-[#c70808]">
                   @lojadesafionatureza
                 </p>
               </div>
             </a>
 
-            {/* Botão Seguir */}
             <a
               href={INSTAGRAM_STORE_URL}
               target="_blank"
@@ -155,43 +138,20 @@ export default function InstagramSection() {
             >
               Seguir
             </a>
-
           </div>
 
-
-
-          {/* Mural Store */}
-          {postsStore.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:gap-3">
-
-              {postsStore.map((post) => (
-                <a
-                  key={post.id}
-                  href={INSTAGRAM_STORE_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group relative aspect-square overflow-hidden bg-neutral-100"
-                >
-                  <Image
-                    src={post.image}
-                    alt="Publicação da DN Store"
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                </a>
-              ))}
-
-            </div>
-          )}
-
+          {/* Mural da Loja com Behold */}
+          <div className="w-full">
+            {/* @ts-ignore */}
+            <behold-widget feed-id="6OwnBAUKXZiiO0rEiWyn"></behold-widget>
+          </div>
         </div>
 
-
         {/* ========================================= */}
-        {/* PATROCÍNIO E APOIO */}
+        {/* PATROCÍNIO E APOIO                         */}
         {/* ========================================= */}
 
-        <div className="mt-16 flex justify-center">
+        <div className="mt-20 flex justify-center">
           <Image
             src="/assets/patrocinio.png"
             alt="Patrocínio e Apoio - Desafio Natureza"
@@ -202,7 +162,6 @@ export default function InstagramSection() {
         </div>
 
       </div>
-
     </section>
   );
 }
