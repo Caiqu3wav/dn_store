@@ -177,6 +177,10 @@ Gerenciamento do catálogo de produtos. A visualização é pública, mas as mod
 | :--- | :--- | :--- | :--- |
 | `GET` | `/` | Pública | Lista todos os produtos cadastrados. Suporta busca (`search`), preço mínimo/máximo (`minPrice`/`maxPrice`) e ordenação (`sortBy`). |
 | `GET` | `/{id}` | Pública | Retorna os detalhes de um produto específico pelo UUID. |
+| `GET` | `/admin` | Requer `ADMIN` | Lista produtos para o painel; aceita `search`, `categoryId`, `color`, `minPrice` e `maxPrice`. |
+| `GET` | `/admin/default-rules` | Requer `ADMIN` | Lista padrões persistentes de produto. |
+| `POST` | `/admin/default-rules` | Requer `ADMIN` | Cria e aplica um padrão aos produtos correspondentes, exceto os IDs informados, e salva a regra para novos produtos. |
+| `DELETE` | `/admin/default-rules/{id}` | Requer `ADMIN` | Remove a regra sem reverter os produtos já alterados. |
 | `POST` | `/` | Requer `ADMIN` | Cria um novo produto físico. |
 | `PUT` | `/{id}` | Requer `ADMIN` | Atualiza os dados de um produto existente (incluindo imagens). |
 | `DELETE` | `/{id}` | Requer `ADMIN` | Remove um produto do sistema. |
@@ -211,6 +215,37 @@ Ao criar ou editar um produto, envie o JSON contendo os dados e a lista de URLs 
 
 `weight` deve ser informado em quilogramas (kg); `width`, `height` e `depth`
 devem ser informados em centímetros (cm), como esperado pelo cálculo de frete.
+
+### Padrões em massa
+
+O painel `/admin/produtos` permite criar regras com filtros combinados por trecho
+do nome, categoria, cor e faixa de preço. Os campos não informados no padrão
+permanecem inalterados. A regra é aplicada aos produtos existentes que atendam
+aos filtros, exceto os IDs em `excludedProductIds`, e também a novos produtos
+que corresponderem aos mesmos filtros.
+
+Exemplo de `POST /api/products/admin/default-rules`:
+
+```json
+{
+  "name": "Camisas DN Ciclismo",
+  "criteria": {
+    "nameContains": "Camisa DN Ciclismo"
+  },
+  "values": {
+    "weight": 0.5,
+    "width": 30,
+    "height": 40,
+    "depth": 60,
+    "sizes": ["P", "M", "G"]
+  },
+  "excludedProductIds": ["00000000-0000-0000-0000-000000000001"]
+}
+```
+
+Tamanhos ausentes são adicionados sem remover os existentes. O estoque de
+variantes existentes é preservado; novas variantes começam com estoque zero.
+Ao remover uma regra, os produtos que já foram alterados não são revertidos.
 
 ---
 

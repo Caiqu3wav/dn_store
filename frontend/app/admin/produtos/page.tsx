@@ -7,11 +7,14 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { fetcher, productService } from '@/services/productService';
 import { Category, Product } from '@/types';
+import ProductDefaultsManager from './ProductDefaultsManager';
+import { productColorOptions } from '@/utils/productColor';
 
 export default function AdminProductsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [categoryId, setCategoryId] = useState('');
+    const [color, setColor] = useState('');
     const [minPrice, setMinPrice] = useState('');
     const [maxPrice, setMaxPrice] = useState('');
     const { data: categories } = useSWR<Category[]>('/categories', fetcher);
@@ -19,6 +22,7 @@ export default function AdminProductsPage() {
     const productQuery = new URLSearchParams();
     if (searchTerm) productQuery.set('search', searchTerm);
     if (categoryId) productQuery.set('categoryId', categoryId);
+    if (color) productQuery.set('color', color);
     if (minPrice) productQuery.set('minPrice', minPrice);
     if (maxPrice) productQuery.set('maxPrice', maxPrice);
 
@@ -28,9 +32,10 @@ export default function AdminProductsPage() {
     );
 
     const filteredProducts = productsData || [];
-    const activeFilters = [categoryId, minPrice, maxPrice].filter(Boolean).length;
+    const activeFilters = [categoryId, color, minPrice, maxPrice].filter(Boolean).length;
     const resetFilters = () => {
         setCategoryId('');
+        setColor('');
         setMinPrice('');
         setMaxPrice('');
     };
@@ -64,6 +69,13 @@ export default function AdminProductsPage() {
                     <p className="mt-1 text-sm text-gray-400">Gerencie preços, estoque e disponibilidade.</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex">
+                    <ProductDefaultsManager
+                        products={filteredProducts}
+                        loading={isLoading}
+                        categories={categories || []}
+                        filters={{ search: searchTerm, categoryId, color, minPrice, maxPrice }}
+                        onApplied={() => { void mutate(); }}
+                    />
                     <Link href="/admin/produtos/lote" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/15 px-3 text-sm font-medium text-gray-200 transition hover:bg-white/5 sm:px-4">
                         Upload em lote
                     </Link>
@@ -83,11 +95,17 @@ export default function AdminProductsPage() {
                         <Filter className="h-4 w-4" /> Filtros{activeFilters > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-brand-secondary px-1 text-xs font-bold text-white">{activeFilters}</span>}
                     </button>
                 </div>
-                {filtersOpen && <div className="grid grid-cols-1 gap-3 rounded-lg border border-white/10 bg-[#222325] p-3 sm:grid-cols-3">
+                {filtersOpen && <div className="grid grid-cols-1 gap-3 rounded-lg border border-white/10 bg-[#222325] p-3 sm:grid-cols-2 lg:grid-cols-4">
                     <label className="space-y-1 text-xs text-gray-400">Categoria
                         <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="min-h-10 w-full rounded-md border border-white/10 bg-[#1A1B1D] px-3 text-sm text-white">
                             <option value="">Todas as categorias</option>
                             {categories?.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
+                        </select>
+                    </label>
+                    <label className="space-y-1 text-xs text-gray-400">Cor
+                        <select value={color} onChange={e => setColor(e.target.value)} className="min-h-10 w-full rounded-md border border-white/10 bg-[#1A1B1D] px-3 text-sm text-white">
+                            <option value="">Todas as cores</option>
+                            {productColorOptions.map(option => <option key={option} value={option}>{option}</option>)}
                         </select>
                     </label>
                     <label className="space-y-1 text-xs text-gray-400">Preço mínimo
@@ -96,7 +114,7 @@ export default function AdminProductsPage() {
                     <label className="space-y-1 text-xs text-gray-400">Preço máximo
                         <input type="number" min="0" step="0.01" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="Sem limite" className="min-h-10 w-full rounded-md border border-white/10 bg-[#1A1B1D] px-3 text-sm text-white placeholder-gray-500" />
                     </label>
-                    {activeFilters > 0 && <button type="button" onClick={resetFilters} className="inline-flex items-center gap-1 text-left text-xs font-medium text-brand-secondary hover:text-red-300 sm:col-span-3"><X className="h-3.5 w-3.5" /> Limpar filtros</button>}
+                    {activeFilters > 0 && <button type="button" onClick={resetFilters} className="inline-flex items-center gap-1 text-left text-xs font-medium text-brand-secondary hover:text-red-300 sm:col-span-2 lg:col-span-4"><X className="h-3.5 w-3.5" /> Limpar filtros</button>}
                 </div>}
             </section>
 

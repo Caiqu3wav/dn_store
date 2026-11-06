@@ -40,6 +40,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ProductVariantRepository productVariantRepository;
+    private final ProductDefaultsService productDefaultsService;
 
     // --- R: Read ---
     public List<Product> findAll() {
@@ -61,7 +62,7 @@ public class ProductService {
             BigDecimal minPrice,
             BigDecimal maxPrice,
             String sortBy) {
-        return search(search, categoryId, minPrice, maxPrice, sortBy, true)
+        return search(search, categoryId, minPrice, maxPrice, sortBy, null, true)
                 .stream()
                 .map(ProductResponse::from)
                 .toList();
@@ -74,7 +75,18 @@ public class ProductService {
             BigDecimal minPrice,
             BigDecimal maxPrice,
             String sortBy) {
-        return search(search, categoryId, minPrice, maxPrice, sortBy, false)
+        return searchForAdminResponses(search, categoryId, minPrice, maxPrice, sortBy, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductResponse> searchForAdminResponses(
+            String search,
+            UUID categoryId,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            String sortBy,
+            String color) {
+        return search(search, categoryId, minPrice, maxPrice, sortBy, color, false)
                 .stream()
                 .map(ProductResponse::from)
                 .toList();
@@ -95,13 +107,15 @@ public class ProductService {
     public Product create(Product product) {
         normalizeProductColor(product);
         validateProduct(product);
-        prepareVariants(product);
 
         if (product.getCategory() != null && product.getCategory().getId() != null) {
             Category cat = categoryRepository.findById(product.getCategory().getId())
                     .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
             product.setCategory(cat);
         }
+        productDefaultsService.applyRulesToNewProduct(product);
+        validateProduct(product);
+        prepareVariants(product);
         if (product.getImages() != null) {
             for (ProductImage img : product.getImages()) {
                 img.setProduct(product);
@@ -121,12 +135,14 @@ public class ProductService {
         for (Product product : products) {
             normalizeProductColor(product);
             validateProduct(product);
-            prepareVariants(product);
             if (product.getCategory() != null && product.getCategory().getId() != null) {
                 Category cat = categoryRepository.findById(product.getCategory().getId())
                         .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada."));
                 product.setCategory(cat);
             }
+            productDefaultsService.applyRulesToNewProduct(product);
+            validateProduct(product);
+            prepareVariants(product);
             if (product.getImages() != null) {
                 for (ProductImage img : product.getImages()) {
                     img.setProduct(product);
@@ -293,7 +309,7 @@ public class ProductService {
             BigDecimal minPrice,
             BigDecimal maxPrice,
             String sortBy) {
-        return search(search, categoryId, minPrice, maxPrice, sortBy, true);
+        return search(search, categoryId, minPrice, maxPrice, sortBy, null, true);
     }
 
     public List<Product> searchForAdmin(
@@ -302,7 +318,7 @@ public class ProductService {
             BigDecimal minPrice,
             BigDecimal maxPrice,
             String sortBy) {
-        return search(search, categoryId, minPrice, maxPrice, sortBy, false);
+        return search(search, categoryId, minPrice, maxPrice, sortBy, null, false);
     }
 
     private List<Product> search(
@@ -311,6 +327,7 @@ public class ProductService {
             BigDecimal minPrice,
             BigDecimal maxPrice,
             String sortBy,
+            String color,
             boolean activeOnly) {
         Specification<Product> spec = Specification.where(null);
         if (activeOnly) {
@@ -318,8 +335,12 @@ public class ProductService {
         }
 
         if (search != null && !search.isBlank()) {
+            String escapedSearch = search.toLowerCase(java.util.Locale.ROOT)
+                    .replace("\\", "\\\\")
+                    .replace("%", "\\%")
+                    .replace("_", "\\_");
             spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("name")),
-                    "%" + search.toLowerCase(java.util.Locale.ROOT) + "%"));
+                    "%" + escapedSearch + "%", '\\'));
         }
 
         if (categoryId != null) {
@@ -332,6 +353,11 @@ public class ProductService {
 
         if (maxPrice != null) {
             spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("price"), maxPrice));
+        }
+
+        if (color != null && !color.isBlank()) {
+            spec = spec.and((root, query, cb) -> cb.equal(
+                    cb.lower(root.get("color")), color.trim().toLowerCase(java.util.Locale.ROOT)));
         }
 
         Sort sort = Sort.unsorted();

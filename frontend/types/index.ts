@@ -42,6 +42,45 @@ export interface Product {
   tag?: string;
 }
 
+export interface ProductDefaultRuleCriteria {
+  nameContains?: string | null;
+  categoryId?: string | null;
+  color?: string | null;
+  minPrice?: number | null;
+  maxPrice?: number | null;
+}
+
+export interface ProductDefaultRuleValues {
+  name?: string | null;
+  description?: string | null;
+  price?: number | null;
+  promotionalPrice?: number | null;
+  clearPromotionalPrice?: boolean;
+  active?: boolean | null;
+  color?: string | null;
+  clearColor?: boolean;
+  categoryId?: string | null;
+  clearCategory?: boolean;
+  weight?: number | null;
+  width?: number | null;
+  height?: number | null;
+  depth?: number | null;
+  sizes?: string[] | null;
+}
+
+export interface ProductDefaultRuleRequest {
+  name: string;
+  criteria: ProductDefaultRuleCriteria;
+  values: ProductDefaultRuleValues;
+  excludedProductIds: string[];
+}
+
+export interface ProductDefaultRule extends ProductDefaultRuleRequest {
+  id: string;
+  updatedProducts: number;
+  createdAt: string;
+}
+
 export interface User {
   id: string;
   name: string;
