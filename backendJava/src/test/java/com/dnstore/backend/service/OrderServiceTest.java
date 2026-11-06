@@ -55,6 +55,9 @@ class OrderServiceTest {
         @Mock
         private OrderInventoryService orderInventoryService;
 
+        @Mock
+        private PaymentRepository paymentRepository;
+
         @InjectMocks
         private OrderService orderService;
 
@@ -241,6 +244,59 @@ class OrderServiceTest {
                 assertThatThrownBy(() -> orderService.checkout(user, null, "PAC", null, address.getId()))
                                 .isInstanceOf(ResourceNotFoundException.class)
                                 .hasMessageContaining("Endereço não encontrado");
+        }
+
+        @Test
+        void updateStatus_cancellingWithActivePayment_shouldKeepReservedStock() {
+                Order order = new Order();
+                order.setId(UUID.randomUUID());
+                order.setStatus("PENDING_PAYMENT");
+                Payment payment = new Payment();
+                payment.setStatus("PENDING");
+                when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
+                when(paymentRepository.findByOrder_IdOrderByAttemptNumberDesc(order.getId()))
+                                .thenReturn(List.of(payment));
+
+                assertThatThrownBy(() -> orderService.updateStatus(order.getId(), "CANCELLED"))
+                                .isInstanceOf(ConflictException.class)
+                                .hasMessageContaining("pagamento não reconciliada");
+
+                assertThat(order.getStatus()).isEqualTo("PENDING_PAYMENT");
+                verify(orderInventoryService, never()).releaseReservedStock(order);
+                verify(orderRepository, never()).save(order);
+        }
+
+        @Test
+        void updateStatus_cancellingWithoutPaymentAttempts_shouldReleaseReservedStock() {
+                Order order = new Order();
+                order.setId(UUID.randomUUID());
+                order.setStatus("PENDING_PAYMENT");
+                when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
+                when(paymentRepository.findByOrder_IdOrderByAttemptNumberDesc(order.getId())).thenReturn(List.of());
+                when(orderRepository.save(order)).thenReturn(order);
+
+                assertThat(orderService.updateStatus(order.getId(), "CANCELLED")).contains(order);
+
+                assertThat(order.getStatus()).isEqualTo("CANCELLED");
+                verify(orderInventoryService).releaseReservedStock(order);
+        }
+
+        @Test
+        void updateStatus_cancellingFailedPaymentOrder_shouldReleaseReservedStock() {
+                Order order = new Order();
+                order.setId(UUID.randomUUID());
+                order.setStatus("PAYMENT_FAILED");
+                Payment payment = new Payment();
+                payment.setStatus("FAILED");
+                when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
+                when(paymentRepository.findByOrder_IdOrderByAttemptNumberDesc(order.getId()))
+                                .thenReturn(List.of(payment));
+                when(orderRepository.save(order)).thenReturn(order);
+
+                assertThat(orderService.updateStatus(order.getId(), "CANCELLED")).contains(order);
+
+                assertThat(order.getStatus()).isEqualTo("CANCELLED");
+                verify(orderInventoryService).releaseReservedStock(order);
         }
 
         private PhysicalProduct physicalProduct() {

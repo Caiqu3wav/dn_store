@@ -25,7 +25,7 @@ class OrderControllerSerializationTest {
 
     @BeforeEach
     void setUp() {
-        orderService = new OrderService(null, null, null, null, null, null, null, null) {
+        orderService = new OrderService(null, null, null, null, null, null, null, null, null) {
             @Override
             public List<Order> findAll() {
                 return List.of(createOrder());
