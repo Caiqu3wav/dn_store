@@ -12,6 +12,7 @@ import org.springframework.web.client.RestTemplate;
  * Define Beans que serão gerenciados pelo container do Spring (Injeção de Dependência).
  */
 @Configuration
+@org.springframework.scheduling.annotation.EnableScheduling
 public class BackendConfig {
 
     /**

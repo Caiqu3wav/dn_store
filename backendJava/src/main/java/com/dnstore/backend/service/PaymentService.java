@@ -1,22 +1,20 @@
 package com.dnstore.backend.service;
 
+import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.Payment;
-import com.dnstore.backend.model.enums.OrderStatus;
 import com.dnstore.backend.model.enums.PaymentStatus;
-import com.dnstore.backend.exception.ConflictException;
-import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.repository.OrderRepository;
 import com.dnstore.backend.repository.PaymentRepository;
+import com.dnstore.backend.service.payment.PaymentCreationUncertainException;
 import com.dnstore.backend.service.payment.PaymentGateway;
 import com.dnstore.backend.service.payment.PaymentGatewayException;
+import java.util.Locale;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -25,136 +23,105 @@ public class PaymentService {
     private final PaymentGateway gateway;
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
-    private final OrderInventoryService orderInventoryService;
+    private final PaymentAttemptStateService paymentState;
 
     public PaymentService(
             @Qualifier("asaas") PaymentGateway gateway,
             PaymentRepository paymentRepository,
             OrderRepository orderRepository,
-            OrderInventoryService orderInventoryService) {
+            PaymentAttemptStateService paymentState) {
         this.gateway = gateway;
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
-        this.orderInventoryService = orderInventoryService;
+        this.paymentState = paymentState;
     }
 
-    @Transactional
     public Payment initPayment(
             UUID orderId,
             UUID requestingUserId,
+            String idempotencyKey,
             String cpfCnpj,
             String paymentMethod,
-            Integer installments,
-            PaymentGateway.CardData cardData) {
+            Integer installments) {
+        paymentMethod = paymentMethod == null ? "" : paymentMethod.trim().toUpperCase(Locale.ROOT);
+        if (!"PIX".equals(paymentMethod) && !"BOLETO".equals(paymentMethod)) {
+            throw new IllegalArgumentException("Cartão temporariamente indisponível. Use Pix ou boleto.");
+        }
+        installments = null;
 
-        Order order = orderRepository.findByIdForUpdate(orderId)
+        PaymentAttemptStateService.PreparedAttempt prepared = paymentState.prepareAttempt(
+                orderId, requestingUserId, idempotencyKey, paymentMethod, installments);
+        Payment payment = prepared.payment();
+
+        if (!prepared.newlyCreated()) {
+            return reconcileExistingAttempt(payment);
+        }
+
+        Order order = orderRepository.findByIdWithUser(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido não encontrado."));
-
-        if (!order.getUser().getId().equals(requestingUserId)) {
-            throw new ResourceNotFoundException("Pedido não encontrado.");
-        }
-
-        if (!OrderStatus.PENDING_PAYMENT.name().equals(order.getStatus())) {
-            throw new ConflictException("Pedido não está aguardando pagamento.");
-        }
-
-        if (order.getTotal() == null || order.getTotal().compareTo(java.math.BigDecimal.ZERO) <= 0) {
-            throw new ConflictException("Pedido não possui valor válido para pagamento.");
-        }
-
-        if (paymentRepository.findByOrder_Id(orderId).isPresent()) {
-            throw new ConflictException("Já existe um pagamento iniciado para este pedido.");
-        }
-
-        PaymentGateway.PaymentRequest gatewayRequest = new PaymentGateway.PaymentRequest(
+        PaymentGateway.PaymentRequest request = new PaymentGateway.PaymentRequest(
                 order.getId(),
-                order.getTotal(),
+                payment.getExternalReference(),
+                payment.getAmount(),
                 order.getUser().getName(),
                 order.getUser().getEmail(),
                 cpfCnpj,
                 "Pedido DN Store #" + order.getId(),
                 paymentMethod,
                 installments,
-                cardData);
+                null);
 
-        PaymentGateway.PaymentResult result = gateway.createPayment(gatewayRequest);
-        if (result == null || result.externalId() == null || result.externalId().isBlank()) {
-            throw new PaymentGatewayException("Gateway retornou uma cobrança inválida");
+        try {
+            PaymentGateway.PaymentResult result = gateway.createPayment(request);
+            return paymentState.completeAttempt(payment.getId(), result);
+        } catch (PaymentCreationUncertainException exception) {
+            log.warn("payment.creation.uncertain orderId={} attemptId={}", orderId, payment.getId());
+            return paymentState.markUncertain(payment.getId());
+        } catch (PaymentGatewayException | IllegalArgumentException exception) {
+            paymentState.markDefinitiveFailure(payment.getId());
+            throw exception;
         }
-
-        PaymentStatus paymentStatus = PaymentStatus.valueOf(result.status());
-
-        Payment payment = new Payment();
-
-        payment.setOrder(order);
-        payment.setExternalId(result.externalId());
-        payment.setPaymentMethod(result.paymentMethod() == null ? paymentMethod : result.paymentMethod());
-
-        // O valor vem exclusivamente do banco
-        payment.setAmount(order.getTotal());
-
-        payment.setStatus(paymentStatus.name());
-        payment.setPixQrCode(result.pixQrCode());
-        payment.setPixCopyPaste(result.pixCopyPaste());
-        payment.setBoletoUrl(result.boletoUrl());
-        payment.setBoletoBarcode(result.boletoBarcode());
-        payment.setInstallments(installments);
-
-        return paymentRepository.save(payment);
     }
 
-    @Transactional
+    private Payment reconcileExistingAttempt(Payment payment) {
+        PaymentStatus status = PaymentStatus.valueOf(payment.getStatus());
+        if (status != PaymentStatus.CREATING && status != PaymentStatus.RECONCILIATION_REQUIRED) {
+            return payment;
+        }
+
+        try {
+            PaymentGateway.ProviderPayment found = gateway.findPaymentByReference(payment.getExternalReference());
+            if (found != null) {
+                PaymentGateway.ProviderPayment canonical = gateway.getPayment(found.externalId());
+                return paymentState.completeAttempt(payment.getId(), canonical.toPaymentResult());
+            }
+            if (payment.getCreatedAt() != null
+                    && payment.getCreatedAt().isBefore(java.time.LocalDateTime.now().minusMinutes(1))) {
+                return paymentState.markReconciledFailure(payment.getId());
+            }
+        } catch (PaymentGatewayException exception) {
+            log.warn("payment.reconciliation.unavailable attemptId={}", payment.getId());
+        }
+        return paymentState.markUncertain(payment.getId());
+    }
+
     public void handleWebhook(String rawPayload, String signatureHeader) {
-        PaymentGateway.WebhookResult result = gateway.processWebhook(rawPayload, signatureHeader);
-
-        Payment payment = paymentRepository.findByExternalIdForUpdate(result.externalId())
-                .orElseThrow(() -> {
-                    log.warn("Webhook recebido para pagamento não localizado");
-                    return new ResourceNotFoundException("Pagamento não encontrado.");
-                });
-
-        Order order = orderRepository.findByIdForUpdate(payment.getOrder().getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Pedido não encontrado."));
-        payment.setOrder(order);
-
-        PaymentStatus currentStatus = PaymentStatus.valueOf(payment.getStatus());
-        PaymentStatus nextStatus = PaymentStatus.valueOf(result.normalizedStatus());
-        if (currentStatus == nextStatus || currentStatus == PaymentStatus.REFUNDED
-                || (currentStatus == PaymentStatus.PAID && nextStatus != PaymentStatus.REFUNDED)) {
-            return;
-        }
-
-        if (nextStatus == PaymentStatus.PAID && order.isStockReleased()) {
-            orderInventoryService.reserveReleasedStock(order);
-        } else if (nextStatus == PaymentStatus.FAILED && "PENDING_PAYMENT".equals(order.getStatus())) {
-            orderInventoryService.releaseReservedStock(order);
-        }
-
-        payment.setStatus(nextStatus.name());
-        if (nextStatus == PaymentStatus.PAID && payment.getPaidAt() == null) {
-            payment.setPaidAt(LocalDateTime.now());
-        }
-
-        String nextOrderStatus = nextStatus.orderStatus().name();
-        if (nextStatus != PaymentStatus.PENDING
-                && !nextOrderStatus.equals(payment.getOrder().getStatus())) {
-            payment.getOrder().setStatus(nextOrderStatus);
-            orderRepository.save(payment.getOrder());
-        }
-        paymentRepository.save(payment);
+        PaymentGateway.WebhookResult event = gateway.processWebhook(rawPayload, signatureHeader);
+        PaymentGateway.ProviderPayment providerPayment = gateway.getPayment(event.externalId());
+        paymentState.applyWebhook(event, providerPayment);
     }
 
+    @Transactional(readOnly = true)
     public Payment findByOrderId(UUID orderId) {
-        return paymentRepository.findByOrder_Id(orderId)
+        return paymentRepository.findByOrder_IdOrderByAttemptNumberDesc(orderId).stream()
+                .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Pagamento não encontrado para o pedido."));
     }
 
-    /**
-     * Busca pagamento garantindo que o pedido pertence ao usuário — previne IDOR.
-     */
+    @Transactional(readOnly = true)
     public Payment findByOrderIdAndUser(UUID orderId, UUID userId) {
         Payment payment = findByOrderId(orderId);
-        if (!payment.getOrder().getUser().getId().equals(userId)) {
+        if (payment.getOrder().getUser() == null || !payment.getOrder().getUser().getId().equals(userId)) {
             throw new ResourceNotFoundException("Pagamento não encontrado para o pedido.");
         }
         return payment;
