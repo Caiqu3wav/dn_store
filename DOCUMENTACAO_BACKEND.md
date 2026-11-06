@@ -71,13 +71,19 @@ Para pagamentos, configure também as variáveis do Asaas no mesmo `.env`:
 ```env
 PAYMENT_GATEWAY=asaas
 ASAAS_API_KEY=<chave-gerada-no-ambiente-asaas-escolhido>
-ASAAS_SANDBOX=true
+ASAAS_BASE_URL=https://api-sandbox.asaas.com/v3
 ASAAS_WEBHOOK_TOKEN=<token-configurado-no-webhook>
+PAYMENT_ORDER_EXPIRATION_MINUTES=60
+PAYMENT_EXPIRATION_SCAN_MS=60000
 ```
 
-`ASAAS_SANDBOX=true` usa `https://api-sandbox.asaas.com/v3`; nesse modo, use uma chave criada no ambiente de testes do Asaas. Para produção, use a chave de produção e `ASAAS_SANDBOX=false`. A chave e o ambiente precisam corresponder. Reinicie o backend depois de alterar essas variáveis.
+O padrão de `ASAAS_BASE_URL` é `https://api-sandbox.asaas.com/v3`. Para produção, altere explicitamente para `https://api.asaas.com/v3` e use uma chave de produção correspondente. O token configurado no webhook Asaas deve corresponder a `ASAAS_WEBHOOK_TOKEN`; o endpoint rejeita eventos sem autenticação válida. Nunca use credenciais reais em testes locais.
 
-Se a criação do PIX falhar, consulte o log do backend: ele informa a etapa (consulta/criação de cliente, criação da cobrança ou leitura do QR Code) e, quando disponível, o status HTTP retornado pelo Asaas. A API não devolve o detalhe interno do provedor ao navegador. Verifique também se o CPF/CNPJ informado é válido e se o pedido está com valor positivo. Após criar uma cobrança PIX, o backend busca o QR Code e o código copia-e-cola no endpoint `/payments/{id}/pixQrCode`.
+Pedidos aguardando pagamento expiram após o prazo configurado (60 minutos por padrão). A rotina agendada reconcilia e tenta cancelar cobranças abertas; se o estado do provedor for incerto, preserva o estoque e deixa o pedido sem liberação automática. O cliente pode tentar novamente no mesmo pedido dentro do prazo, mas não é criada outra tentativa enquanto existir cobrança ativa ou em reconciliação. `Idempotency-Key` identifica cada tentativa. Após timeout de criação, aguarde a reconciliação; não force outra cobrança.
+
+O checkout habilita temporariamente apenas Pix e boleto. Cartão permanece desabilitado até existir tokenização ou checkout hospedado validado, para que PAN/CVV não trafeguem pelo frontend e backend da loja.
+
+A migration `V16__support_payment_retries_and_webhooks.sql` adiciona o histórico de tentativas e a deduplicação persistente de webhooks. Ela não foi executada durante o desenvolvimento. Antes de aplicar em qualquer ambiente compartilhado, valide-a em um MySQL descartável compatível, confirme o backup e a estratégia de rollback e confira o histórico do Flyway após a execução. Não altere migrations já aplicadas nem use `ddl-auto=update` como substituto.
 
 Para iniciar o backend, abra o terminal na pasta `backendJava`:
 

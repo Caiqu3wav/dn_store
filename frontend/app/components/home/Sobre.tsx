@@ -41,7 +41,7 @@ export function Sobre({ images }: SobreProps) {
                     
                     {/* Image Area with Carousel */}
                     <div
-                        className="relative h-[400px] lg:h-[600px] w-full rounded-[2rem] overflow-hidden shadow-2xl group"
+                        className="relative h-[500px] lg:h-[750px] w-full rounded-[2rem] overflow-hidden shadow-2xl group"
                         role="region"
                         aria-roledescription="carrossel"
                         aria-label="Imagens da marca Desafio Natureza"
