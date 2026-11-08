@@ -31,12 +31,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.MOCK,
-        args = "--spring.config.location=classpath:/application-integration-local.properties")
+        args = {
+                "--spring.config.location=classpath:/application-integration-local.properties",
+                "--spring.datasource.password=dn_store_it_test_password"
+        })
 @ActiveProfiles("integration-local")
 class PaymentSchemaMySqlIT {
 
@@ -61,6 +65,7 @@ class PaymentSchemaMySqlIT {
     private String orderId;
     private String productId;
     private String variantId;
+    private String shippingQuoteOptionId;
 
     @BeforeEach
     void insertOrderFixture() {
@@ -81,6 +86,7 @@ class PaymentSchemaMySqlIT {
 
     @AfterEach
     void deleteOrderFixture() {
+        jdbc.update("DELETE FROM melhor_envio_oauth_states WHERE state_hash = 'it-state-hash'");
         if (orderId == null) {
             return;
         }
@@ -88,6 +94,9 @@ class PaymentSchemaMySqlIT {
         jdbc.update("DELETE FROM payments WHERE order_id = ?", orderId);
         jdbc.update("DELETE FROM order_items WHERE order_id = ?", orderId);
         jdbc.update("DELETE FROM orders WHERE id = ?", orderId);
+        if (shippingQuoteOptionId != null) {
+            jdbc.update("DELETE FROM shipping_quote_options WHERE id = ?", shippingQuoteOptionId);
+        }
         if (variantId != null) {
             jdbc.update("DELETE FROM product_variants WHERE id = ?", variantId);
         }
@@ -110,9 +119,9 @@ class PaymentSchemaMySqlIT {
 
         flyway.validate();
         assertThat(flyway.info().applied())
-                .hasSize(17)
+                .hasSize(18)
                 .extracting(info -> info.getVersion().getVersion())
-                .containsExactlyElementsOf(IntStream.rangeClosed(1, 17).mapToObj(String::valueOf).toList());
+                .containsExactlyElementsOf(IntStream.rangeClosed(1, 18).mapToObj(String::valueOf).toList());
         assertThat(entityManagerFactory).isNotNull();
         assertThat(entityManagerFactory.isOpen()).isTrue();
         java.util.Map<String, ColumnDefinition> eventColumns = jdbc.query(
@@ -136,6 +145,59 @@ class PaymentSchemaMySqlIT {
                 .containsEntry("image_url", new ColumnDefinition("varchar", 500, "YES"))
                 .containsEntry("registration_url", new ColumnDefinition("varchar", 500, "YES"))
                 .containsEntry("active", new ColumnDefinition("tinyint", null, "NO"));
+    }
+
+    @Test
+    void shippingQuoteOptionsAreOwnedByCustomerAndConsumedByAtMostOneOrder() {
+        shippingQuoteOptionId = id();
+        jdbc.update(
+                "INSERT INTO shipping_quote_options (id, user_id, service_id, service_name, price, delivery_days, "
+                        + "source, provider_environment, origin_zip, destination_zip, cart_fingerprint, quoted_at, "
+                        + "expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, "
+                        + "DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 15 MINUTE))",
+                shippingQuoteOptionId, userId, "1:12", "Correios PAC", new BigDecimal("19.90"), 4,
+                "MELHOR_ENVIO", "sandbox", "01001000", "20040002", "it-fingerprint");
+        jdbc.update(
+                "UPDATE orders SET shipping_type = ?, shipping_service_id = ?, shipping_source = ?, "
+                        + "shipping_cost = ?, shipping_deadline_days = ?, shipping_quote_option_id = ? WHERE id = ?",
+                "Correios PAC", "1:12", "MELHOR_ENVIO", new BigDecimal("19.90"), 4, shippingQuoteOptionId, orderId);
+
+        assertThat(jdbc.queryForObject(
+                "SELECT shipping_cost FROM orders WHERE id = ?", BigDecimal.class, orderId))
+                .isEqualByComparingTo("19.90");
+        assertThat(jdbc.queryForObject(
+                "SELECT service_id FROM shipping_quote_options WHERE id = ?", String.class, shippingQuoteOptionId))
+                .isEqualTo("1:12");
+
+        assertThatThrownBy(() -> jdbc.update(
+                "INSERT INTO orders (id, user_id, address_id, total, status, shipping_quote_option_id) "
+                        + "VALUES (?, ?, ?, ?, ?, ?)",
+                id(), userId, addressId, new BigDecimal("19.90"), OrderStatus.PENDING_PAYMENT.name(),
+                shippingQuoteOptionId))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void oauthStateAndEnvironmentTokenRowsHaveDatabaseUniquenessAndChecks() {
+        jdbc.update(
+                "INSERT INTO melhor_envio_oauth_states (state_hash, environment, expires_at) "
+                        + "VALUES (?, ?, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 10 MINUTE))",
+                "it-state-hash", "sandbox");
+
+        assertThatThrownBy(() -> jdbc.update(
+                "INSERT INTO melhor_envio_oauth_states (state_hash, environment, expires_at) "
+                        + "VALUES (?, ?, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 10 MINUTE))",
+                "it-state-hash", "sandbox"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbc.update(
+                "INSERT INTO melhor_envio_tokens (environment, access_token_ciphertext, "
+                        + "refresh_token_ciphertext, expires_at, refresh_expires_at, token_status) "
+                        + "VALUES (?, ?, ?, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 30 DAY), "
+                        + "DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 45 DAY), ?)",
+                "sandbox", new byte[] { 1, 2, 3 }, new byte[] { 4, 5, 6 }, "INVALID"))
+                .isInstanceOf(DataAccessException.class);
+
+        jdbc.update("DELETE FROM melhor_envio_oauth_states WHERE state_hash = ?", "it-state-hash");
     }
 
     @Test
