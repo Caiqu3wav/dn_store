@@ -8,6 +8,7 @@ import java.math.RoundingMode;
 import java.util.List;
 
 @Component("simulatedShippingGateway")
+@org.springframework.context.annotation.Profile("!prod & !production")
 @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "shipping.gateway", havingValue = "simulated", matchIfMissing = true)
 public class SimulatedShippingGateway implements ShippingGateway {
 
@@ -25,8 +26,10 @@ public class SimulatedShippingGateway implements ShippingGateway {
         BigDecimal extraWeight = totalWeight.subtract(BASE_WEIGHT).max(BigDecimal.ZERO);
 
         return List.of(
-                new ShippingQuote("PAC", calculatePrice(PAC_BASE_PRICE, PAC_EXTRA_KG_PRICE, extraWeight), 5),
-                new ShippingQuote("SEDEX", calculatePrice(SEDEX_BASE_PRICE, SEDEX_EXTRA_KG_PRICE, extraWeight), 2));
+                new ShippingQuote("sim-pac", "PAC",
+                        calculatePrice(PAC_BASE_PRICE, PAC_EXTRA_KG_PRICE, extraWeight), 5, "SIMULATED"),
+                new ShippingQuote("sim-sedex", "SEDEX",
+                        calculatePrice(SEDEX_BASE_PRICE, SEDEX_EXTRA_KG_PRICE, extraWeight), 2, "SIMULATED"));
     }
 
     private BigDecimal calculatePrice(BigDecimal basePrice, BigDecimal extraKgPrice, BigDecimal extraWeight) {
