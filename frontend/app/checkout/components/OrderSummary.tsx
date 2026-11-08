@@ -8,12 +8,13 @@ interface Props {
     items: CartItem[];
     total: number;
     shipping: ShippingOption | null;
+    finalTotal?: number;
 }
 
 const fmt = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-export function OrderSummary({ items, total, shipping }: Props) {
+export function OrderSummary({ items, total, shipping, finalTotal }: Props) {
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sticky top-24 space-y-5">
             <h3 className="font-bold text-brand-primary text-lg">Resumo do Pedido</h3>
@@ -55,10 +56,10 @@ export function OrderSummary({ items, total, shipping }: Props) {
                     <span>Frete</span>
                     <span>{shipping ? fmt(shipping.cost) : 'Informe o CEP'}</span>
                 </div>
-                {shipping && <div className="flex justify-between text-xs text-gray-500"><span>{shipping.typeName} · até {shipping.deadLineDays} dias úteis</span><span>Estimativa</span></div>}
+                {shipping && <div className="flex justify-between text-xs text-gray-500"><span>{shipping.typeName} · até {shipping.deadLineDays} dias úteis</span><span>{shipping.source === 'SIMULATED' ? 'Simulação' : 'Cotado'}</span></div>}
                 <div className="flex justify-between font-black text-base text-brand-primary pt-2 border-t border-gray-100">
                     <span>Total</span>
-                    <span>{fmt(total + (shipping?.cost ?? 0))}</span>
+                    <span>{fmt(finalTotal ?? total + (shipping?.cost ?? 0))}</span>
                 </div>
             </div>
         </div>
