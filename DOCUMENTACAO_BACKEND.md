@@ -79,6 +79,8 @@ PAYMENT_EXPIRATION_SCAN_MS=60000
 
 O padrão de `ASAAS_BASE_URL` é `https://api-sandbox.asaas.com/v3`. Para produção, altere explicitamente para `https://api.asaas.com/v3` e use uma chave de produção correspondente. O token configurado no webhook Asaas deve corresponder a `ASAAS_WEBHOOK_TOKEN`; o endpoint rejeita eventos sem autenticação válida. Nunca use credenciais reais em testes locais.
 
+Em produção, `ASAAS_ENVIRONMENT=production`, a URL e a chave precisam pertencer ao ambiente de produção; a aplicação falha ao iniciar se essa combinação for inválida. O módulo registra transições em histórico financeiro append-only e mantém bloqueios financeiros separados do status comercial. Reembolsos, chargebacks e eventos desconhecidos permanecem bloqueados até reconciliação canônica. A criação da conta, credenciais, URL pública do webhook, HTTPS e homologação controlada continuam dependentes da infraestrutura externa.
+
 Pedidos aguardando pagamento expiram após o prazo configurado (60 minutos por padrão). A rotina agendada reconcilia e tenta cancelar cobranças abertas; se o estado do provedor for incerto, preserva o estoque e deixa o pedido sem liberação automática. O cliente pode tentar novamente no mesmo pedido dentro do prazo, mas não é criada outra tentativa enquanto existir cobrança ativa ou em reconciliação. `Idempotency-Key` identifica cada tentativa. Após timeout de criação, aguarde a reconciliação; não force outra cobrança.
 
 O checkout habilita temporariamente apenas Pix e boleto. Cartão permanece desabilitado até existir tokenização ou checkout hospedado validado, para que PAN/CVV não trafeguem pelo frontend e backend da loja.

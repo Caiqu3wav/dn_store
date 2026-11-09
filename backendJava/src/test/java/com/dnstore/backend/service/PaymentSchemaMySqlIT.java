@@ -69,6 +69,12 @@ class PaymentSchemaMySqlIT {
 
     @BeforeEach
     void insertOrderFixture() {
+        // Recover artifacts from an interrupted local test run without touching non-test rows.
+        jdbc.update("DELETE FROM payment_financial_blocks WHERE payment_id IN "
+                + "(SELECT id FROM payments WHERE external_id LIKE 'it-%')");
+        jdbc.update("DELETE FROM payment_financial_history WHERE payment_id IN "
+                + "(SELECT id FROM payments WHERE external_id LIKE 'it-%')");
+        jdbc.update("DELETE FROM payments WHERE external_id LIKE 'it-%'");
         userId = id();
         addressId = id();
         orderId = id();
@@ -91,6 +97,8 @@ class PaymentSchemaMySqlIT {
             return;
         }
         jdbc.update("DELETE FROM payment_webhook_events WHERE event_id LIKE 'it-%'");
+        jdbc.update("DELETE FROM payment_financial_blocks WHERE order_id = ?", orderId);
+        jdbc.update("DELETE FROM payment_financial_history WHERE order_id = ?", orderId);
         jdbc.update("DELETE FROM payments WHERE order_id = ?", orderId);
         jdbc.update("DELETE FROM order_items WHERE order_id = ?", orderId);
         jdbc.update("DELETE FROM orders WHERE id = ?", orderId);
@@ -118,10 +126,10 @@ class PaymentSchemaMySqlIT {
         }
 
         flyway.validate();
-        assertThat(flyway.info().applied())
-                .hasSize(18)
+                assertThat(flyway.info().applied())
+                .hasSize(22)
                 .extracting(info -> info.getVersion().getVersion())
-                .containsExactlyElementsOf(IntStream.rangeClosed(1, 18).mapToObj(String::valueOf).toList());
+                .containsExactlyElementsOf(IntStream.rangeClosed(1, 22).mapToObj(String::valueOf).toList());
         assertThat(entityManagerFactory).isNotNull();
         assertThat(entityManagerFactory.isOpen()).isTrue();
         java.util.Map<String, ColumnDefinition> eventColumns = jdbc.query(
@@ -323,8 +331,10 @@ class PaymentSchemaMySqlIT {
     private void insertWebhookEvent(String eventId, String externalPaymentId) {
         webhookEventIds.add(eventId);
         jdbc.update(
-                "INSERT INTO payment_webhook_events (event_id, external_payment_id) VALUES (?, ?)",
-                eventId, externalPaymentId);
+                "INSERT INTO payment_webhook_events "
+                        + "(event_id, external_payment_id, event_type, received_at, processing_status, attempt_count) "
+                        + "VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?, ?)",
+                eventId, externalPaymentId, "LEGACY", "PROCESSED", 0);
     }
 
     private void prepareOneReservedInventoryItem() {

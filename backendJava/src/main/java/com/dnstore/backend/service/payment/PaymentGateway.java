@@ -88,14 +88,20 @@ public interface PaymentGateway {
         record WebhookResult(
                         String eventId,
                         String externalId,
+                        String eventType,
                         String normalizedStatus,
                         String externalReference,
                         BigDecimal amount,
                         String currency,
                         String customerId
         ) {
+                public WebhookResult(String eventId, String externalId, String normalizedStatus,
+                                String externalReference, BigDecimal amount, String currency, String customerId) {
+                        this(eventId, externalId, null, normalizedStatus, externalReference, amount, currency, customerId);
+                }
+
                 public WebhookResult(String externalId, String normalizedStatus) {
-                        this("legacy:" + externalId + ":" + normalizedStatus, externalId, normalizedStatus,
+                        this("legacy:" + externalId + ":" + normalizedStatus, externalId, null, normalizedStatus,
                                         null, null, null, null);
                 }
         }

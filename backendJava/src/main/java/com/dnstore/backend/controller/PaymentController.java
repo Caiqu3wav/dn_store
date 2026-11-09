@@ -5,14 +5,15 @@ import com.dnstore.backend.model.User;
 import com.dnstore.backend.model.enums.Role;
 import com.dnstore.backend.exception.ConflictException;
 import com.dnstore.backend.service.PaymentService;
+import com.dnstore.backend.service.PaymentWebhookIngestionService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -21,10 +22,21 @@ import java.util.UUID;
 @Slf4j
 @RestController
 @RequestMapping("/api/payment")
-@RequiredArgsConstructor
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final PaymentWebhookIngestionService webhookIngestion;
+
+    @Autowired
+    public PaymentController(PaymentService paymentService, PaymentWebhookIngestionService webhookIngestion) {
+        this.paymentService = paymentService;
+        this.webhookIngestion = webhookIngestion;
+    }
+
+    /** Compatibility constructor for non-webhook controller unit tests. */
+    public PaymentController(PaymentService paymentService) {
+        this(paymentService, null);
+    }
 
     @PostMapping("/init")
     public ResponseEntity<?> initPayment(
@@ -64,8 +76,8 @@ public class PaymentController {
     public ResponseEntity<Void> webhook(
             @RequestBody String rawPayload,
             @RequestHeader(value = "asaas-access-token", required = false) String signature) {
-        paymentService.handleWebhook(rawPayload, signature);
-        log.info("payment.webhook_processed");
+        webhookIngestion.ingest(rawPayload, signature);
+        log.info("payment.webhook.accepted");
         return ResponseEntity.ok().build();
     }
 
