@@ -6,10 +6,12 @@ import api from '@/lib/axios';
 import axios from 'axios';
 
 export interface ShippingOption {
+    id: string;
+    serviceId: string;
     typeName: string;
     cost: number;
     deadLineDays: number;
-    source: 'SIMULATED' | 'CORREIOS';
+    source: 'SIMULATED' | 'MELHOR_ENVIO' | 'SHIPPING_GATEWAY';
 }
 
 export interface DeliveryData {
@@ -86,7 +88,10 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
             if (quoteResult.status === 'fulfilled') {
                 const options = quoteResult.value.data;
                 setShippingOptions(options);
-                onShippingChange(options[0] ?? null);
+                onShippingChange(null);
+                if (options.length === 0) {
+                    setShippingError('Não há opções de entrega disponíveis para este CEP.');
+                }
             } else {
                 setShippingOptions([]);
                 onShippingChange(null);
@@ -104,7 +109,7 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
         }
     };
 
-    const isValid = data.zipCode && data.street && data.number && data.city && data.state && shipping;
+    const isValid = data.zipCode && data.street && data.number && data.city && data.state && shipping?.id;
     const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', {
         style: 'currency', currency: 'BRL',
     }).format(value);
@@ -216,30 +221,30 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
 
             <section aria-labelledby="shipping-options-title" className="space-y-3">
                 <h3 id="shipping-options-title" className="text-sm font-bold uppercase text-gray-600">Opções de entrega</h3>
-                {loadingCep && <p role="status" className="text-sm text-gray-500">Consultando CEP e estimativas...</p>}
+                {loadingCep && <p role="status" className="text-sm text-gray-500">Consultando opções de entrega...</p>}
                 {shippingError && <p role="alert" className="text-sm text-red-700">{shippingError}</p>}
                 {!loadingCep && shippingOptions.length > 0 && (
-                    <>
-                        <p className="text-xs text-amber-700">Estimativas temporárias para teste. A tarifa oficial dos Correios depende da configuração da API.</p>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            {shippingOptions.map(option => {
-                                const selected = shipping?.typeName === option.typeName;
-                                return (
-                                    <button
-                                        key={option.typeName}
-                                        type="button"
-                                        aria-pressed={selected}
-                                        onClick={() => onShippingChange(option)}
-                                        className={`rounded-lg border p-4 text-left transition ${selected ? 'border-red-700 bg-red-50 ring-1 ring-red-700' : 'border-gray-200 hover:border-gray-400'}`}
-                                    >
-                                        <span className="block font-bold text-gray-900">{option.typeName}</span>
-                                        <span className="mt-1 block text-sm text-gray-600">Até {option.deadLineDays} dias úteis</span>
-                                        <span className="mt-2 block font-semibold text-gray-900">{formatCurrency(option.cost)}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        {shippingOptions.map(option => {
+                            const selected = shipping?.id === option.id;
+                            return (
+                                <button
+                                    key={option.id}
+                                    type="button"
+                                    aria-pressed={selected}
+                                    onClick={() => onShippingChange(option)}
+                                    className={`rounded-lg border p-4 text-left transition ${selected ? 'border-red-700 bg-red-50 ring-1 ring-red-700' : 'border-gray-200 hover:border-gray-400'}`}
+                                >
+                                    <span className="block font-bold text-gray-900">{option.typeName}</span>
+                                    <span className="mt-1 block text-sm text-gray-600">Até {option.deadLineDays} dias úteis</span>
+                                    <span className="mt-2 block font-semibold text-gray-900">{formatCurrency(option.cost)}</span>
+                                    {option.source === 'SIMULATED' && (
+                                        <span className="mt-1 block text-xs text-amber-700">Simulação local; não disponível para compra.</span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
                 )}
             </section>
 

@@ -135,21 +135,6 @@ class PaymentServiceTest {
     }
 
     @Test
-    void handleWebhook_shouldReconcileCanonicalProviderStateBeforeApplying() {
-        PaymentGateway.WebhookResult event = new PaymentGateway.WebhookResult(
-                "evt-1", "charge-1", "PAID", "order:attempt", BigDecimal.TEN, "BRL", "customer-1");
-        PaymentGateway.ProviderPayment canonical = new PaymentGateway.ProviderPayment(
-                "charge-1", "PAID", "order:attempt", BigDecimal.TEN,
-                "BRL", "customer-1", "PIX", null, null, null, null);
-        when(gateway.processWebhook("payload", "signature")).thenReturn(event);
-        when(gateway.getPayment("charge-1")).thenReturn(canonical);
-
-        paymentService.handleWebhook("payload", "signature");
-
-        verify(paymentState).applyWebhook(event, canonical);
-    }
-
-    @Test
     void findByOrderId_shouldReturnLatestAttempt() {
         UUID orderId = UUID.randomUUID();
         Payment latest = new Payment();
@@ -162,12 +147,14 @@ class PaymentServiceTest {
     @Test
     void webhookController_whenTokenInvalid_shouldReturnUnauthorized() throws Exception {
         PaymentService service = mock(PaymentService.class);
-        var controller = new com.dnstore.backend.controller.PaymentController(service);
+        com.dnstore.backend.service.PaymentWebhookIngestionService ingestion =
+                mock(com.dnstore.backend.service.PaymentWebhookIngestionService.class);
+        var controller = new com.dnstore.backend.controller.PaymentController(service, ingestion);
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
         doThrow(new com.dnstore.backend.service.payment.WebhookAuthenticationException())
-                .when(service).handleWebhook(anyString(), anyString());
+                .when(ingestion).ingest(anyString(), anyString());
 
         mockMvc.perform(MockMvcRequestBuilders.post("/api/payment/webhook")
                         .content("{}")

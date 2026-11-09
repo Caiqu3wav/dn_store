@@ -101,7 +101,7 @@ class DeliveryServiceTest {
                 new ShippingQuote("PAC", new BigDecimal("25.90"), 5),
                 new ShippingQuote("SEDEX", new BigDecimal("42.50"), 2)));
 
-        ShippingQuote pac = deliveryService.calculateShipping("12500000", List.of(item("1", "1", "1", "1", 1)), "pac");
+        ShippingQuote pac = deliveryService.calculateShipping("12500000", List.of(item("1", "1", "1", "1", 1)), "PAC");
         ShippingQuote sedex = deliveryService.calculateShipping("12500000", List.of(item("1", "1", "1", "1", 1)),
                 "SEDEX");
 

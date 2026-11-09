@@ -5,30 +5,44 @@ import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.Payment;
 import com.dnstore.backend.model.PaymentWebhookEvent;
+import com.dnstore.backend.model.PaymentFinancialHistory;
+import com.dnstore.backend.model.FinancialBlock;
 import com.dnstore.backend.model.enums.OrderStatus;
 import com.dnstore.backend.model.enums.PaymentStatus;
+import com.dnstore.backend.model.enums.PaymentTransitionPolicy;
+import com.dnstore.backend.model.enums.PaymentTransitionResult;
 import com.dnstore.backend.repository.OrderRepository;
 import com.dnstore.backend.repository.PaymentRepository;
 import com.dnstore.backend.repository.PaymentWebhookEventRepository;
+import com.dnstore.backend.repository.PaymentFinancialHistoryRepository;
+import com.dnstore.backend.repository.FinancialBlockRepository;
 import com.dnstore.backend.service.payment.PaymentGateway;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentAttemptStateService {
 
+    private static final Pattern IDEMPOTENCY_KEY_PATTERN = Pattern.compile("[A-Za-z0-9._~-]{1,64}");
+
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
     private final PaymentWebhookEventRepository webhookEventRepository;
+    @Autowired(required = false)
+    private PaymentFinancialHistoryRepository historyRepository;
+    @Autowired(required = false)
+    private FinancialBlockRepository blockRepository;
     @Value("${payment.order-expiration-minutes:60}")
     private long orderExpirationMinutes;
 
@@ -41,10 +55,6 @@ public class PaymentAttemptStateService {
             String idempotencyKey,
             String paymentMethod,
             Integer installments) {
-        if (idempotencyKey == null || idempotencyKey.isBlank() || idempotencyKey.length() > 64) {
-            throw new IllegalArgumentException("Chave de idempotência inválida.");
-        }
-
         Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido não encontrado."));
         if (order.getUser() == null || !order.getUser().getId().equals(userId)) {
@@ -64,6 +74,10 @@ public class PaymentAttemptStateService {
         var sameKey = paymentRepository.findByOrder_IdAndIdempotencyKey(orderId, idempotencyKey);
         if (sameKey.isPresent()) {
             return new PreparedAttempt(sameKey.get(), false);
+        }
+
+        if (idempotencyKey == null || !IDEMPOTENCY_KEY_PATTERN.matcher(idempotencyKey).matches()) {
+            throw new IllegalArgumentException("Chave de idempotência inválida.");
         }
 
         List<Payment> attempts = paymentRepository.findByOrder_IdOrderByAttemptNumberDesc(orderId);
@@ -122,7 +136,7 @@ public class PaymentAttemptStateService {
         payment.setExternalId(result.externalId());
         payment.setProviderCustomerId(result.customerId());
         payment.setPaymentMethod(result.paymentMethod() == null ? payment.getPaymentMethod() : result.paymentMethod());
-        if (isAllowedTransition(currentStatus, nextStatus)) {
+        if (PaymentTransitionPolicy.isAllowed(currentStatus, nextStatus)) {
             payment.setStatus(nextStatus.name());
         }
         payment.setPixQrCode(result.pixQrCode());
@@ -133,8 +147,10 @@ public class PaymentAttemptStateService {
             payment.setPaidAt(LocalDateTime.now());
         }
         Payment saved = paymentRepository.save(payment);
-        if (isAllowedTransition(currentStatus, nextStatus)) {
+        if (PaymentTransitionPolicy.isAllowed(currentStatus, nextStatus)) {
             applyLogisticsTransition(order, nextStatus);
+            recordHistory(payment, order, currentStatus, nextStatus, null, null,
+                    PaymentTransitionResult.APPLIED, "Confirmação da cobrança.");
         }
         return saved;
     }
@@ -178,7 +194,21 @@ public class PaymentAttemptStateService {
     public boolean applyWebhook(
             PaymentGateway.WebhookResult event,
             PaymentGateway.ProviderPayment providerPayment) {
-        if (webhookEventRepository.existsById(event.eventId())) {
+        return applyWebhookInternal(event, providerPayment, false);
+    }
+
+    @Transactional
+    public boolean applyPersistedWebhook(
+            PaymentGateway.WebhookResult event,
+            PaymentGateway.ProviderPayment providerPayment) {
+        return applyWebhookInternal(event, providerPayment, true);
+    }
+
+    private boolean applyWebhookInternal(
+            PaymentGateway.WebhookResult event,
+            PaymentGateway.ProviderPayment providerPayment,
+            boolean alreadyPersisted) {
+        if (!alreadyPersisted && webhookEventRepository.existsById(event.eventId())) {
             return false;
         }
         Payment paymentReference = paymentRepository.findByExternalId(event.externalId())
@@ -187,20 +217,24 @@ public class PaymentAttemptStateService {
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido não encontrado."));
         Payment payment = paymentRepository.findByExternalIdForUpdate(event.externalId())
                 .orElseThrow(() -> new ResourceNotFoundException("Pagamento não encontrado."));
-        if (webhookEventRepository.findByEventIdForUpdate(event.eventId()).isPresent()) {
+        if (!alreadyPersisted && webhookEventRepository.findByEventIdForUpdate(event.eventId()).isPresent()) {
             return false;
         }
 
         verifyProviderPayment(payment, providerPayment.externalId(), providerPayment.externalReference(),
                 providerPayment.amount(), providerPayment.currency(), providerPayment.customerId());
         verifyEventMatchesProvider(event, providerPayment);
-        persistEvent(event, payment.getExternalId());
+        if (!alreadyPersisted) {
+            persistEvent(event, payment.getExternalId());
+        }
 
         PaymentStatus current = PaymentStatus.valueOf(payment.getStatus());
         PaymentStatus next = PaymentStatus.valueOf(providerPayment.status());
-        if (!isAllowedTransition(current, next)) {
+        if (!PaymentTransitionPolicy.isAllowed(current, next)) {
             log.warn("payment.webhook.transition_rejected paymentId={} current={} next={}",
                     payment.getId(), current, next);
+            recordHistory(payment, order, current, next, event.eventType(), event.eventId(),
+                    PaymentTransitionResult.IGNORED_OUT_OF_ORDER, "Transição fora da ordem canônica.");
             return true;
         }
         if (current == next) {
@@ -208,6 +242,19 @@ public class PaymentAttemptStateService {
         }
 
         payment.setStatus(next.name());
+        if (next == PaymentStatus.PAID && providerPayment.amount() != null) {
+            payment.setReceivedAmount(providerPayment.amount());
+        }
+        if (next.name().contains("REFUND") && providerPayment.amount() != null) {
+            if (payment.getRefundedAmount() == null) payment.setRefundedAmount(BigDecimal.ZERO);
+            BigDecimal refund = providerPayment.amount();
+            if (payment.getReceivedAmount() != null && refund.compareTo(payment.getReceivedAmount()) > 0) {
+                recordHistory(payment, order, current, next, event.eventType(), event.eventId(),
+                        PaymentTransitionResult.REQUIRES_REVIEW, "Valor de reembolso excede o recebido.");
+                return true;
+            }
+            payment.setRefundedAmount(refund);
+        }
         if (payment.getProviderCustomerId() == null) {
             payment.setProviderCustomerId(providerPayment.customerId());
         }
@@ -216,6 +263,9 @@ public class PaymentAttemptStateService {
         }
         paymentRepository.save(payment);
         applyLogisticsTransition(order, next);
+        recordHistory(payment, order, current, next, event.eventType(), event.eventId(),
+                PaymentTransitionResult.APPLIED, "Webhook reconciliado com o estado canônico.");
+        updateFinancialBlock(payment, order, next);
         return true;
     }
 
@@ -273,34 +323,37 @@ public class PaymentAttemptStateService {
     }
 
     private boolean isAllowedTransition(PaymentStatus current, PaymentStatus next) {
-        if (current == next) {
-            return true;
+        return PaymentTransitionPolicy.isAllowed(current, next);
+    }
+
+    private void recordHistory(Payment payment, Order order, PaymentStatus previous, PaymentStatus next,
+            String eventType, String eventId, PaymentTransitionResult result, String reason) {
+        if (historyRepository == null) return;
+        PaymentFinancialHistory history = new PaymentFinancialHistory();
+        history.setPayment(payment); history.setOrder(order);
+        history.setPreviousStatus(previous == null ? null : previous.name());
+        history.setNewStatus(next == null ? null : next.name());
+        history.setEventType(eventType); history.setEventId(eventId);
+        history.setExternalPaymentId(payment.getExternalId()); history.setAmount(payment.getAmount());
+        history.setRefundedAmount(payment.getRefundedAmount()); history.setSource("WEBHOOK");
+        history.setResult(result.name()); history.setReason(reason);
+        historyRepository.save(history);
+    }
+
+    private void updateFinancialBlock(Payment payment, Order order, PaymentStatus status) {
+        if (blockRepository == null) return;
+        boolean needsBlock = switch (status) {
+            case REFUND_REQUESTED, REFUND_IN_PROGRESS, PARTIALLY_REFUNDED,
+                    CHARGEBACK_REQUESTED, CHARGEBACK_DISPUTE, AWAITING_CHARGEBACK_REVERSAL,
+                    RECONCILIATION_REQUIRED, OVERDUE -> true;
+            default -> false;
+        };
+        String type = status.name();
+        if (needsBlock && !blockRepository.existsByOrder_IdAndActiveTrue(order.getId())) {
+            FinancialBlock block = new FinancialBlock(); block.setPayment(payment); block.setOrder(order);
+            block.setBlockType(type); block.setReason("Ocorrência financeira requer reconciliação.");
+            blockRepository.save(block);
         }
-        if (current == PaymentStatus.REFUNDED) {
-            return false;
-        }
-        if (current == PaymentStatus.FAILED) {
-            return next == PaymentStatus.PAID;
-        }
-        if (current == PaymentStatus.OVERDUE) {
-            return next == PaymentStatus.PAID || next == PaymentStatus.FAILED;
-        }
-        if (current == PaymentStatus.PAID) {
-            return next == PaymentStatus.REFUND_REQUESTED
-                    || next == PaymentStatus.PARTIALLY_REFUNDED
-                    || next == PaymentStatus.REFUNDED
-                    || next == PaymentStatus.CHARGEBACK_REQUESTED
-                    || next == PaymentStatus.CHARGEBACK_DISPUTE
-                    || next == PaymentStatus.AWAITING_CHARGEBACK_REVERSAL;
-        }
-        if (current == PaymentStatus.REFUND_REQUESTED || current == PaymentStatus.PARTIALLY_REFUNDED) {
-            return next == PaymentStatus.PARTIALLY_REFUNDED
-                    || next == PaymentStatus.REFUNDED
-                    || next == PaymentStatus.CHARGEBACK_REQUESTED
-                    || next == PaymentStatus.CHARGEBACK_DISPUTE
-                    || next == PaymentStatus.AWAITING_CHARGEBACK_REVERSAL;
-        }
-        return true;
     }
 
     private void applyLogisticsTransition(Order order, PaymentStatus paymentStatus) {

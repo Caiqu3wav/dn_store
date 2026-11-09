@@ -28,8 +28,8 @@ class SimulatedShippingGatewayTest {
         List<ShippingQuote> quotes = gateway.quote(request);
 
         assertThat(quotes).containsExactly(
-                new ShippingQuote("PAC", new BigDecimal("27.90"), 5),
-                new ShippingQuote("SEDEX", new BigDecimal("45.50"), 2));
+                new ShippingQuote("sim-pac", "PAC", new BigDecimal("27.90"), 5, "SIMULATED"),
+                new ShippingQuote("sim-sedex", "SEDEX", new BigDecimal("45.50"), 2, "SIMULATED"));
     }
 
     @Test
@@ -47,7 +47,7 @@ class SimulatedShippingGatewayTest {
         List<ShippingQuote> quotes = gateway.quote(request);
 
         assertThat(quotes).containsExactly(
-                new ShippingQuote("PAC", new BigDecimal("25.90"), 5),
-                new ShippingQuote("SEDEX", new BigDecimal("42.50"), 2));
+                new ShippingQuote("sim-pac", "PAC", new BigDecimal("25.90"), 5, "SIMULATED"),
+                new ShippingQuote("sim-sedex", "SEDEX", new BigDecimal("42.50"), 2, "SIMULATED"));
     }
 }

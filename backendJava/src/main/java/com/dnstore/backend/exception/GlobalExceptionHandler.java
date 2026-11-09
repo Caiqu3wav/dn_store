@@ -123,13 +123,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalState(IllegalStateException exception,
             HttpServletRequest request) {
-        log.error("Unexpected illegal state during API request", exception);
+        log.error("Unexpected illegal state during API request type={}", exception.getClass().getSimpleName());
         return response(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred.", request);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpected(Exception exception, HttpServletRequest request) {
-        log.error("Unhandled API exception", exception);
+        log.error("Unhandled API exception type={}", exception.getClass().getSimpleName());
         return response(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred.", request);
     }
 

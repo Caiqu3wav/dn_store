@@ -11,13 +11,16 @@ public enum PaymentStatus {
     FAILED,
     OVERDUE,
     REFUND_REQUESTED,
+    REFUND_IN_PROGRESS,
     PARTIALLY_REFUNDED,
     REFUNDED,
+    REFUND_DENIED,
     DUNNING_REQUESTED,
     DUNNING_RECEIVED,
     CHARGEBACK_REQUESTED,
     CHARGEBACK_DISPUTE,
-    AWAITING_CHARGEBACK_REVERSAL;
+    AWAITING_CHARGEBACK_REVERSAL,
+    CHARGEBACK_REVERSED;
 
     public static PaymentStatus fromAsaas(String status) {
         if (status == null || status.isBlank()) {
@@ -30,13 +33,16 @@ public enum PaymentStatus {
             case "OVERDUE" -> OVERDUE;
             case "REFUSED", "DELETED" -> FAILED;
             case "REFUND_REQUESTED" -> REFUND_REQUESTED;
+            case "REFUND_IN_PROGRESS" -> REFUND_IN_PROGRESS;
             case "PARTIALLY_REFUNDED" -> PARTIALLY_REFUNDED;
             case "REFUNDED" -> REFUNDED;
+            case "REFUND_DENIED" -> REFUND_DENIED;
             case "DUNNING_REQUESTED" -> DUNNING_REQUESTED;
             case "DUNNING_RECEIVED" -> DUNNING_RECEIVED;
             case "CHARGEBACK_REQUESTED" -> CHARGEBACK_REQUESTED;
             case "CHARGEBACK_DISPUTE" -> CHARGEBACK_DISPUTE;
             case "AWAITING_CHARGEBACK_REVERSAL" -> AWAITING_CHARGEBACK_REVERSAL;
+            case "CHARGEBACK_REVERSED" -> CHARGEBACK_REVERSED;
             default -> throw new IllegalArgumentException("Status Asaas não suportado");
         };
     }
@@ -52,10 +58,11 @@ public enum PaymentStatus {
     public boolean mayHaveAnActiveCharge() {
         return switch (this) {
             case CREATING, RECONCILIATION_REQUIRED, PENDING, OVERDUE,
-                    REFUND_REQUESTED, PARTIALLY_REFUNDED, DUNNING_REQUESTED,
+                    REFUND_REQUESTED, REFUND_IN_PROGRESS, PARTIALLY_REFUNDED, REFUND_DENIED,
+                    DUNNING_REQUESTED,
                     DUNNING_RECEIVED, CHARGEBACK_REQUESTED, CHARGEBACK_DISPUTE,
                     AWAITING_CHARGEBACK_REVERSAL -> true;
-            case PAID, FAILED, REFUNDED -> false;
+            case PAID, FAILED, REFUNDED, CHARGEBACK_REVERSED -> false;
         };
     }
 

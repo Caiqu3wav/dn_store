@@ -79,6 +79,8 @@ PAYMENT_EXPIRATION_SCAN_MS=60000
 
 O padrão de `ASAAS_BASE_URL` é `https://api-sandbox.asaas.com/v3`. Para produção, altere explicitamente para `https://api.asaas.com/v3` e use uma chave de produção correspondente. O token configurado no webhook Asaas deve corresponder a `ASAAS_WEBHOOK_TOKEN`; o endpoint rejeita eventos sem autenticação válida. Nunca use credenciais reais em testes locais.
 
+Em produção, `ASAAS_ENVIRONMENT=production`, a URL e a chave precisam pertencer ao ambiente de produção; a aplicação falha ao iniciar se essa combinação for inválida. O módulo registra transições em histórico financeiro append-only e mantém bloqueios financeiros separados do status comercial. Reembolsos, chargebacks e eventos desconhecidos permanecem bloqueados até reconciliação canônica. A criação da conta, credenciais, URL pública do webhook, HTTPS e homologação controlada continuam dependentes da infraestrutura externa.
+
 Pedidos aguardando pagamento expiram após o prazo configurado (60 minutos por padrão). A rotina agendada reconcilia e tenta cancelar cobranças abertas; se o estado do provedor for incerto, preserva o estoque e deixa o pedido sem liberação automática. O cliente pode tentar novamente no mesmo pedido dentro do prazo, mas não é criada outra tentativa enquanto existir cobrança ativa ou em reconciliação. `Idempotency-Key` identifica cada tentativa. Após timeout de criação, aguarde a reconciliação; não force outra cobrança.
 
 O checkout habilita temporariamente apenas Pix e boleto. Cartão permanece desabilitado até existir tokenização ou checkout hospedado validado, para que PAN/CVV não trafeguem pelo frontend e backend da loja.
@@ -171,7 +173,13 @@ Os códigos expiram em 10 minutos, têm no máximo cinco tentativas e possuem in
 
 Enquanto a integração oficial não estiver autorizada, o backend usa estimativas temporárias PAC/SEDEX (base de R$ 25,90/R$ 42,50 para até 1 kg, com acréscimo por quilo adicional; prazos estimados de 5/2 dias úteis). ViaCEP apenas consulta o endereço e não calcula o frete. Essas estimativas não devem ser usadas para cobrar clientes em produção.
 
-Para ativar cotações reais, configure `SHIPPING_GATEWAY=melhor-envio`, as credenciais OAuth do Melhor Envio (`MELHOR_ENVIO_CLIENT_ID`, `MELHOR_ENVIO_CLIENT_SECRET` e `MELHOR_ENVIO_REDIRECT_URI`) e autorize a integração. A autorização deve ser refeita após reiniciar o backend, pois o token é mantido apenas em memória. O padrão `SHIPPING_GATEWAY=simulated` mantém a simulação ativa.
+Para ativar cotações reais, configure `SHIPPING_GATEWAY=melhorEnvio` — este é o valor exato reconhecido por `@ConditionalOnProperty`. O valor padrão `SHIPPING_GATEWAY=simulated` mantém a simulação ativa. Configure também as credenciais OAuth (`MELHOR_ENVIO_CLIENT_ID`, `MELHOR_ENVIO_CLIENT_SECRET` e `MELHOR_ENVIO_REDIRECT_URI`), as URLs do ambiente escolhido (`MELHOR_ENVIO_API_BASE_URL`, `MELHOR_ENVIO_AUTHORIZATION_URL` e `MELHOR_ENVIO_TOKEN_URL`), `MELHOR_ENVIO_ENV` e o escopo `shipping-calculate`.
+
+Os tokens OAuth não ficam apenas em memória: são persistidos no banco de dados com criptografia AES-GCM, separados por ambiente, e o access token é renovado antecipadamente usando o refresh token. A documentação do Melhor Envio informa validade de 30 dias para o ciclo de renovação; a configuração correspondente é `MELHOR_ENVIO_REFRESH_TOKEN_TTL=PT720H`. O processo de renovação usa bloqueio transacional para evitar refresh concorrente. Portanto, reiniciar o backend não exige nova autorização enquanto os tokens persistidos continuarem válidos e a chave `MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY` permanecer a mesma.
+
+Uma nova autorização é necessária quando a conta ainda não foi autorizada naquele ambiente, o refresh token expirou ou foi invalidado/revogado, os tokens armazenados não podem ser descriptografados, ou a autorização deixou de incluir `shipping-calculate`. Falhas temporárias de rede, timeout e erros transitórios do provedor não devem, por si só, provocar nova autorização.
+
+Use `MELHOR_ENVIO_ENV=sandbox` com perfis de homologação (`homolog` ou `staging`) e as URLs oficiais `sandbox.melhorenvio.com.br`. Em produção, use um perfil `prod`/`production`, `MELHOR_ENVIO_ENV=production` e as URLs oficiais `melhorenvio.com.br`; a aplicação rejeita combinações contraditórias na inicialização. Nunca reutilize client secret, chave de criptografia ou tokens entre ambientes.
 
 ---
 
