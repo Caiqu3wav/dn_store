@@ -18,15 +18,16 @@ import com.dnstore.backend.repository.CartRepository;
 import com.dnstore.backend.repository.CouponRepository;
 import com.dnstore.backend.repository.OrderRepository;
 import com.dnstore.backend.repository.PaymentRepository;
+import com.dnstore.backend.repository.FinancialBlockRepository;
 import com.dnstore.backend.repository.ProductVariantRepository;
 import com.dnstore.backend.repository.ShippingQuoteOptionRepository;
 import com.dnstore.backend.model.Payment;
 import com.dnstore.backend.model.enums.PaymentStatus;
 import com.dnstore.backend.service.shipping.ShippingGateway.ShippingItem;
 import com.dnstore.backend.service.shipping.ShippingQuote;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,7 +51,6 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class OrderService {
 
     private final DeliveryService deliveryService;
@@ -62,11 +62,44 @@ public class OrderService {
     private final ProductVariantRepository productVariantRepository;
     private final OrderInventoryService orderInventoryService;
     private final PaymentRepository paymentRepository;
+    private final FinancialBlockRepository financialBlockRepository;
     private final ShippingQuoteOptionRepository shippingQuoteOptionRepository;
     private final MelhorEnvioProperties melhorEnvioProperties;
 
     @Value("${shipping.gateway:simulated}")
     private String shippingGateway;
+
+    @Autowired
+    public OrderService(DeliveryService deliveryService, OrderRepository orderRepository,
+            CartRepository cartRepository, AddressRepository addressRepository, CouponService couponService,
+            CouponRepository couponRepository, ProductVariantRepository productVariantRepository,
+            OrderInventoryService orderInventoryService, PaymentRepository paymentRepository,
+            FinancialBlockRepository financialBlockRepository, ShippingQuoteOptionRepository shippingQuoteOptionRepository,
+            MelhorEnvioProperties melhorEnvioProperties) {
+        this.deliveryService = deliveryService;
+        this.orderRepository = orderRepository;
+        this.cartRepository = cartRepository;
+        this.addressRepository = addressRepository;
+        this.couponService = couponService;
+        this.couponRepository = couponRepository;
+        this.productVariantRepository = productVariantRepository;
+        this.orderInventoryService = orderInventoryService;
+        this.paymentRepository = paymentRepository;
+        this.financialBlockRepository = financialBlockRepository;
+        this.shippingQuoteOptionRepository = shippingQuoteOptionRepository;
+        this.melhorEnvioProperties = melhorEnvioProperties;
+    }
+
+    /** Compatibility constructor retained for focused controller serialization tests. */
+    public OrderService(DeliveryService deliveryService, OrderRepository orderRepository,
+            CartRepository cartRepository, AddressRepository addressRepository, CouponService couponService,
+            CouponRepository couponRepository, ProductVariantRepository productVariantRepository,
+            OrderInventoryService orderInventoryService, PaymentRepository paymentRepository,
+            ShippingQuoteOptionRepository shippingQuoteOptionRepository, MelhorEnvioProperties melhorEnvioProperties) {
+        this(deliveryService, orderRepository, cartRepository, addressRepository, couponService, couponRepository,
+                productVariantRepository, orderInventoryService, paymentRepository, null,
+                shippingQuoteOptionRepository, melhorEnvioProperties);
+    }
 
     public record AddressData(
             String street, String number, String complement,
@@ -417,7 +450,8 @@ public class OrderService {
     }
 
     private static final java.util.Set<String> VALID_STATUSES = java.util.Set.of(
-            "PENDING_PAYMENT", "PAID", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "PAYMENT_FAILED");
+            "PENDING_PAYMENT", "PAID", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "PAYMENT_FAILED",
+            "EXPIRED", "PAYMENT_REVIEW");
 
     public java.util.Optional<Order> findById(UUID id) {
         return orderRepository.findById(id);
@@ -448,6 +482,11 @@ public class OrderService {
             return java.util.Optional.empty();
         }
         Order order = found.get();
+        if (financialBlockRepository != null
+                && ("PROCESSING".equals(status) || "SHIPPED".equals(status) || "DELIVERED".equals(status))
+                && financialBlockRepository.existsByOrder_IdAndActiveTrue(id)) {
+            throw new ConflictException("O pedido possui um bloqueio financeiro ativo e requer reconciliação.");
+        }
         if ("CANCELLED".equals(status)
                 && ("PENDING_PAYMENT".equals(order.getStatus())
                         || "PAYMENT_FAILED".equals(order.getStatus()))) {

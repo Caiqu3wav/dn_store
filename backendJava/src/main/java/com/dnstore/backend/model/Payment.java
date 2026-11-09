@@ -51,6 +51,15 @@ public class Payment {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 
+    @Column(name = "received_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal receivedAmount = BigDecimal.ZERO;
+
+    @Column(name = "refunded_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal refundedAmount = BigDecimal.ZERO;
+
+    @Column(name = "last_provider_event_at")
+    private LocalDateTime lastProviderEventAt;
+
     @Column(nullable = false, length = 40)
     private String status;
 

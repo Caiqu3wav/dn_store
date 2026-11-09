@@ -89,6 +89,40 @@ class PaymentAttemptStateServiceTest {
     }
 
     @Test
+    void prepareAttempt_shouldAcceptUrlSafeIdempotencyKey() {
+        User user = user();
+        Order order = order(user, "PAYMENT_FAILED", LocalDateTime.now().minusMinutes(5));
+        Payment failed = payment(order, "FAILED", "old-key", "old-charge");
+        when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
+        when(paymentRepository.findByOrder_IdAndIdempotencyKey(order.getId(), "retry_01-~.key"))
+                .thenReturn(Optional.empty());
+        when(paymentRepository.findByOrder_IdOrderByAttemptNumberDesc(order.getId()))
+                .thenReturn(List.of(failed));
+        when(paymentRepository.saveAndFlush(any(Payment.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        PaymentAttemptStateService.PreparedAttempt prepared = service.prepareAttempt(
+                order.getId(), user.getId(), "retry_01-~.key", "PIX", null);
+
+        assertThat(prepared.newlyCreated()).isTrue();
+    }
+
+    @Test
+    void prepareAttempt_shouldRejectReservedCharactersInNewIdempotencyKey() {
+        User user = user();
+        Order order = order(user, "PAYMENT_FAILED", LocalDateTime.now().minusMinutes(5));
+        when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
+        when(paymentRepository.findByOrder_IdAndIdempotencyKey(order.getId(), "retry&again"))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.prepareAttempt(
+                order.getId(), user.getId(), "retry&again", "PIX", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Chave de idempotência inválida.");
+        verify(paymentRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
     void prepareAttempt_withActiveCharge_shouldNotCreateSecondAttempt() {
         User user = user();
         Order order = order(user, "PENDING_PAYMENT", LocalDateTime.now().minusMinutes(5));
