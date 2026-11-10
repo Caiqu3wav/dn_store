@@ -9,6 +9,10 @@ export interface AdminDashboardData {
     averageTicket: number;
 }
 
+export interface MelhorEnvioAuthorizationResponse {
+    authorizationUrl: string;
+}
+
 export interface AdminOrder {
     id: string;
     status: string;
@@ -40,6 +44,13 @@ interface AdminOrderItem {
 }
 
 export const adminService = {
+    getMelhorEnvioAuthorizationUrl: async (): Promise<string> => {
+        const response = await api.get<MelhorEnvioAuthorizationResponse>(
+            '/integrations/melhor-envio/authorize'
+        );
+        return response.data.authorizationUrl;
+    },
+
     getDashboardData: async (): Promise<AdminDashboardData> => {
         const response = await api.get('/admin/dashboard');
         return response.data;

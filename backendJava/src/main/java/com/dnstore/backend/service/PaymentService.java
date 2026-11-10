@@ -105,12 +105,6 @@ public class PaymentService {
         return paymentState.markUncertain(payment.getId());
     }
 
-    public void handleWebhook(String rawPayload, String signatureHeader) {
-        PaymentGateway.WebhookResult event = gateway.processWebhook(rawPayload, signatureHeader);
-        PaymentGateway.ProviderPayment providerPayment = gateway.getPayment(event.externalId());
-        paymentState.applyWebhook(event, providerPayment);
-    }
-
     @Transactional(readOnly = true)
     public Payment findByOrderId(UUID orderId) {
         return paymentRepository.findByOrder_IdOrderByAttemptNumberDesc(orderId).stream()

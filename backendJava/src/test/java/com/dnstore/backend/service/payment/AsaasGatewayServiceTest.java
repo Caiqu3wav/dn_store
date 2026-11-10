@@ -1,5 +1,6 @@
 package com.dnstore.backend.service.payment;
 
+import com.dnstore.backend.config.AsaasProperties;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -14,10 +15,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -30,10 +30,12 @@ class AsaasGatewayServiceTest {
     @BeforeEach
     void setUp() {
         restTemplate = mock(RestTemplate.class);
-        gateway = new AsaasGatewayService(restTemplate);
-        ReflectionTestUtils.setField(gateway, "apiKey", "test-api-key");
-        ReflectionTestUtils.setField(gateway, "configuredBaseUrl", "https://api-sandbox.asaas.com/v3");
-        ReflectionTestUtils.setField(gateway, "webhookToken", "webhook-secret");
+        AsaasProperties properties = new AsaasProperties();
+        properties.setApiKey("test-api-key");
+        properties.setBaseUrl(AsaasProperties.SANDBOX_URL);
+        properties.setWebhookToken("webhook-secret");
+        properties.setUserAgent("DN-Store Test/1.0");
+        gateway = new AsaasGatewayService(restTemplate, properties);
     }
 
     @Test
@@ -104,7 +106,7 @@ class AsaasGatewayServiceTest {
     void createPayment_shouldReuseExistingChargeForSameAttempt() {
         UUID orderId = UUID.randomUUID();
         String reference = orderId + ":attempt-1";
-        when(restTemplate.exchange(contains("externalReference=" + reference), eq(HttpMethod.GET),
+        when(restTemplate.exchange(contains("externalReference=" + orderId + "%3Aattempt-1"), eq(HttpMethod.GET),
                 any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(ResponseEntity.ok(Map.of("data", List.of(Map.of(
                         "id", "existing-payment",
@@ -132,7 +134,7 @@ class AsaasGatewayServiceTest {
     void createPayment_whenExistingChargeAmountDiffers_shouldNotCreateAnotherCharge() {
         UUID orderId = UUID.randomUUID();
         String reference = orderId + ":attempt-1";
-        when(restTemplate.exchange(contains("externalReference=" + reference), eq(HttpMethod.GET),
+        when(restTemplate.exchange(contains("externalReference=" + orderId + "%3Aattempt-1"), eq(HttpMethod.GET),
                 any(HttpEntity.class), eq(Map.class)))
                 .thenReturn(ResponseEntity.ok(Map.of("data", List.of(Map.of(
                         "id", "existing-payment",
@@ -196,7 +198,7 @@ class AsaasGatewayServiceTest {
     @Test
     void processWebhook_withUnknownStatus_shouldRejectPayload() {
         assertThatThrownBy(() -> gateway.processWebhook(
-                "{\"id\":\"evt-1\",\"payment\":{\"id\":\"payment-1\",\"status\":\"UNKNOWN\"}}",
+                "{\"id\":\"evt-1\",\"event\":\"PAYMENT_UPDATED\",\"payment\":{\"id\":\"payment-1\",\"status\":\"UNKNOWN\"}}",
                 "webhook-secret"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
@@ -217,6 +219,47 @@ class AsaasGatewayServiceTest {
 
         assertThatThrownBy(() -> gateway.findPaymentByReference("order:attempt"))
                 .isInstanceOf(PaymentGatewayException.class);
+    }
+
+    @Test
+    void createPayment_shouldEncodeReservedCharactersInExternalReference() {
+        String reference = "order:a&attempt?1=2";
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.GET),
+                any(HttpEntity.class), eq(Map.class)))
+                .thenAnswer(invocation -> {
+                    String uri = invocation.getArgument(0);
+                    assertThat(uri).contains("externalReference=order%3Aa%26attempt%3F1%3D2");
+                    return ResponseEntity.ok(Map.of("data", List.of()));
+                });
+        when(restTemplate.exchange(contains("/customers?cpfCnpj="), eq(HttpMethod.GET),
+                any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(ResponseEntity.ok(Map.of("data", List.of(Map.of("id", "customer-1")))));
+        when(restTemplate.exchange(eq("https://api-sandbox.asaas.com/v3/payments"), eq(HttpMethod.POST),
+                any(HttpEntity.class), eq(Map.class)))
+                .thenThrow(new ResourceAccessException("stop before provider call"));
+
+        assertThatThrownBy(() -> gateway.createPayment(request(UUID.randomUUID(), reference, "PIX")))
+                .isInstanceOf(PaymentCreationUncertainException.class);
+        verify(restTemplate).exchange(org.mockito.ArgumentMatchers.<String>argThat(
+                        uri -> uri.contains("externalReference=order%3Aa%26attempt%3F1%3D2")),
+                eq(HttpMethod.GET),
+                any(HttpEntity.class), eq(Map.class));
+    }
+
+    @Test
+    void allAsaasRequests_shouldIncludeConfiguredUserAgent() {
+        when(restTemplate.exchange(contains("/payments?externalReference="), eq(HttpMethod.GET),
+                any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(ResponseEntity.ok(Map.of("data", List.of())));
+
+        gateway.findPaymentByReference("order:attempt");
+
+        var captor = org.mockito.ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).exchange(contains("/payments?externalReference="), eq(HttpMethod.GET),
+                captor.capture(), eq(Map.class));
+        assertThat(captor.getValue().getHeaders().getFirst(HttpHeaders.USER_AGENT))
+                .isEqualTo("DN-Store Test/1.0");
+        assertThat(captor.getValue().getHeaders().getFirst("access_token")).isEqualTo("test-api-key");
     }
 
     private PaymentGateway.PaymentRequest request(UUID orderId, String reference, String method) {

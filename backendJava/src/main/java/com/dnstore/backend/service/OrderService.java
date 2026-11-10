@@ -8,7 +8,9 @@ import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.OrderItem;
 import com.dnstore.backend.model.PhysicalProduct;
 import com.dnstore.backend.model.ProductVariant;
+import com.dnstore.backend.model.ShippingQuoteOptionEntity;
 import com.dnstore.backend.model.User;
+import com.dnstore.backend.config.MelhorEnvioProperties;
 import com.dnstore.backend.exception.ConflictException;
 import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.repository.AddressRepository;
@@ -16,19 +18,27 @@ import com.dnstore.backend.repository.CartRepository;
 import com.dnstore.backend.repository.CouponRepository;
 import com.dnstore.backend.repository.OrderRepository;
 import com.dnstore.backend.repository.PaymentRepository;
+import com.dnstore.backend.repository.FinancialBlockRepository;
 import com.dnstore.backend.repository.ProductVariantRepository;
+import com.dnstore.backend.repository.ShippingQuoteOptionRepository;
 import com.dnstore.backend.model.Payment;
 import com.dnstore.backend.model.enums.PaymentStatus;
 import com.dnstore.backend.service.shipping.ShippingGateway.ShippingItem;
 import com.dnstore.backend.service.shipping.ShippingQuote;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.UUID;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -41,7 +51,6 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class OrderService {
 
     private final DeliveryService deliveryService;
@@ -53,16 +62,60 @@ public class OrderService {
     private final ProductVariantRepository productVariantRepository;
     private final OrderInventoryService orderInventoryService;
     private final PaymentRepository paymentRepository;
+    private final FinancialBlockRepository financialBlockRepository;
+    private final ShippingQuoteOptionRepository shippingQuoteOptionRepository;
+    private final MelhorEnvioProperties melhorEnvioProperties;
+
+    @Value("${shipping.gateway:simulated}")
+    private String shippingGateway;
+
+    @Autowired
+    public OrderService(DeliveryService deliveryService, OrderRepository orderRepository,
+            CartRepository cartRepository, AddressRepository addressRepository, CouponService couponService,
+            CouponRepository couponRepository, ProductVariantRepository productVariantRepository,
+            OrderInventoryService orderInventoryService, PaymentRepository paymentRepository,
+            FinancialBlockRepository financialBlockRepository, ShippingQuoteOptionRepository shippingQuoteOptionRepository,
+            MelhorEnvioProperties melhorEnvioProperties) {
+        this.deliveryService = deliveryService;
+        this.orderRepository = orderRepository;
+        this.cartRepository = cartRepository;
+        this.addressRepository = addressRepository;
+        this.couponService = couponService;
+        this.couponRepository = couponRepository;
+        this.productVariantRepository = productVariantRepository;
+        this.orderInventoryService = orderInventoryService;
+        this.paymentRepository = paymentRepository;
+        this.financialBlockRepository = financialBlockRepository;
+        this.shippingQuoteOptionRepository = shippingQuoteOptionRepository;
+        this.melhorEnvioProperties = melhorEnvioProperties;
+    }
+
+    /** Compatibility constructor retained for focused controller serialization tests. */
+    public OrderService(DeliveryService deliveryService, OrderRepository orderRepository,
+            CartRepository cartRepository, AddressRepository addressRepository, CouponService couponService,
+            CouponRepository couponRepository, ProductVariantRepository productVariantRepository,
+            OrderInventoryService orderInventoryService, PaymentRepository paymentRepository,
+            ShippingQuoteOptionRepository shippingQuoteOptionRepository, MelhorEnvioProperties melhorEnvioProperties) {
+        this(deliveryService, orderRepository, cartRepository, addressRepository, couponService, couponRepository,
+                productVariantRepository, orderInventoryService, paymentRepository, null,
+                shippingQuoteOptionRepository, melhorEnvioProperties);
+    }
 
     public record AddressData(
             String street, String number, String complement,
             String neighborhood, String city, String state, String zipCode) {
     }
 
-    public record ShippingOption(String typeName, BigDecimal cost, int deadLineDays, String source) {
+    public record ShippingOption(
+            UUID id,
+            String serviceId,
+            String typeName,
+            BigDecimal cost,
+            int deadLineDays,
+            String source) {
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ShippingOption> quoteShipping(User user, String zipCode) {
         Cart cart = cartRepository.findByUser(user)
                 .orElseThrow(() -> new ConflictException("O carrinho está vazio."));
@@ -70,14 +123,47 @@ public class OrderService {
             throw new ConflictException("O carrinho está vazio.");
         }
 
-        return deliveryService.calculateOptions(zipCode, shippingItems(cart)).stream()
-                .map(option -> new ShippingOption(option.service(), option.price(), option.deliveryDays(),
-                        "SHIPPING_GATEWAY"))
+        List<ShippingItem> items = shippingItems(cart);
+        String normalizedDestination = normalizeZip(zipCode);
+        String fingerprint = cartFingerprint(items);
+        String originZip = deliveryService.normalizedOriginZip();
+        LocalDateTime quotedAt = now();
+        LocalDateTime expiresAt = quotedAt.plus(melhorEnvioProperties.getQuoteTtl());
+
+        return deliveryService.calculateOptions(normalizedDestination, items).stream()
+                .map(option -> {
+                    ShippingQuoteOptionEntity saved = new ShippingQuoteOptionEntity();
+                    saved.setUser(user);
+                    saved.setServiceId(option.serviceId());
+                    saved.setServiceName(option.service());
+                    saved.setPrice(option.price());
+                    saved.setDeliveryDays(option.deliveryDays());
+                    saved.setSource(option.source());
+                    saved.setProviderEnvironment(providerEnvironment(option.source()));
+                    saved.setOriginZip(originZip);
+                    saved.setDestinationZip(normalizedDestination);
+                    saved.setCartFingerprint(fingerprint);
+                    saved.setQuotedAt(quotedAt);
+                    saved.setExpiresAt(expiresAt);
+                    saved = shippingQuoteOptionRepository.save(saved);
+                    return new ShippingOption(
+                            saved.getId(),
+                            saved.getServiceId(),
+                            saved.getServiceName(),
+                            saved.getPrice(),
+                            saved.getDeliveryDays(),
+                            saved.getSource());
+                })
                 .toList();
     }
 
     @Transactional
-    public Order checkout(User user, AddressData addressData, String shippingType, String couponCode, UUID addressId) {
+    public Order checkout(
+            User user,
+            AddressData addressData,
+            UUID shippingOptionId,
+            String couponCode,
+            UUID addressId) {
         if (user == null) {
             throw new IllegalArgumentException("Usuário autenticado é obrigatório.");
         }
@@ -167,10 +253,12 @@ public class OrderService {
             productTotal = productTotal.add(unitPrice.multiply(BigDecimal.valueOf(cartItem.getQuantity())));
         }
 
-        ShippingQuote shipping = deliveryService.calculateShipping(
+        List<ShippingItem> currentShippingItems = shippingItems(cart, lockedVariants);
+        ShippingQuoteOptionEntity selectedShipping = validateShippingSelection(
+                user,
+                shippingOptionId,
                 zipCode,
-                shippingItems(cart),
-                shippingType);
+                currentShippingItems);
 
         // 3. Aplicar Cupom se existir
         BigDecimal discount = BigDecimal.ZERO;
@@ -234,11 +322,14 @@ public class OrderService {
                 .collect(Collectors.toList());
 
         order.setItems(orderItems);
-        order.setShippingCost(shipping.price());
-        order.setShippingType(shipping.service());
-        order.setShippingDeadlineDays(shipping.deliveryDays());
+        order.setShippingCost(selectedShipping.getPrice());
+        order.setShippingType(selectedShipping.getServiceName());
+        order.setShippingServiceId(selectedShipping.getServiceId());
+        order.setShippingSource(selectedShipping.getSource());
+        order.setShippingQuoteOptionId(selectedShipping.getId());
+        order.setShippingDeadlineDays(selectedShipping.getDeliveryDays());
 
-        BigDecimal total = productTotal.add(shipping.price()).subtract(discount);
+        BigDecimal total = productTotal.add(selectedShipping.getPrice()).subtract(discount);
         if (total.compareTo(BigDecimal.ZERO) < 0) {
             total = BigDecimal.ZERO;
         }
@@ -257,10 +348,20 @@ public class OrderService {
     }
 
     private List<ShippingItem> shippingItems(Cart cart) {
+        return shippingItems(cart, null);
+    }
+
+    private List<ShippingItem> shippingItems(
+            Cart cart,
+            java.util.Map<UUID, ProductVariant> lockedVariants) {
         return cart.getItems().stream().map(item -> {
-            if (item == null || item.getProductVariant() == null
-                    || !item.getProductVariant().isActive()
-                    || !(item.getProductVariant().getProduct() instanceof PhysicalProduct product)) {
+            ProductVariant variant = item == null || item.getProductVariant() == null
+                    ? null
+                    : lockedVariants == null
+                            ? item.getProductVariant()
+                            : lockedVariants.get(item.getProductVariant().getId());
+            if (variant == null || !variant.isActive()
+                    || !(variant.getProduct() instanceof PhysicalProduct product)) {
                 throw new IllegalArgumentException("Produto físico inválido para cotação de frete.");
             }
             if (item.getQuantity() <= 0 || !isPositiveFinite(product.getWeight())
@@ -269,12 +370,79 @@ public class OrderService {
                 throw new IllegalArgumentException("Peso, dimensões e quantidade dos produtos devem ser válidos.");
             }
             return new ShippingItem(
+                    variant.getId().toString(),
                     BigDecimal.valueOf(product.getWeight()),
                     BigDecimal.valueOf(product.getWidth()),
                     BigDecimal.valueOf(product.getHeight()),
                     BigDecimal.valueOf(product.getDepth()),
+                    product.getPrice(),
                     item.getQuantity());
         }).toList();
+    }
+
+    private ShippingQuoteOptionEntity validateShippingSelection(
+            User user,
+            UUID shippingOptionId,
+            String destinationZip,
+            List<ShippingItem> items) {
+        if (shippingOptionId == null) {
+            throw new ConflictException("Selecione uma opção de frete cotada antes de finalizar o pedido.");
+        }
+        ShippingQuoteOptionEntity option = shippingQuoteOptionRepository
+                .findByIdAndUser_IdAndExpiresAtAfter(shippingOptionId, user.getId(), now())
+                .orElseThrow(() -> new ConflictException(
+                        "A opção de frete expirou ou não pertence a este cliente. Consulte novamente."));
+
+        if (!option.getDestinationZip().equals(normalizeZip(destinationZip))
+                || !option.getOriginZip().equals(deliveryService.normalizedOriginZip())
+                || !option.getCartFingerprint().equals(cartFingerprint(items))
+                || !option.getProviderEnvironment().equals(providerEnvironment(option.getSource()))) {
+            throw new ConflictException(
+                    "Os dados do carrinho ou da cotação foram alterados. Consulte e confirme o frete novamente.");
+        }
+        return option;
+    }
+
+    private String cartFingerprint(List<ShippingItem> items) {
+        String canonical = items.stream()
+                .sorted(java.util.Comparator.comparing(ShippingItem::id))
+                .map(item -> String.join("|",
+                        item.id(),
+                        item.weight().stripTrailingZeros().toPlainString(),
+                        item.width().stripTrailingZeros().toPlainString(),
+                        item.height().stripTrailingZeros().toPlainString(),
+                        item.length().stripTrailingZeros().toPlainString(),
+                        item.insuranceValue().stripTrailingZeros().toPlainString(),
+                        Integer.toString(item.quantity())))
+                .collect(Collectors.joining("\n"));
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(canonical.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable.");
+        }
+    }
+
+    private String providerEnvironment(String source) {
+        if ("MELHOR_ENVIO".equals(source) && "melhorEnvio".equals(shippingGateway)) {
+            return melhorEnvioProperties.getEnvironment();
+        }
+        if ("SIMULATED".equals(source) && "simulated".equals(shippingGateway)) {
+            return "simulated";
+        }
+        throw new ConflictException(
+                "A configuração de frete mudou. Consulte e confirme uma nova opção antes de continuar.");
+    }
+
+    private String normalizeZip(String zipCode) {
+        if (zipCode == null || !zipCode.trim().replaceAll("-", "").matches("\\d{8}")) {
+            throw new IllegalArgumentException("CEP de entrega inválido.");
+        }
+        return zipCode.replace("-", "").trim();
+    }
+
+    private LocalDateTime now() {
+        return LocalDateTime.now(ZoneOffset.UTC);
     }
 
     private boolean isPositiveFinite(double value) {
@@ -282,7 +450,8 @@ public class OrderService {
     }
 
     private static final java.util.Set<String> VALID_STATUSES = java.util.Set.of(
-            "PENDING_PAYMENT", "PAID", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "PAYMENT_FAILED");
+            "PENDING_PAYMENT", "PAID", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "PAYMENT_FAILED",
+            "EXPIRED", "PAYMENT_REVIEW");
 
     public java.util.Optional<Order> findById(UUID id) {
         return orderRepository.findById(id);
@@ -313,6 +482,11 @@ public class OrderService {
             return java.util.Optional.empty();
         }
         Order order = found.get();
+        if (financialBlockRepository != null
+                && ("PROCESSING".equals(status) || "SHIPPED".equals(status) || "DELIVERED".equals(status))
+                && financialBlockRepository.existsByOrder_IdAndActiveTrue(id)) {
+            throw new ConflictException("O pedido possui um bloqueio financeiro ativo e requer reconciliação.");
+        }
         if ("CANCELLED".equals(status)
                 && ("PENDING_PAYMENT".equals(order.getStatus())
                         || "PAYMENT_FAILED".equals(order.getStatus()))) {

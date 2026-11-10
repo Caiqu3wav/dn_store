@@ -1,5 +1,6 @@
 package com.dnstore.backend.service.payment;
 
+import com.dnstore.backend.config.AsaasProperties;
 import com.dnstore.backend.model.enums.PaymentStatus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -7,11 +8,11 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDate;
+import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 @Service("asaas")
 public class AsaasGatewayService implements PaymentGateway {
@@ -28,23 +30,20 @@ public class AsaasGatewayService implements PaymentGateway {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private final RestTemplate restTemplate;
 
-    @Value("${asaas.api-key}")
-    private String apiKey;
+    private final AsaasProperties properties;
 
-    @Value("${asaas.base-url:https://api-sandbox.asaas.com/v3}")
-    private String configuredBaseUrl;
-
-    @Value("${asaas.webhook-token:}")
-    private String webhookToken;
-
-    public AsaasGatewayService(RestTemplate restTemplate) {
+    public AsaasGatewayService(
+            @Qualifier("asaasRestTemplate") RestTemplate restTemplate,
+            AsaasProperties properties) {
         this.restTemplate = restTemplate;
+        this.properties = properties;
     }
 
     private HttpHeaders headers() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("access_token", apiKey);
+        headers.set("access_token", properties.getApiKey());
+        headers.set(HttpHeaders.USER_AGENT, properties.getUserAgent());
         return headers;
     }
 
@@ -106,10 +105,10 @@ public class AsaasGatewayService implements PaymentGateway {
 
     @Override
     public WebhookResult processWebhook(String rawPayload, String signatureHeader) {
-        if (webhookToken == null || webhookToken.isBlank()
+        if (properties.getWebhookToken() == null || properties.getWebhookToken().isBlank()
                 || signatureHeader == null
                 || !MessageDigest.isEqual(
-                        webhookToken.getBytes(StandardCharsets.UTF_8),
+                        properties.getWebhookToken().getBytes(StandardCharsets.UTF_8),
                         signatureHeader.getBytes(StandardCharsets.UTF_8))) {
             throw new WebhookAuthenticationException();
         }
@@ -118,13 +117,15 @@ public class AsaasGatewayService implements PaymentGateway {
             Map<?, ?> payload = MAPPER.readValue(rawPayload, Map.class);
             Map<?, ?> payment = requireMap(payload.get("payment"), "payment");
             String eventId = requireString(payload.get("id"), "id");
+            String eventType = requireString(payload.get("event"), "event");
             String externalId = requireString(payment.get("id"), "payment.id");
             String status = requireString(payment.get("status"), "payment.status");
-            PaymentStatus.fromAsaas(status);
+            String normalizedStatus = PaymentStatus.fromAsaas(status).name();
             return new WebhookResult(
                     eventId,
                     externalId,
-                    PaymentStatus.fromAsaas(status).name(),
+                    eventType,
+                    normalizedStatus,
                     optionalString(payment.get("externalReference")),
                     decimalValue(payment.get("value")),
                     optionalString(payment.get("currency")),
@@ -138,8 +139,10 @@ public class AsaasGatewayService implements PaymentGateway {
     public ProviderPayment findPaymentByReference(String externalReference) {
         Map<?, ?> response;
         try {
+            String uri = baseUrl() + "/payments?externalReference="
+                    + URLEncoder.encode(externalReference, StandardCharsets.UTF_8).replace("+", "%20");
             ResponseEntity<Map> entity = restTemplate.exchange(
-                    baseUrl() + "/payments?externalReference=" + externalReference,
+                    uri,
                     HttpMethod.GET,
                     new HttpEntity<>(headers()),
                     Map.class);
@@ -197,10 +200,7 @@ public class AsaasGatewayService implements PaymentGateway {
     }
 
     private String baseUrl() {
-        if (configuredBaseUrl == null || configuredBaseUrl.isBlank()) {
-            return "https://api-sandbox.asaas.com/v3";
-        }
-        return configuredBaseUrl.replaceAll("/+$", "");
+        return properties.normalizedBaseUrl();
     }
 
     private String getOrCreateCustomer(String name, String email, String cpfCnpj) {

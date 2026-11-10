@@ -8,6 +8,28 @@ import { toast } from 'react-hot-toast';
 export default function AdminDashboard() {
     const [dashboardData, setDashboardData] = useState<AdminDashboardData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [connectingMelhorEnvio, setConnectingMelhorEnvio] = useState(false);
+
+    useEffect(() => {
+        const searchParams = new URLSearchParams(window.location.search);
+        const integration = searchParams.get('integration');
+        const status = searchParams.get('status');
+        if (integration !== 'melhor-envio' || !status) {
+            return;
+        }
+
+        const message = status === 'connected'
+            ? 'Melhor Envio conectado com sucesso.'
+            : status === 'denied'
+                ? 'A autorização do Melhor Envio foi cancelada.'
+                : 'Não foi possível conectar o Melhor Envio.';
+        if (status === 'connected') {
+            toast.success(message);
+        } else {
+            toast.error(message);
+        }
+        window.history.replaceState({}, '', '/admin');
+    }, []);
 
     useEffect(() => {
         const loadDashboard = async () => {
@@ -23,6 +45,20 @@ export default function AdminDashboard() {
         };
         loadDashboard();
     }, []);
+
+    const connectMelhorEnvio = async () => {
+        if (connectingMelhorEnvio) {
+            return;
+        }
+        setConnectingMelhorEnvio(true);
+        try {
+            const authorizationUrl = await adminService.getMelhorEnvioAuthorizationUrl();
+            window.location.assign(authorizationUrl);
+        } catch {
+            toast.error('Não foi possível iniciar a conexão com o Melhor Envio.');
+            setConnectingMelhorEnvio(false);
+        }
+    };
 
     const stats = dashboardData ? [
         { title: 'Receita Total', value: `R$ ${dashboardData.totalRevenue.toFixed(2).replace('.', ',')}`, icon: DollarSign, trend: '', isPositive: true },
@@ -44,6 +80,25 @@ export default function AdminDashboard() {
                 <h1 className="text-3xl font-bold">Dashboard</h1>
                 <p className="text-gray-400 mt-1">Bem-vindo ao painel de controle da DN Store.</p>
             </div>
+
+            <section className="rounded-xl border border-white/10 bg-[#2A2A2A] p-6">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h2 className="text-lg font-bold">Integrações</h2>
+                        <p className="mt-1 text-sm text-gray-400">
+                            Conecte a conta administrativa do Melhor Envio para calcular fretes reais.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={connectMelhorEnvio}
+                        disabled={connectingMelhorEnvio}
+                        className="rounded-lg bg-brand-secondary px-5 py-3 font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        {connectingMelhorEnvio ? 'Iniciando conexão...' : 'Conectar Melhor Envio'}
+                    </button>
+                </div>
+            </section>
 
             {/* Stat Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

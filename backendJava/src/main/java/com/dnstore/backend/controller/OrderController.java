@@ -49,7 +49,7 @@ public class OrderController {
         Order order = orderService.checkout(
                 user,
                 addressData,
-                request.getShippingType(),
+                request.getShippingOptionId(),
                 request.getCouponCode(),
                 request.getAddressId());
         log.info("order.created orderId={} userId={} total={}", order.getId(), user.getId(), order.getTotal());
@@ -127,7 +127,7 @@ public class OrderController {
         private String neighborhood;
         private String city;
         private String state;
-        private String shippingType;
+        private UUID shippingOptionId;
         private String couponCode;
         private UUID addressId;
 
@@ -187,12 +187,12 @@ public class OrderController {
             this.state = state;
         }
 
-        public String getShippingType() {
-            return shippingType;
+        public UUID getShippingOptionId() {
+            return shippingOptionId;
         }
 
-        public void setShippingType(String shippingType) {
-            this.shippingType = shippingType;
+        public void setShippingOptionId(UUID shippingOptionId) {
+            this.shippingOptionId = shippingOptionId;
         }
 
         public String getCouponCode() {

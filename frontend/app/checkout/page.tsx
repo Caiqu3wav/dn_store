@@ -106,7 +106,7 @@ export default function CheckoutPage() {
                     neighborhood: delivery.neighborhood,
                     city: delivery.city,
                     state: delivery.state,
-                    shippingType: shipping?.typeName,
+                    shippingOptionId: shipping?.id,
                 });
                 currentOrderId = orderRes.data.id as string;
                 setOrderId(currentOrderId);
@@ -122,7 +122,7 @@ export default function CheckoutPage() {
             });
 
             if (items.length > 0) setConfirmedItems([...items]);
-            setConfirmedTotal(paymentRes.data.amount ?? total);
+            setConfirmedTotal(paymentRes.data.amount ?? total + (shipping?.cost ?? 0));
             clearCart();
 
             return paymentRes.data as PaymentResult;
@@ -208,8 +208,11 @@ export default function CheckoutPage() {
                     <div className="lg:col-span-1">
                         <OrderSummary
                         items={step === 3 ? confirmedItems : items}
-                        total={step === 3 ? confirmedTotal : total}
+                        total={step === 3
+                            ? confirmedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+                            : total}
                         shipping={shipping}
+                        finalTotal={step === 3 ? confirmedTotal : undefined}
                         />
                     </div>
                 </div>

@@ -14,11 +14,22 @@ public interface ShippingGateway {
     }
 
     record ShippingItem(
+            String id,
             BigDecimal weight,
             BigDecimal width,
             BigDecimal height,
             BigDecimal length,
+            BigDecimal insuranceValue,
             int quantity) {
+
+        public ShippingItem(
+                BigDecimal weight,
+                BigDecimal width,
+                BigDecimal height,
+                BigDecimal length,
+                int quantity) {
+            this("item", weight, width, height, length, BigDecimal.ZERO, quantity);
+        }
 
         public BigDecimal totalWeight() {
             return weight.multiply(BigDecimal.valueOf(quantity));

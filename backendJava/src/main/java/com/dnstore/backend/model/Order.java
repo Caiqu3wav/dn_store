@@ -41,8 +41,18 @@ public class Order {
     @Builder.Default
     private BigDecimal shippingCost = BigDecimal.ZERO;
 
-    @Column(name = "shipping_type", length = 20)
+    @Column(name = "shipping_type", length = 100)
     private String shippingType;
+
+    @Column(name = "shipping_service_id", length = 64)
+    private String shippingServiceId;
+
+    @Column(name = "shipping_source", length = 32)
+    private String shippingSource;
+
+    @JdbcTypeCode(java.sql.Types.VARCHAR)
+    @Column(name = "shipping_quote_option_id", length = 36, unique = true)
+    private UUID shippingQuoteOptionId;
 
     @Column(name = "shipping_deadline_days")
     private Integer shippingDeadlineDays;

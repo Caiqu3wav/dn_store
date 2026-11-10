@@ -2,6 +2,7 @@ package com.dnstore.backend.service;
 
 import com.dnstore.backend.model.*;
 import com.dnstore.backend.model.enums.Role;
+import com.dnstore.backend.config.MelhorEnvioProperties;
 import com.dnstore.backend.exception.ConflictException;
 import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.repository.*;
@@ -13,12 +14,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
+import java.time.Duration;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -58,6 +63,12 @@ class OrderServiceTest {
         @Mock
         private PaymentRepository paymentRepository;
 
+        @Mock
+        private ShippingQuoteOptionRepository shippingQuoteOptionRepository;
+
+        @Mock
+        private MelhorEnvioProperties melhorEnvioProperties;
+
         @InjectMocks
         private OrderService orderService;
 
@@ -65,6 +76,7 @@ class OrderServiceTest {
         private Address address;
         private Cart cart;
         private ProductVariant variant;
+        private final Map<UUID, ShippingQuoteOptionEntity> shippingOptions = new java.util.HashMap<>();
 
         @BeforeEach
         void setUp() {
@@ -112,8 +124,32 @@ class OrderServiceTest {
 
                 lenient().when(cartRepository.findByUser(user)).thenReturn(Optional.of(cart));
                 lenient().when(cartRepository.findByUserForUpdate(user)).thenReturn(Optional.of(cart));
-                lenient().when(deliveryService.calculateShipping(anyString(), anyList(), eq("PAC")))
-                                .thenReturn(new ShippingQuote("PAC", new BigDecimal("10.00"), 3));
+                lenient().when(deliveryService.normalizedOriginZip()).thenReturn("12600000");
+                ReflectionTestUtils.setField(orderService, "shippingGateway", "melhorEnvio");
+                lenient().when(deliveryService.calculateOptions(anyString(), anyList()))
+                                .thenReturn(List.of(new ShippingQuote(
+                                        "1:123", "Correios PAC", new BigDecimal("10.00"), 3, "MELHOR_ENVIO")));
+                lenient().when(melhorEnvioProperties.getEnvironment()).thenReturn("sandbox");
+                lenient().when(melhorEnvioProperties.getQuoteTtl()).thenReturn(Duration.ofMinutes(15));
+                lenient().when(shippingQuoteOptionRepository.save(any(ShippingQuoteOptionEntity.class)))
+                                .thenAnswer(invocation -> {
+                                        ShippingQuoteOptionEntity option = invocation.getArgument(0);
+                                        option.setId(UUID.randomUUID());
+                                        shippingOptions.put(option.getId(), option);
+                                        return option;
+                                });
+                lenient().when(shippingQuoteOptionRepository.findByIdAndUser_IdAndExpiresAtAfter(
+                                any(UUID.class), eq(user.getId()), any(LocalDateTime.class)))
+                                .thenAnswer(invocation -> {
+                                        ShippingQuoteOptionEntity option = shippingOptions.get(invocation.getArgument(0));
+                                        UUID ownerId = invocation.getArgument(1);
+                                        LocalDateTime requestedAt = invocation.getArgument(2);
+                                        return option != null
+                                                && option.getUser().getId().equals(ownerId)
+                                                && option.getExpiresAt().isAfter(requestedAt)
+                                                        ? Optional.of(option)
+                                                        : Optional.empty();
+                                });
                 lenient().when(addressRepository.findByIdAndUser_Id(address.getId(), user.getId()))
                                 .thenReturn(Optional.of(address));
                 lenient().when(orderRepository.save(any(Order.class)))
@@ -126,34 +162,38 @@ class OrderServiceTest {
 
         @Test
         void checkout_validOrder_shouldTakeSnapshotOfUnitPriceAndDecreaseStock() {
-                Order order = orderService.checkout(user, null, "PAC", null, address.getId());
+                UUID shippingOptionId = orderService.quoteShipping(user, address.getZipCode()).get(0).id();
+                Order order = orderService.checkout(user, null, shippingOptionId, null, address.getId());
 
                 assertThat(order.getTotal()).isEqualByComparingTo("210.00");
                 assertThat(order.getShippingCost()).isEqualByComparingTo("10.00");
-                assertThat(order.getShippingType()).isEqualTo("PAC");
+                assertThat(order.getShippingType()).isEqualTo("Correios PAC");
+                assertThat(order.getShippingServiceId()).isEqualTo("1:123");
+                assertThat(order.getShippingQuoteOptionId()).isEqualTo(shippingOptionId);
                 assertThat(order.getShippingDeadlineDays()).isEqualTo(3);
                 assertThat(order.getItems()).hasSize(1);
                 assertThat(order.getItems().get(0).getPrice()).isEqualByComparingTo("100.00");
                 assertThat(variant.getStock()).isEqualTo(3);
                 verify(productVariantRepository, times(1)).save(variant);
-                verify(deliveryService).calculateShipping(eq("01000-000"), eq(List.of(new ShippingItem(
+                verify(deliveryService).calculateOptions(eq("01000000"), eq(List.of(new ShippingItem(
+                                variant.getId().toString(),
                                 new BigDecimal("0.5"), new BigDecimal("20.0"), new BigDecimal("10.0"),
-                                new BigDecimal("30.0"), 2))), eq("PAC"));
+                                new BigDecimal("30.0"), new BigDecimal("100.00"), 2))));
         }
 
         @Test
         void quoteShipping_validPhysicalProduct_shouldCreateShippingItemFromPersistedValues() {
-                when(deliveryService.calculateOptions(eq("12500-000"), anyList()))
-                                .thenReturn(List.of(new ShippingQuote("PAC", new BigDecimal("10.00"), 3)));
-
                 List<OrderService.ShippingOption> options = orderService.quoteShipping(user, "12500-000");
 
-                assertThat(options).containsExactly(
-                                new OrderService.ShippingOption("PAC", new BigDecimal("10.00"), 3,
-                                                "SHIPPING_GATEWAY"));
-                verify(deliveryService).calculateOptions(eq("12500-000"), eq(List.of(new ShippingItem(
+                assertThat(options).hasSize(1);
+                assertThat(options.get(0).serviceId()).isEqualTo("1:123");
+                assertThat(options.get(0).typeName()).isEqualTo("Correios PAC");
+                assertThat(options.get(0).cost()).isEqualByComparingTo("10.00");
+                assertThat(options.get(0).source()).isEqualTo("MELHOR_ENVIO");
+                verify(deliveryService).calculateOptions(eq("12500000"), eq(List.of(new ShippingItem(
+                                variant.getId().toString(),
                                 new BigDecimal("0.5"), new BigDecimal("20.0"), new BigDecimal("10.0"),
-                                new BigDecimal("30.0"), 2))));
+                                new BigDecimal("30.0"), new BigDecimal("100.00"), 2))));
         }
 
         @Test
@@ -161,6 +201,37 @@ class OrderServiceTest {
                 physicalProduct().setWeight(0);
 
                 assertInvalidShippingProduct();
+        }
+
+        @Test
+        void checkout_rejectsQuoteWhenCartChangedAfterCustomerAcceptedIt() {
+                UUID quoteOptionId = orderService.quoteShipping(user, address.getZipCode()).get(0).id();
+                cart.getItems().get(0).setQuantity(3);
+
+                assertThatThrownBy(() -> orderService.checkout(
+                                user, null, quoteOptionId, null, address.getId()))
+                                .isInstanceOf(ConflictException.class)
+                                .hasMessageContaining("dados do carrinho");
+
+                verify(orderRepository, never()).save(any(Order.class));
+        }
+
+        @Test
+        void checkout_rejectsQuoteThatBelongsToAnotherCustomer() {
+                UUID quoteOptionId = orderService.quoteShipping(user, address.getZipCode()).get(0).id();
+                User anotherUser = new User();
+                anotherUser.setId(UUID.randomUUID());
+                when(cartRepository.findByUserForUpdate(anotherUser)).thenReturn(Optional.of(cart));
+
+                assertThatThrownBy(() -> orderService.checkout(
+                                anotherUser,
+                                new OrderService.AddressData(
+                                        "Rua A", "123", null, "Centro", "São Paulo", "SP", address.getZipCode()),
+                                quoteOptionId,
+                                null,
+                                null))
+                                .isInstanceOf(ConflictException.class)
+                                .hasMessageContaining("opção de frete expirou");
         }
 
         @Test
@@ -209,7 +280,7 @@ class OrderServiceTest {
         void checkout_whenCartIsEmpty_shouldFail() {
                 cart.getItems().clear();
 
-                assertThatThrownBy(() -> orderService.checkout(user, null, "PAC", null, address.getId()))
+                assertThatThrownBy(() -> orderService.checkout(user, null, null, null, address.getId()))
                                 .isInstanceOf(ConflictException.class)
                                 .hasMessageContaining("vazio");
         }
@@ -219,7 +290,7 @@ class OrderServiceTest {
                 CartItem cartItem = cart.getItems().get(0);
                 cartItem.setQuantity(10);
 
-                assertThatThrownBy(() -> orderService.checkout(user, null, "PAC", null, address.getId()))
+                assertThatThrownBy(() -> orderService.checkout(user, null, null, null, address.getId()))
                                 .isInstanceOf(ConflictException.class)
                                 .hasMessageContaining("Estoque insuficiente");
 
@@ -230,7 +301,7 @@ class OrderServiceTest {
         void checkout_whenStockIsZero_shouldFailBeforePersistingOrder() {
                 variant.setStock(0);
 
-                assertThatThrownBy(() -> orderService.checkout(user, null, "PAC", null, address.getId()))
+                assertThatThrownBy(() -> orderService.checkout(user, null, null, null, address.getId()))
                                 .isInstanceOf(ConflictException.class)
                                 .hasMessageContaining("Estoque insuficiente");
 
@@ -241,7 +312,7 @@ class OrderServiceTest {
         void checkout_whenAddressDoesNotBelongToUser_shouldFail() {
                 when(addressRepository.findByIdAndUser_Id(address.getId(), user.getId())).thenReturn(Optional.empty());
 
-                assertThatThrownBy(() -> orderService.checkout(user, null, "PAC", null, address.getId()))
+                assertThatThrownBy(() -> orderService.checkout(user, null, null, null, address.getId()))
                                 .isInstanceOf(ResourceNotFoundException.class)
                                 .hasMessageContaining("Endereço não encontrado");
         }
