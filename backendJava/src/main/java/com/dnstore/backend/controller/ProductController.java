@@ -3,7 +3,10 @@ package com.dnstore.backend.controller;
 import com.dnstore.backend.model.PhysicalProduct;
 import com.dnstore.backend.model.Product;
 import com.dnstore.backend.dto.ProductResponse;
+import com.dnstore.backend.dto.ProductDefaultRuleRequest;
+import com.dnstore.backend.dto.ProductDefaultRuleResponse;
 import com.dnstore.backend.exception.ResourceNotFoundException;
+import com.dnstore.backend.service.ProductDefaultsService;
 import com.dnstore.backend.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +32,7 @@ import java.util.UUID;
 public class ProductController {
 
     private final ProductService productService;
+    private final ProductDefaultsService productDefaultsService;
 
     /**
      * Lista todos os produtos.
@@ -52,9 +56,30 @@ public class ProductController {
             @RequestParam(required = false) UUID categoryId,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
-            @RequestParam(required = false) String sortBy) {
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String color) {
         return ResponseEntity.ok(
-                productService.searchForAdminResponses(search, categoryId, minPrice, maxPrice, sortBy));
+                productService.searchForAdminResponses(search, categoryId, minPrice, maxPrice, sortBy, color));
+    }
+
+    @GetMapping("/admin/default-rules")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ProductDefaultRuleResponse>> listDefaultRules() {
+        return ResponseEntity.ok(productDefaultsService.listRules());
+    }
+
+    @PostMapping("/admin/default-rules")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ProductDefaultRuleResponse> createDefaultRule(
+            @RequestBody ProductDefaultRuleRequest request) {
+        return ResponseEntity.ok(productDefaultsService.createRule(request));
+    }
+
+    @DeleteMapping("/admin/default-rules/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteDefaultRule(@PathVariable UUID id) {
+        productDefaultsService.deleteRule(id);
+        return ResponseEntity.noContent().build();
     }
 
     /**

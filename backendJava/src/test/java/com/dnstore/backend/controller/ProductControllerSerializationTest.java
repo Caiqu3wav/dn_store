@@ -8,6 +8,7 @@ import com.dnstore.backend.repository.CategoryRepository;
 import com.dnstore.backend.repository.ProductRepository;
 import com.dnstore.backend.repository.ProductVariantRepository;
 import com.dnstore.backend.service.ProductService;
+import com.dnstore.backend.service.ProductDefaultsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Sort;
@@ -38,8 +39,10 @@ class ProductControllerSerializationTest {
         ProductService productService = new ProductService(
                 productRepository,
                 mock(CategoryRepository.class),
-                mock(ProductVariantRepository.class));
-        mockMvc = MockMvcBuilders.standaloneSetup(new ProductController(productService)).build();
+                mock(ProductVariantRepository.class),
+                mock(ProductDefaultsService.class));
+        mockMvc = MockMvcBuilders.standaloneSetup(
+                new ProductController(productService, mock(ProductDefaultsService.class))).build();
     }
 
     @Test

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import api from '../lib/axios';
+import { ProductDefaultRule, ProductDefaultRuleRequest } from '@/types';
 
 // Utilizando fetcher genérico para o SWR no frontend
 export const fetcher = (url: string) => api.get(url).then(res => res.data);
@@ -29,5 +30,19 @@ export const productService = {
   getAdminProductById: async (id: string) => {
     const response = await api.get(`/products/admin/${id}`);
     return response.data;
+  },
+
+  listDefaultRules: async (): Promise<ProductDefaultRule[]> => {
+    const response = await api.get('/products/admin/default-rules');
+    return response.data;
+  },
+
+  createDefaultRule: async (rule: ProductDefaultRuleRequest): Promise<ProductDefaultRule> => {
+    const response = await api.post('/products/admin/default-rules', rule);
+    return response.data;
+  },
+
+  deleteDefaultRule: async (id: string) => {
+    await api.delete(`/products/admin/default-rules/${id}`);
   }
 };
