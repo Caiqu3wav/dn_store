@@ -83,7 +83,7 @@ Pedidos aguardando pagamento expiram após o prazo configurado (60 minutos por p
 
 O checkout habilita temporariamente apenas Pix e boleto. Cartão permanece desabilitado até existir tokenização ou checkout hospedado validado, para que PAN/CVV não trafeguem pelo frontend e backend da loja.
 
-A migration `V16__support_payment_retries_and_webhooks.sql` adiciona o histórico de tentativas e a deduplicação persistente de webhooks. Ela não foi executada durante o desenvolvimento. Antes de aplicar em qualquer ambiente compartilhado, valide-a em um MySQL descartável compatível, confirme o backup e a estratégia de rollback e confira o histórico do Flyway após a execução. Não altere migrations já aplicadas nem use `ddl-auto=update` como substituto.
+As migrations `V18__support_payment_retries_and_webhooks.sql` e `V20__align_event_entity_schema.sql` adicionam, respectivamente, o histórico de tentativas/deduplicação de webhooks e o alinhamento do schema de eventos. Elas não foram executadas durante o desenvolvimento. Antes de aplicar em qualquer ambiente compartilhado, valide-as em um MySQL descartável compatível, confirme o backup e a estratégia de rollback e confira o histórico do Flyway após a execução. Não altere migrations já aplicadas nem use `ddl-auto=update` como substituto.
 
 Para iniciar o backend, abra o terminal na pasta `backendJava`:
 

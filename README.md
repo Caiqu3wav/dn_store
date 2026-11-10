@@ -216,6 +216,19 @@ Para encerrar, pressione `Ctrl+C`. Para iniciar em segundo plano, use `docker co
 
 As credenciais e chaves de `.env` são locais e não devem ser commitadas nem reutilizadas em produção.
 
+### Feed do Instagram
+
+O feed da página inicial usa a Instagram API with Instagram Login da Meta no backend; ela não usa uma chave única `INSTAGRAPH_API_KEY`. As contas precisam ser profissionais e o app Meta deve ter a permissão `instagram_business_basic`. Configure no `backendJava/.env` o ID da conta e um Instagram User Access Token de longa duração para cada perfil:
+
+```properties
+INSTAGRAM_MTB_USER_ID=
+INSTAGRAM_MTB_ACCESS_TOKEN=
+INSTAGRAM_STORE_USER_ID=
+INSTAGRAM_STORE_ACCESS_TOKEN=
+```
+
+Os tokens são mantidos apenas em memória durante a execução e renovados diariamente pela API. Como a escolha atual não persiste os tokens renovados, atualize os valores no `.env` antes de reiniciar o backend e antes do vencimento do token. O endpoint público do backend mantém os tokens fora do navegador. Os feeds são armazenados em cache por 15 minutos; carrosséis consultam também as mídias filhas.
+
 ---
 
 ## 🤝 Contribuição

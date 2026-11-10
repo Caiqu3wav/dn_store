@@ -10,6 +10,20 @@ export interface Category {
   description?: string;
 }
 
+export interface InstagramMediaItem {
+  id: string;
+  mediaType: 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM';
+  mediaUrl: string | null;
+  thumbnailUrl: string | null;
+  timestamp: string | null;
+}
+
+export interface InstagramPost extends InstagramMediaItem {
+  caption: string | null;
+  permalink: string | null;
+  children: InstagramMediaItem[];
+}
+
 export interface ProductVariant {
   id: string;
   size: string;
