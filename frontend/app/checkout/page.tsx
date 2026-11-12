@@ -106,7 +106,7 @@ export default function CheckoutPage() {
                     neighborhood: delivery.neighborhood,
                     city: delivery.city,
                     state: delivery.state,
-                    shippingOptionId: shipping?.id,
+                    shippingOptionId: shipping?.id ?? null,  // UUID da cotação salva no backend
                 });
                 currentOrderId = orderRes.data.id as string;
                 setOrderId(currentOrderId);

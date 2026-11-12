@@ -222,6 +222,11 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/check-email")
+    public ResponseEntity<?> checkEmail(@RequestParam @Email @NotBlank String email) {
+        return ResponseEntity.ok(java.util.Map.of("exists", userRepository.existsByEmail(email)));
+    }
+
     @PostMapping("/forgot-password")
     @Transactional
     public ResponseEntity<?> forgotPassword(@Valid @RequestBody EmailRequest request) {

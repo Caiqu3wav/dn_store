@@ -28,7 +28,7 @@ export function StepConfirmation({ orderId, paymentMethod, result, onRetry }: Pr
     const [copied, setCopied] = useState(false);
 
     useEffect(() => {
-        if (status === 'PAID') {
+        if (status === 'PAID' || status === 'FAILED' || status === 'REFUNDED') {
             sessionStorage.removeItem('dn-store-payment-order');
         }
     }, [status]);

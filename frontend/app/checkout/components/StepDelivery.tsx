@@ -6,7 +6,7 @@ import api from '@/lib/axios';
 import axios from 'axios';
 
 export interface ShippingOption {
-    id: string;
+    id: string;          // UUID da ShippingQuoteOptionEntity — enviado no checkout
     serviceId: string;
     typeName: string;
     cost: number;
@@ -86,7 +86,8 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
             }
 
             if (quoteResult.status === 'fulfilled') {
-                const options = quoteResult.value.data;
+                // backend returns ShippingOption[] with UUID id, serviceId, typeName, cost, deadLineDays, source
+                const options: ShippingOption[] = quoteResult.value.data;
                 setShippingOptions(options);
                 onShippingChange(null);
                 if (options.length === 0) {

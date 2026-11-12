@@ -245,20 +245,34 @@ public class AsaasGatewayService implements PaymentGateway {
         String pixQrCode = payment.pixQrCode();
         String pixCopyPaste = payment.pixCopyPaste();
         if ("PIX".equals(payment.paymentMethod()) && (pixQrCode == null || pixCopyPaste == null)) {
-            try {
-                ResponseEntity<Map> response = restTemplate.exchange(
-                        baseUrl() + "/payments/" + payment.externalId() + "/pixQrCode",
-                        HttpMethod.GET,
-                        new HttpEntity<>(headers()),
-                        Map.class);
-                Map<?, ?> body = response.getBody();
-                if (body == null) {
-                    throw new PaymentGatewayException("Resposta Pix inválida.");
+            pixQrCode = null;
+            pixCopyPaste = null;
+            RestClientException lastException = null;
+            for (int attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    ResponseEntity<Map> response = restTemplate.exchange(
+                            baseUrl() + "/payments/" + payment.externalId() + "/pixQrCode",
+                            HttpMethod.GET,
+                            new HttpEntity<>(headers()),
+                            Map.class);
+                    Map<?, ?> body = response.getBody();
+                    if (body == null) throw new PaymentGatewayException("Resposta Pix inválida.");
+                    pixQrCode = optionalString(body.get("encodedImage"));
+                    pixCopyPaste = optionalString(body.get("payload"));
+                    if (pixQrCode != null && pixCopyPaste != null) break;
+                } catch (RestClientException exception) {
+                    lastException = exception;
+                    if (attempt < 3) {
+                        try { Thread.sleep(1000L * attempt); } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    }
                 }
-                pixQrCode = optionalString(body.get("encodedImage"));
-                pixCopyPaste = optionalString(body.get("payload"));
-            } catch (RestClientException exception) {
-                throw new PaymentGatewayException("Não foi possível obter o QR Code Pix.", exception);
+            }
+            if (pixQrCode == null || pixCopyPaste == null) {
+                throw new PaymentGatewayException("Não foi possível obter o QR Code Pix.",
+                        lastException);
             }
         }
         return new PaymentResult(

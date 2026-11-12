@@ -468,7 +468,7 @@ export const AuthForm = ({
           {isSubmitting ? (
             <span className="inline-flex items-center justify-center gap-2">
               <LoaderCircle className="h-4 w-4 animate-spin" />
-              Cadastrando...
+              Carregando...
             </span>
           ) : isCepLoading && step === 2 ? (
             <span className="inline-flex items-center justify-center gap-2">
