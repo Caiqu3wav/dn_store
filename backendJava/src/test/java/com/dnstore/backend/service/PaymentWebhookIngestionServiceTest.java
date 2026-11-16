@@ -3,6 +3,7 @@ package com.dnstore.backend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 import com.dnstore.backend.model.PaymentWebhookEvent;
@@ -19,9 +20,12 @@ import org.springframework.dao.DataIntegrityViolationException;
 @ExtendWith(MockitoExtension.class)
 class PaymentWebhookIngestionServiceTest {
 
-    @Mock PaymentGateway gateway;
-    @Mock PaymentWebhookEventRepository repository;
-    @InjectMocks PaymentWebhookIngestionService service;
+    @Mock
+    PaymentGateway gateway;
+    @Mock
+    PaymentWebhookEventRepository repository;
+    @InjectMocks
+    PaymentWebhookIngestionService service;
 
     @Test
     void validWebhookIsPersistedWithoutCallingProviderHttpMethods() {
@@ -35,16 +39,40 @@ class PaymentWebhookIngestionServiceTest {
 
     @Test
     void duplicateEventIsAcknowledgedWithoutSecondInsert() {
-        when(gateway.processWebhook("payload", "token")).thenReturn(event("evt-1"));
+        when(gateway.processWebhook("payload", "token"))
+                .thenReturn(event("evt-1"));
+
         when(repository.saveAndFlush(any(PaymentWebhookEvent.class)))
                 .thenThrow(new DataIntegrityViolationException("duplicate"));
 
+        when(repository.existsById("evt-1"))
+                .thenReturn(true);
+
         assertThat(service.ingest("payload", "token")).isFalse();
+
+        verify(repository).saveAndFlush(any(PaymentWebhookEvent.class));
+        verify(repository).existsById("evt-1");
+    }
+
+    @Test
+    void nonDuplicateIntegrityViolationIsPropagated() {
+        when(gateway.processWebhook("payload", "token"))
+                .thenReturn(event("evt-1"));
+
+        when(repository.saveAndFlush(any(PaymentWebhookEvent.class)))
+                .thenThrow(new DataIntegrityViolationException("other constraint"));
+
+        when(repository.existsById("evt-1"))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> service.ingest("payload", "token"))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
     void oversizedPayloadIsRejectedBeforeParsing() {
-        assertThatThrownBy(() -> service.ingest("x".repeat(PaymentWebhookIngestionService.MAX_PAYLOAD_BYTES + 1), "token"))
+        assertThatThrownBy(
+                () -> service.ingest("x".repeat(PaymentWebhookIngestionService.MAX_PAYLOAD_BYTES + 1), "token"))
                 .isInstanceOf(IllegalArgumentException.class);
         verifyNoInteractions(gateway, repository);
     }
