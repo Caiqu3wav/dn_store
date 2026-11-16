@@ -93,11 +93,11 @@ public interface PaymentGateway {
                         String externalReference,
                         BigDecimal amount,
                         String currency,
-                        String customerId
-        ) {
+                        String customerId) {
                 public WebhookResult(String eventId, String externalId, String normalizedStatus,
                                 String externalReference, BigDecimal amount, String currency, String customerId) {
-                        this(eventId, externalId, null, normalizedStatus, externalReference, amount, currency, customerId);
+                        this(eventId, externalId, null, normalizedStatus, externalReference, amount, currency,
+                                        customerId);
                 }
 
                 public WebhookResult(String externalId, String normalizedStatus) {
@@ -117,10 +117,48 @@ public interface PaymentGateway {
                         String pixQrCode,
                         String pixCopyPaste,
                         String boletoUrl,
-                        String boletoBarcode) {
+                        String boletoBarcode,
+                        BigDecimal refundedAmount) {
+                public ProviderPayment(
+                                String externalId,
+                                String status,
+                                String externalReference,
+                                BigDecimal amount,
+                                String currency,
+                                String customerId,
+                                String paymentMethod,
+                                String pixQrCode,
+                                String pixCopyPaste,
+                                String boletoUrl,
+                                String boletoBarcode) {
+                        this(
+                                        externalId,
+                                        status,
+                                        externalReference,
+                                        amount,
+                                        currency,
+                                        customerId,
+                                        paymentMethod,
+                                        pixQrCode,
+                                        pixCopyPaste,
+                                        boletoUrl,
+                                        boletoBarcode,
+                                        BigDecimal.ZERO);
+                }
+
                 public PaymentResult toPaymentResult() {
-                        return new PaymentResult(externalId, status, paymentMethod, pixQrCode, pixCopyPaste,
-                                        boletoUrl, boletoBarcode, amount, externalReference, customerId, currency);
+                        return new PaymentResult(
+                                        externalId,
+                                        status,
+                                        paymentMethod,
+                                        pixQrCode,
+                                        pixCopyPaste,
+                                        boletoUrl,
+                                        boletoBarcode,
+                                        amount,
+                                        externalReference,
+                                        customerId,
+                                        currency);
                 }
         }
 }

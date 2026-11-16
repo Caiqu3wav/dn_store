@@ -278,7 +278,8 @@ public class AsaasGatewayService implements PaymentGateway {
     private ProviderPayment parseProviderPayment(Map<?, ?> body) {
         return new ProviderPayment(
                 requireString(body.get("id"), "payment.id"),
-                PaymentStatus.fromAsaas(requireString(body.get("status"), "payment.status")).name(),
+                PaymentStatus.fromAsaas(
+                        requireString(body.get("status"), "payment.status")).name(),
                 optionalString(body.get("externalReference")),
                 decimalValue(body.get("value")),
                 optionalString(body.get("currency")),
@@ -287,8 +288,11 @@ public class AsaasGatewayService implements PaymentGateway {
                 null,
                 null,
                 optionalString(body.get("bankSlipUrl")),
-                optionalString(body.get("identificationField") != null
-                        ? body.get("identificationField") : body.get("barCode")));
+                optionalString(
+                        body.get("identificationField") != null
+                                ? body.get("identificationField")
+                                : body.get("barCode")),
+                calculateRefundedAmount(body.get("refunds")));
     }
 
     private void verifyExpectedCharge(PaymentResult result, String reference, BigDecimal amount) {
@@ -347,5 +351,42 @@ public class AsaasGatewayService implements PaymentGateway {
             return new BigDecimal(number.toString());
         }
         return null;
+    }
+
+    private BigDecimal calculateRefundedAmount(Object refundsValue) {
+        if (refundsValue == null) {
+            return BigDecimal.ZERO;
+        }
+
+        if (!(refundsValue instanceof List<?> refunds)) {
+            throw new PaymentGatewayException(
+                    "Formato inválido do campo refunds retornado pelo Asaas.");
+        }
+
+        BigDecimal totalRefunded = BigDecimal.ZERO;
+
+        for (Object item : refunds) {
+            if (!(item instanceof Map<?, ?> refund)) {
+                throw new PaymentGatewayException(
+                        "Item inválido no histórico de estornos do Asaas.");
+            }
+
+            String status = optionalString(refund.get("status"));
+
+            if (!"DONE".equalsIgnoreCase(status)) {
+                continue;
+            }
+
+            BigDecimal value = decimalValue(refund.get("value"));
+
+            if (value == null || value.signum() <= 0) {
+                throw new PaymentGatewayException(
+                        "Valor inválido em estorno concluído pelo Asaas.");
+            }
+
+            totalRefunded = totalRefunded.add(value);
+        }
+
+        return totalRefunded;
     }
 }
