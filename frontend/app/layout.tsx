@@ -18,7 +18,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Desafio Natureza | Aventura sobre duas rodas",
+  title: {
+    default: "Desafio Natureza | Aventura sobre duas rodas",
+    template: "%s | Desafio Natureza",
+  },
   description: "Loja oficial da Desafio Natureza. Roupas e acessórios para mountain bike e eventos esportivos.",
 };
 

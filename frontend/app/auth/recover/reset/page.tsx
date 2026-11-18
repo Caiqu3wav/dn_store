@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authService } from '@/services/authService';
+import { getApiErrorMessage } from '@/utils/apiError';
 
 function ResetPasswordForm() {
     const router = useRouter();
@@ -11,7 +12,7 @@ function ResetPasswordForm() {
 
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [error, setError] = useState('');
+    const [error, setError] = useState(token ? '' : 'Este link de redefinição é inválido. Solicite um novo link.');
     const [isLoading, setIsLoading] = useState(false);
     const [isComplete, setIsComplete] = useState(false);
 
@@ -38,8 +39,12 @@ function ResetPasswordForm() {
         try {
             await authService.resetPassword({ token, newPassword: password });
             setIsComplete(true);
-        } catch {
-            setError('Este link é inválido ou expirou. Solicite uma nova redefinição.');
+        } catch (err: unknown) {
+            setError(getApiErrorMessage(err, 'Não foi possível redefinir a senha agora. Tente novamente.', {
+                // O backend usa 400 para link inválido, expirado ou já utilizado.
+                400: 'Este link é inválido, expirou ou já foi utilizado. Solicite uma nova redefinição.',
+                429: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
+            }));
         } finally {
             setIsLoading(false);
         }
@@ -95,6 +100,7 @@ function ResetPasswordForm() {
                     }}
                 >
                     <label
+                        htmlFor="reset-password"
                         style={{
                             display: 'block',
                             fontWeight: 700,
@@ -106,7 +112,9 @@ function ResetPasswordForm() {
                     </label>
 
                     <input
+                        id="reset-password"
                         type="password"
+                        autoComplete="new-password"
                         placeholder="Digite sua nova senha"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -128,6 +136,7 @@ function ResetPasswordForm() {
                     />
 
                     <label
+                        htmlFor="reset-confirm-password"
                         style={{
                             display: 'block',
                             fontWeight: 700,
@@ -139,7 +148,9 @@ function ResetPasswordForm() {
                     </label>
 
                     <input
+                        id="reset-confirm-password"
                         type="password"
+                        autoComplete="new-password"
                         placeholder="Digite a senha novamente"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
@@ -161,8 +172,9 @@ function ResetPasswordForm() {
 
                     {error && (
                         <p
+                            role="alert"
                             style={{
-                                color: '#ff0000',
+                                color: '#b91c1c',
                                 marginTop: 12,
                                 marginBottom: 0,
                                 fontSize: 14,
@@ -203,8 +215,26 @@ function ResetPasswordForm() {
                             fontSize: 14,
                         }}
                     >
-                        Voltar para o login
+                        {isComplete ? 'Ir para o login' : 'Voltar para o login'}
                     </button>
+
+                    {!token && (
+                        <button
+                            type="button"
+                            onClick={() => router.push('/auth/recover')}
+                            style={{
+                                display: 'block',
+                                margin: '8px auto 0',
+                                border: 'none',
+                                backgroundColor: 'transparent',
+                                color: '#0070f3',
+                                cursor: 'pointer',
+                                fontSize: 14,
+                            }}
+                        >
+                            Solicitar novo link de redefinição
+                        </button>
+                    )}
                 </form>
             </div>
         </div>

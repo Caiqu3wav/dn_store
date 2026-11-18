@@ -48,7 +48,7 @@ export function LabelInput({
   return (
     <>
       <FieldContainer $inputWidth={width}>
-        <StyledLabel aria-label={label} htmlFor={name}>
+        <StyledLabel htmlFor={inputProps.id ?? name}>
           {label}
         </StyledLabel>
         <StyledInput

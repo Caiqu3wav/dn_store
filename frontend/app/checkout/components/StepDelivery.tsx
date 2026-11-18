@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
 import api from '@/lib/axios';
-import axios from 'axios';
+import { getApiErrorMessage } from '@/utils/apiError';
+import { formatCep } from '@/utils/authFormatters';
 
 export interface ShippingOption {
     id: string;
@@ -95,15 +96,16 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
             } else {
                 setShippingOptions([]);
                 onShippingChange(null);
-                setShippingError('Não foi possível cotar o frete para este CEP. Tente novamente.');
+                setShippingError(getApiErrorMessage(
+                    quoteResult.reason,
+                    'Não foi possível cotar o frete para este CEP. Tente novamente.',
+                    { 400: 'CEP inválido ou sem cobertura de entrega. Confira o CEP informado.' },
+                ));
             }
         } catch (error: unknown) {
             setShippingOptions([]);
             onShippingChange(null);
-            const backendMessage = axios.isAxiosError(error)
-                ? (error.response?.data as { message?: string } | undefined)?.message
-                : undefined;
-            setShippingError(backendMessage || 'Não foi possível consultar o CEP. Verifique o número e tente novamente.');
+            setShippingError(getApiErrorMessage(error, 'Não foi possível consultar o CEP. Verifique o número e tente novamente.'));
         } finally {
             setLoadingCep(false);
         }
@@ -124,12 +126,13 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* CEP */}
                 <div className="relative">
-                    <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">CEP *</label>
+                    <label htmlFor="delivery-zip" className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">CEP *</label>
                     <div className="relative">
                         <input
+                            id="delivery-zip"
                             type="text"
                             value={data.zipCode}
-                            onChange={e => set('zipCode', e.target.value)}
+                            onChange={e => set('zipCode', formatCep(e.target.value))}
                             onBlur={handleCepBlur}
                             placeholder="00000-000"
                             maxLength={9}
@@ -147,8 +150,9 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
 
                 {/* Estado */}
                 <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Estado *</label>
+                    <label htmlFor="delivery-state" className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Estado *</label>
                     <select
+                        id="delivery-state"
                         value={data.state}
                         onChange={e => set('state', e.target.value)}
                         className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-secondary focus:border-transparent transition"
@@ -160,9 +164,10 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
 
                 {/* Rua */}
                 <div className="md:col-span-2">
-                    <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Rua *</label>
+                    <label htmlFor="delivery-street" className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Rua *</label>
                     <input
                         type="text"
+                        id="delivery-street"
                         value={data.street}
                         onChange={e => set('street', e.target.value)}
                         placeholder="Nome da rua"
@@ -172,9 +177,10 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
 
                 {/* Número */}
                 <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Número *</label>
+                    <label htmlFor="delivery-number" className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Número *</label>
                     <input
                         type="text"
+                        id="delivery-number"
                         value={data.number}
                         onChange={e => set('number', e.target.value)}
                         placeholder="123"
@@ -184,9 +190,10 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
 
                 {/* Complemento */}
                 <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Complemento</label>
+                    <label htmlFor="delivery-complement" className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Complemento</label>
                     <input
                         type="text"
+                        id="delivery-complement"
                         value={data.complement}
                         onChange={e => set('complement', e.target.value)}
                         placeholder="Apto, bloco... (opcional)"
@@ -196,9 +203,10 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
 
                 {/* Bairro */}
                 <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Bairro</label>
+                    <label htmlFor="delivery-neighborhood" className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Bairro</label>
                     <input
                         type="text"
+                        id="delivery-neighborhood"
                         value={data.neighborhood}
                         onChange={e => set('neighborhood', e.target.value)}
                         placeholder="Bairro"
@@ -208,9 +216,10 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
 
                 {/* Cidade */}
                 <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Cidade *</label>
+                    <label htmlFor="delivery-city" className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Cidade *</label>
                     <input
                         type="text"
+                        id="delivery-city"
                         value={data.city}
                         onChange={e => set('city', e.target.value)}
                         placeholder="Cidade"

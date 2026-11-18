@@ -37,13 +37,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (!loading) {
             if (!user) {
                 toast.error("Você precisa estar logado para acessar esta página.");
-                router.push('/auth');
+                router.push(`/auth?next=${encodeURIComponent(pathname)}`);
             } else if (user.role !== 'ADMIN') {
                 toast.error("Acesso negado. Apenas administradores podem acessar esta área.");
                 router.push('/');
             }
         }
-    }, [user, loading, router]);
+    }, [user, loading, router, pathname]);
 
     if (loading || !user || user.role !== 'ADMIN') {
         return (
@@ -133,9 +133,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 md:p-8">
+                <div className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 md:p-8">
                     {children}
-                </main>
+                </div>
             </div>
         </div>
     );

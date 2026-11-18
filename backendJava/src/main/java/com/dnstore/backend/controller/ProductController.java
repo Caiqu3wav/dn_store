@@ -6,6 +6,7 @@ import com.dnstore.backend.dto.ProductResponse;
 import com.dnstore.backend.dto.ProductDefaultRuleRequest;
 import com.dnstore.backend.dto.ProductDefaultRuleResponse;
 import com.dnstore.backend.exception.ResourceNotFoundException;
+import com.dnstore.backend.model.enums.ProductRemovalOutcome;
 import com.dnstore.backend.service.ProductDefaultsService;
 import com.dnstore.backend.service.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -148,10 +150,14 @@ public class ProductController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        if (productService.delete(id)) {
-            return ResponseEntity.noContent().build();
+    public ResponseEntity<?> delete(@PathVariable UUID id) {
+        ProductRemovalOutcome outcome = productService.delete(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado."));
+        if (outcome == ProductRemovalOutcome.ARCHIVED) {
+            return ResponseEntity.ok(Map.of(
+                    "outcome", outcome.name(),
+                    "message", "Produto possui pedidos ou carrinhos e foi arquivado (desativado) em vez de excluído."));
         }
-        throw new ResourceNotFoundException("Produto não encontrado.");
+        return ResponseEntity.noContent().build();
     }
 }

@@ -6,20 +6,7 @@ import { ShoppingBag, Eye, Loader2, Calendar, User, MapPin, BadgeCheck, History 
 import { fetcher } from '@/services/productService';
 import { adminService, AdminOrder, OrderStatusAuditEntry } from '@/services/adminService';
 import { toast } from 'react-hot-toast';
-
-// Os valores enviados à API são os status reais do backend (antes o seletor enviava 'enviado', 'entregue'...
-// e todo pedido de alteração era recusado com 400).
-const STATUS_LABELS: Record<string, string> = {
-    PENDING_PAYMENT: 'Aguardando pagamento',
-    PAID: 'Pago',
-    PAYMENT_FAILED: 'Pagamento falhou',
-    PAYMENT_REVIEW: 'Revisar pagamento',
-    PROCESSING: 'Em separação',
-    SHIPPED: 'Enviado',
-    DELIVERED: 'Entregue',
-    CANCELLED: 'Cancelado',
-    EXPIRED: 'Expirado',
-};
+import { isUnpaidOrder, orderStatusLabel as statusLabel, orderStatusStyle as getStatusStyle } from '@/utils/orderStatus';
 
 // Status que o administrador pode definir diretamente. "Pago" só pela confirmação manual (com justificativa);
 // aguardando/falha/expirado/revisão são controlados pelo sistema.
@@ -27,15 +14,16 @@ const ADMIN_SETTABLE_STATUSES = ['PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLE
 const MANUAL_CONFIRMABLE_STATUSES = ['PENDING_PAYMENT', 'PAYMENT_FAILED'];
 const MIN_REASON_LENGTH = 10;
 
-const statusLabel = (status: string) => STATUS_LABELS[status] ?? status;
-
 const errorMessage = (error: unknown, fallback: string) => {
     const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
     return typeof message === 'string' && message.trim() ? message : fallback;
 };
 
 export default function AdminOrdersPage() {
-    const { data: orders, mutate } = useSWR<AdminOrder[]>('/orders/all', fetcher);
+    const { data: allOrders, mutate } = useSWR<AdminOrder[]>('/orders/all', fetcher);
+    const [showUnpaid, setShowUnpaid] = useState(false);
+    const unpaidCount = allOrders?.filter((order) => isUnpaidOrder(order.status)).length ?? 0;
+    const orders = showUnpaid ? allOrders : allOrders?.filter((order) => !isUnpaidOrder(order.status));
     const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
     const [confirmingPayment, setConfirmingPayment] = useState(false);
     const [paymentReason, setPaymentReason] = useState('');
@@ -88,23 +76,6 @@ export default function AdminOrdersPage() {
         }
     };
 
-    const getStatusStyle = (status: string) => {
-        switch (status) {
-            case 'PENDING_PAYMENT':
-            case 'PAYMENT_REVIEW':
-                return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
-            case 'PAID':
-            case 'PROCESSING':
-                return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-            case 'SHIPPED':
-                return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
-            case 'DELIVERED':
-                return 'bg-green-500/10 text-green-500 border-green-500/20';
-            default:
-                return 'bg-red-500/10 text-red-500 border-red-500/20';
-        }
-    };
-
     return (
         <div className="space-y-6 text-white max-w-7xl mx-auto pb-12">
             <div>
@@ -117,19 +88,36 @@ export default function AdminOrdersPage() {
                 <div className="xl:col-span-2 bg-[#2A2A2A] border border-white/5 rounded-xl overflow-hidden h-fit">
                     <div className="p-6 border-b border-white/5 flex items-center justify-between">
                         <h2 className="text-xl font-bold">Histórico de Pedidos</h2>
-                        <span className="text-sm text-gray-400">Total: {orders?.length || 0}</span>
+                        <div className="flex items-center gap-4">
+                            <button
+                                type="button"
+                                aria-pressed={showUnpaid}
+                                onClick={() => {
+                                    setShowUnpaid((previous) => !previous);
+                                    setSelectedOrder(null);
+                                }}
+                                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                    showUnpaid
+                                        ? 'border-brand-secondary bg-brand-secondary/10 text-brand-secondary'
+                                        : 'border-white/10 text-gray-300 hover:bg-white/5'
+                                }`}
+                            >
+                                {showUnpaid ? 'Ocultar não pagos' : `Mostrar não pagos (${unpaidCount})`}
+                            </button>
+                            <span className="text-sm text-gray-400">Total: {orders?.length || 0}</span>
+                        </div>
                     </div>
 
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="border-b border-white/5 text-gray-400 text-sm">
-                                    <th className="p-4 font-semibold">Cód Pedido</th>
-                                    <th className="p-4 font-semibold">Cliente</th>
-                                    <th className="p-4 font-semibold">Data</th>
-                                    <th className="p-4 font-semibold">Total</th>
-                                    <th className="p-4 font-semibold">Status</th>
-                                    <th className="p-4 font-semibold text-right">Ações</th>
+                                    <th className="px-3 py-4 font-semibold whitespace-nowrap">Cód Pedido</th>
+                                    <th className="px-3 py-4 font-semibold">Cliente</th>
+                                    <th className="px-3 py-4 font-semibold">Data</th>
+                                    <th className="px-3 py-4 font-semibold">Total</th>
+                                    <th className="px-3 py-4 font-semibold">Status</th>
+                                    <th className="px-3 py-4 font-semibold text-right">Ações</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5 text-sm">
@@ -143,7 +131,9 @@ export default function AdminOrdersPage() {
                                 ) : orders.length === 0 ? (
                                     <tr>
                                         <td colSpan={6} className="p-8 text-center text-gray-500">
-                                            Nenhum pedido realizado ainda.
+                                            {showUnpaid || unpaidCount === 0
+                                                ? 'Nenhum pedido realizado ainda.'
+                                                : 'Nenhum pedido pago ainda. Use "Mostrar não pagos" para ver pedidos aguardando pagamento ou expirados.'}
                                         </td>
                                     </tr>
                                 ) : (
@@ -155,21 +145,21 @@ export default function AdminOrdersPage() {
                                             }`}
                                             onClick={() => selectOrder(order)}
                                         >
-                                            <td className="p-4 font-mono text-xs text-gray-400">
+                                            <td className="px-3 py-4 font-mono text-xs text-gray-400 whitespace-nowrap">
                                                 {order.id.slice(0, 8)}...
                                             </td>
-                                            <td className="p-4">
-                                                <div className="font-semibold">{order.user?.name || 'Cliente'}</div>
-                                                <div className="text-xs text-gray-400">{order.user?.email}</div>
+                                            <td className="px-3 py-4 max-w-36">
+                                                <div className="font-semibold truncate">{order.user?.name || 'Cliente'}</div>
+                                                <div className="text-xs text-gray-400 truncate">{order.user?.email}</div>
                                             </td>
-                                            <td className="p-4 text-gray-300">
+                                            <td className="px-3 py-4 text-gray-300 whitespace-nowrap">
                                                 {order.createdAt ? new Date(order.createdAt).toLocaleDateString('pt-BR') : '-'}
                                             </td>
-                                            <td className="p-4 font-semibold">
+                                            <td className="px-3 py-4 font-semibold whitespace-nowrap">
                                                 R$ {order.total?.toFixed(2).replace('.', ',')}
                                             </td>
-                                            <td className="p-4">
-                                                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusStyle(order.status)}`}>
+                                            <td className="px-3 py-4">
+                                                <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold border whitespace-nowrap ${getStatusStyle(order.status)}`}>
                                                     {statusLabel(order.status)}
                                                 </span>
                                                 {order.manualPaymentConfirmed && (
@@ -178,8 +168,8 @@ export default function AdminOrdersPage() {
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
-                                                <div className="flex justify-end gap-2">
+                                            <td className="px-3 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                                                <div className="flex items-center justify-end gap-2">
                                                     <button
                                                         onClick={() => selectOrder(order)}
                                                         className="p-1.5 bg-[#3A3A3A] hover:bg-white/10 rounded text-gray-300 hover:text-white transition-colors"
@@ -191,7 +181,7 @@ export default function AdminOrdersPage() {
                                                         value={order.status}
                                                         aria-label={`Alterar status do pedido ${order.id.slice(0, 8)}`}
                                                         onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
-                                                        className="w-32 truncate bg-[#3A3A3A] border border-white/5 rounded px-2 py-1 text-white text-xs font-semibold focus:outline-none focus:border-brand-secondary"
+                                                        className="w-40 truncate bg-[#3A3A3A] border border-white/5 rounded px-2 py-1 text-white text-xs font-semibold focus:outline-none focus:border-brand-secondary"
                                                     >
                                                         {!ADMIN_SETTABLE_STATUSES.includes(order.status) && (
                                                             <option value={order.status} disabled>{statusLabel(order.status)}</option>

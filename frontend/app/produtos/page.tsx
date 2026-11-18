@@ -204,7 +204,7 @@ function ProdutosCatalog() {
                   animate={{ x: 0 }}
                   transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                   className={`
-                    fixed lg:static inset-y-0 right-0 z-50 w-[300px] lg:w-72 bg-white lg:bg-transparent shadow-2xl lg:shadow-none p-6 lg:p-0 overflow-y-auto lg:overflow-visible shrink-0
+                    fixed lg:static inset-y-0 right-0 z-50 lg:z-auto w-[300px] lg:w-72 bg-white lg:bg-transparent shadow-2xl lg:shadow-none p-6 lg:p-0 overflow-y-auto lg:overflow-visible shrink-0
                     ${!isMobileFiltersOpen ? 'hidden lg:block' : 'block'}
                   `}
                 >
@@ -248,6 +248,7 @@ function ProdutosCatalog() {
                       <div className="relative">
                         <input
                           type="text"
+                          aria-label="Buscar produtos"
                           placeholder="Ex: Camiseta, Boné..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
@@ -321,6 +322,7 @@ function ProdutosCatalog() {
                       <div className="flex items-center gap-3">
                         <input
                           type="number"
+                          aria-label="Preço mínimo"
                           placeholder="Min"
                           value={priceRange.min}
                           onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })}
@@ -329,6 +331,7 @@ function ProdutosCatalog() {
                         <span className="text-gray-300">-</span>
                         <input
                           type="number"
+                          aria-label="Preço máximo"
                           placeholder="Máx"
                           value={priceRange.max}
                           onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })}
@@ -387,6 +390,7 @@ function ProdutosCatalog() {
                 <span className="text-sm font-medium text-gray-600">Ordenar por:</span>
                 <div className="relative">
                   <select
+                    aria-label="Ordenar produtos"
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortOption)}
                     className="appearance-none bg-white border border-gray-200 text-[#1A1B1D] text-sm font-medium rounded-xl py-2 pl-4 pr-10 outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary transition-all cursor-pointer"
@@ -407,6 +411,7 @@ function ProdutosCatalog() {
               <span className="text-sm font-medium text-gray-600">Ordenar:</span>
               <div className="relative flex-1 ml-3">
                 <select
+                  aria-label="Ordenar produtos"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortOption)}
                   className="w-full appearance-none bg-white border border-gray-200 text-[#1A1B1D] text-sm font-medium rounded-xl py-2.5 pl-4 pr-10 outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary transition-all cursor-pointer shadow-sm"

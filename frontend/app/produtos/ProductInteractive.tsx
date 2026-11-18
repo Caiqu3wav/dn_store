@@ -54,7 +54,8 @@ export default function ProductInteractive({
             size: selectedVariant.size
         });
 
-        alert(added ? 'Produto adicionado ao carrinho!' : 'Estoque insuficiente para o tamanho selecionado.');
+        if (added) toast.success('Produto adicionado ao carrinho!');
+        else toast.error('Estoque insuficiente para o tamanho selecionado.');
     };
 
     const handleToggleFavorite = async () => {

@@ -10,6 +10,7 @@ import { OrderSummary } from './components/OrderSummary';
 import Link from 'next/link';
 import { useAuth } from '../context/AuthContext';
 import api from '@/lib/axios';
+import { getApiErrorMessage } from '@/utils/apiError';
 
 type Step = 1 | 2 | 3;
 
@@ -127,9 +128,7 @@ export default function CheckoutPage() {
 
             return paymentRes.data as PaymentResult;
         } catch (error: unknown) {
-            const responseMessage = (error as { response?: { data?: { message?: string } } })
-                .response?.data?.message;
-            throw new Error(responseMessage || 'Não foi possível criar o pedido ou processar o pagamento.');
+            throw new Error(getApiErrorMessage(error, 'Não foi possível criar o pedido ou processar o pagamento.'));
         }
     };
 

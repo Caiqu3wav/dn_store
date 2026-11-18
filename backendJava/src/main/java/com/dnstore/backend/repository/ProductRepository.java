@@ -29,6 +29,12 @@ public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpec
     @EntityGraph(attributePaths = "variants")
     Optional<Product> findByIdAndActiveTrue(UUID id);
 
+    @Query("SELECT COUNT(oi) > 0 FROM OrderItem oi WHERE oi.productVariant.product.id = :productId")
+    boolean isReferencedByOrders(@Param("productId") UUID productId);
+
+    @Query("SELECT COUNT(ci) > 0 FROM CartItem ci WHERE ci.productVariant.product.id = :productId")
+    boolean isReferencedByCarts(@Param("productId") UUID productId);
+
     @Override
     @EntityGraph(attributePaths = "variants")
     List<Product> findAll(Specification<Product> spec, Sort sort);

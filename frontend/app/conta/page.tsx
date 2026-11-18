@@ -5,10 +5,23 @@ import Link from 'next/link';
 import { useAuth } from '../context/AuthContext';
 import { accountService, Address } from '@/services/accountService';
 import { authService } from '@/services/authService';
+import { getApiErrorMessage } from '@/utils/apiError';
+import { formatCep, formatPhone } from '@/utils/authFormatters';
+import { orderStatusLabel } from '@/utils/orderStatus';
 
 type Order = { id: string; status: string; total: number; createdAt: string };
 
 const emptyAddress: Address = { street: '', number: '', complement: '', neighborhood: '', city: '', state: '', zipCode: '' };
+
+const ADDRESS_FIELDS = [
+  { field: 'zipCode', label: 'CEP', placeholder: '00000-000', required: true },
+  { field: 'street', label: 'Rua', placeholder: 'Nome da rua', required: true },
+  { field: 'number', label: 'Número', placeholder: '123', required: true },
+  { field: 'complement', label: 'Complemento', placeholder: 'Apto, bloco... (opcional)', required: false },
+  { field: 'neighborhood', label: 'Bairro', placeholder: 'Bairro', required: false },
+  { field: 'city', label: 'Cidade', placeholder: 'Cidade', required: true },
+  { field: 'state', label: 'UF', placeholder: 'SP', required: true },
+] as const;
 
 export default function AccountPage() {
   const { user, loading: authLoading } = useAuth();
@@ -18,6 +31,14 @@ export default function AccountPage() {
   const [address, setAddress] = useState(emptyAddress);
   const [showAddress, setShowAddress] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageIsError, setMessageIsError] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
+
+  const notify = (text: string, isError = false) => {
+    setMessage(text);
+    setMessageIsError(isError);
+  };
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordMessage, setPasswordMessage] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -35,32 +56,75 @@ export default function AccountPage() {
         setProfile({ name: data.name || '', phone: data.phone || '' });
         setEmailMfaEnabled(data.emailMfaEnabled);
       })
-      .catch(() => setMessage('Não foi possível carregar os dados do perfil.'));
+      .catch(error => notify(getApiErrorMessage(error, 'Não foi possível carregar os dados do perfil.'), true));
 
     accountService.getAddresses()
       .then(setAddresses)
-      .catch(() => setMessage('Não foi possível carregar os endereços salvos.'));
+      .catch(error => notify(getApiErrorMessage(error, 'Não foi possível carregar os endereços salvos.'), true));
 
     accountService.getOrders()
       .then(setOrders)
-      .catch(() => setMessage('Não foi possível carregar os pedidos.'));
+      .catch(error => notify(getApiErrorMessage(error, 'Não foi possível carregar os pedidos.'), true));
   }, [user]);
 
-  if (authLoading) return <main className="min-h-screen pt-32 text-center">Carregando...</main>;
-  if (!user) return <main className="min-h-screen pt-32 text-center"><Link className="text-brand-secondary font-bold" href="/auth?next=/conta">Entrar para acessar sua conta</Link></main>;
+  if (authLoading) return <div className="min-h-screen pt-32 text-center">Carregando...</div>;
+  if (!user) return <div className="min-h-screen pt-32 text-center"><Link className="text-brand-secondary font-bold" href="/auth?next=/conta">Entrar para acessar sua conta</Link></div>;
 
   const saveProfile = async (event: FormEvent) => {
     event.preventDefault();
-    await accountService.updateProfile(profile);
-    setMessage('Dados atualizados.');
+    if (isSavingProfile) return;
+    const phoneDigits = profile.phone.replace(/\D/g, '');
+    if (phoneDigits && (phoneDigits.length < 10 || phoneDigits.length > 11)) {
+      notify('Informe um telefone válido com DDD.', true);
+      return;
+    }
+    setIsSavingProfile(true);
+    try {
+      await accountService.updateProfile(profile);
+      notify('Dados atualizados.');
+    } catch (error: unknown) {
+      notify(getApiErrorMessage(error, 'Não foi possível atualizar seus dados.'), true);
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const saveAddress = async (event: FormEvent) => {
     event.preventDefault();
-    const saved = await accountService.addAddress(address);
-    setAddresses(current => [...current, saved]);
-    setAddress(emptyAddress);
-    setShowAddress(false);
+    if (isSavingAddress) return;
+    if (address.zipCode.replace(/\D/g, '').length !== 8) {
+      notify('Informe um CEP válido com 8 dígitos.', true);
+      return;
+    }
+    setIsSavingAddress(true);
+    try {
+      const saved = await accountService.addAddress({
+        ...address,
+        zipCode: address.zipCode.replace(/\D/g, ''),
+        state: address.state.trim().toUpperCase(),
+      });
+      setAddresses(current => [...current, saved]);
+      setAddress(emptyAddress);
+      setShowAddress(false);
+      notify('Endereço salvo.');
+    } catch (error: unknown) {
+      notify(getApiErrorMessage(error, 'Não foi possível salvar o endereço.'), true);
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
+
+  const removeAddress = async (item: Address) => {
+    if (!item.id || !confirm('Deseja excluir este endereço?')) return;
+    try {
+      await accountService.deleteAddress(item.id);
+      setAddresses(current => current.filter(addressItem => addressItem.id !== item.id));
+      notify('Endereço excluído.');
+    } catch (error: unknown) {
+      notify(getApiErrorMessage(error, 'Não foi possível excluir o endereço.', {
+        409: 'Este endereço está vinculado a um pedido e não pode ser excluído.',
+      }), true);
+    }
   };
 
   const changePassword = async (event: FormEvent) => {
@@ -82,8 +146,7 @@ export default function AccountPage() {
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setPasswordMessage('Senha atualizada com sucesso.');
     } catch (error: unknown) {
-      const responseData = (error as { response?: { data?: { message?: string } | string } }).response?.data;
-      setPasswordError(typeof responseData === 'string' ? responseData : responseData?.message || 'Não foi possível atualizar sua senha.');
+      setPasswordError(getApiErrorMessage(error, 'Não foi possível atualizar sua senha.'));
     } finally {
       setIsChangingPassword(false);
     }
@@ -97,38 +160,38 @@ export default function AccountPage() {
       const updatedProfile = await accountService.setEmailMfaEnabled(enabled);
       setEmailMfaEnabled(updatedProfile.emailMfaEnabled);
       setMfaMessage(enabled ? 'Código por e-mail ativado para os próximos acessos.' : 'Código por e-mail desativado.');
-    } catch {
-      setMfaError('Não foi possível atualizar esta opção. Tente novamente.');
+    } catch (error: unknown) {
+      setMfaError(getApiErrorMessage(error, 'Não foi possível atualizar esta opção. Tente novamente.'));
     } finally {
       setIsUpdatingMfa(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 pt-28 pb-20 text-gray-900">
+    <div className="min-h-screen bg-gray-50 pt-28 pb-20 text-gray-900">
       <div className="mx-auto max-w-6xl px-4 space-y-6">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div><p className="text-sm text-brand-secondary font-bold uppercase">Minha conta</p><h1 className="text-3xl font-black">Olá, {user.name}</h1></div>
           {user.role === 'ADMIN' && <Link href="/admin" className="rounded-lg bg-brand-secondary px-5 py-3 font-bold text-white shadow-sm transition hover:bg-red-700">Acessar painel admin</Link>}
         </header>
-        {message && <p className="rounded-lg bg-green-50 p-3 text-sm text-green-700">{message}</p>}
+        {message && <p role={messageIsError ? 'alert' : 'status'} className={`rounded-lg p-3 text-sm ${messageIsError ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{message}</p>}
         <div className="grid gap-6 lg:grid-cols-2">
           <section id="dados" className="scroll-mt-28 rounded-2xl bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-xl font-bold">Meus dados</h2>
             <form onSubmit={saveProfile} className="space-y-4">
-              <input value={profile.name} onChange={e => setProfile({ ...profile, name: e.target.value })} placeholder="Nome completo" className="w-full rounded-lg border p-3" required />
-              <input value={user.email} readOnly className="w-full rounded-lg border bg-gray-50 p-3 text-gray-500" />
-              <input value={profile.phone} onChange={e => setProfile({ ...profile, phone: e.target.value })} placeholder="Telefone" className="w-full rounded-lg border p-3" />
-              <button className="rounded-lg bg-brand-primary px-5 py-3 font-bold text-white">Salvar dados</button>
+              <input value={profile.name} onChange={e => setProfile({ ...profile, name: e.target.value })} placeholder="Nome completo" aria-label="Nome completo" autoComplete="name" maxLength={120} className="w-full rounded-lg border p-3" required />
+              <input value={user.email} readOnly aria-label="E-mail (não editável)" className="w-full rounded-lg border bg-gray-50 p-3 text-gray-500" />
+              <input value={profile.phone} onChange={e => setProfile({ ...profile, phone: formatPhone(e.target.value) })} placeholder="Telefone com DDD" aria-label="Telefone" type="tel" inputMode="tel" autoComplete="tel" maxLength={15} className="w-full rounded-lg border p-3" />
+              <button disabled={isSavingProfile} className="rounded-lg bg-brand-primary px-5 py-3 font-bold text-white disabled:opacity-60">{isSavingProfile ? 'Salvando...' : 'Salvar dados'}</button>
             </form>
           </section>
           <section id="enderecos" className="scroll-mt-28 rounded-2xl bg-white p-6 shadow-sm">
-            <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-bold">Endereços</h2><button onClick={() => setShowAddress(!showAddress)} className="text-sm font-bold text-brand-secondary">{showAddress ? 'Fechar' : 'Adicionar'}</button></div>
+            <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-bold">Endereços</h2><button type="button" onClick={() => setShowAddress(!showAddress)} aria-expanded={showAddress} className="text-sm font-bold text-brand-secondary">{showAddress ? 'Fechar' : 'Adicionar'}</button></div>
             {showAddress && <form onSubmit={saveAddress} className="mb-5 grid grid-cols-2 gap-3">
-              {(['zipCode', 'street', 'number', 'complement', 'neighborhood', 'city', 'state'] as const).map(field => <input key={field} value={address[field] || ''} onChange={e => setAddress({ ...address, [field]: e.target.value })} placeholder={field} className="rounded-lg border p-3 text-sm first:col-span-2" required={['zipCode', 'street', 'number', 'city', 'state'].includes(field)} />)}
-              <button className="col-span-2 rounded-lg bg-brand-primary px-4 py-3 font-bold text-white">Salvar endereço</button>
+              {ADDRESS_FIELDS.map(({ field, label, placeholder, required }) => <input key={field} value={address[field] || ''} onChange={e => setAddress({ ...address, [field]: field === 'zipCode' ? formatCep(e.target.value) : field === 'state' ? e.target.value.toUpperCase().slice(0, 2) : e.target.value })} placeholder={placeholder} aria-label={label} maxLength={field === 'zipCode' ? 9 : undefined} className="rounded-lg border p-3 text-sm first:col-span-2" required={required} />)}
+              <button disabled={isSavingAddress} className="col-span-2 rounded-lg bg-brand-primary px-4 py-3 font-bold text-white disabled:opacity-60">{isSavingAddress ? 'Salvando...' : 'Salvar endereço'}</button>
             </form>}
-            {addresses.length === 0 ? <p className="text-sm text-gray-500">Nenhum endereço salvo.</p> : addresses.map(item => <div key={item.id} className="mb-3 flex justify-between rounded-lg border p-3 text-sm"><span>{item.street}, {item.number} - {item.city}/{item.state}<br />CEP {item.zipCode}</span><button onClick={async () => { await accountService.deleteAddress(item.id!); setAddresses(current => current.filter(addressItem => addressItem.id !== item.id)); }} className="text-red-600">Excluir</button></div>)}
+            {addresses.length === 0 ? <p className="text-sm text-gray-500">Nenhum endereço salvo.</p> : addresses.map(item => <div key={item.id} className="mb-3 flex justify-between rounded-lg border p-3 text-sm"><span>{item.street}, {item.number} - {item.city}/{item.state}<br />CEP {item.zipCode}</span><button type="button" onClick={() => removeAddress(item)} className="text-red-600">Excluir</button></div>)}
           </section>
         </div>
         <section id="seguranca" className="scroll-mt-28 rounded-lg bg-white p-6 shadow-sm">
@@ -158,8 +221,8 @@ export default function AccountPage() {
             </button>
           </form>
         </section>
-        <section id="pedidos" className="scroll-mt-28 rounded-2xl bg-white p-6 shadow-sm"><h2 className="mb-4 text-xl font-bold">Pedidos e compras</h2>{orders.length === 0 ? <p className="text-sm text-gray-500">Você ainda não possui compras.</p> : <div className="space-y-3">{orders.map(order => <div key={order.id} className="flex flex-wrap justify-between gap-3 rounded-lg border p-4"><span>Pedido #{order.id.slice(0, 8)}<br /><small className="text-gray-500">{new Date(order.createdAt).toLocaleDateString('pt-BR')}</small></span><span className="font-bold">{order.status}</span><span>R$ {Number(order.total).toFixed(2).replace('.', ',')}</span></div>)}</div>}</section>
+        <section id="pedidos" className="scroll-mt-28 rounded-2xl bg-white p-6 shadow-sm"><h2 className="mb-4 text-xl font-bold">Pedidos e compras</h2>{orders.length === 0 ? <p className="text-sm text-gray-500">Você ainda não possui compras.</p> : <div className="space-y-3">{orders.map(order => <div key={order.id} className="flex flex-wrap justify-between gap-3 rounded-lg border p-4"><span>Pedido #{order.id.slice(0, 8)}<br /><small className="text-gray-500">{new Date(order.createdAt).toLocaleDateString('pt-BR')}</small></span><span className="font-bold">{orderStatusLabel(order.status)}</span><span>R$ {Number(order.total).toFixed(2).replace('.', ',')}</span></div>)}</div>}</section>
       </div>
-    </main>
+    </div>
   );
 }

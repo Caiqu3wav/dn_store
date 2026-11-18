@@ -7,6 +7,7 @@ import com.dnstore.backend.model.Product;
 import com.dnstore.backend.model.ProductImage;
 import com.dnstore.backend.model.ProductVariant;
 import com.dnstore.backend.model.ProductVariantSizes;
+import com.dnstore.backend.model.enums.ProductRemovalOutcome;
 import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.repository.CategoryRepository;
 import com.dnstore.backend.repository.ProductRepository;
@@ -423,11 +424,23 @@ public class ProductService {
         }
     }
 
-    public boolean delete(UUID id) {
-        if (productRepository.existsById(id)) {
-            productRepository.deleteById(id);
-            return true;
-        }
-        return false;
+    /**
+     * Remove o produto. Se já houver pedidos ou carrinhos que o referenciam, o banco impede o
+     * DELETE (FK em order_items/cart_items); nesse caso ele é apenas arquivado (active=false),
+     * preservando o histórico de pedidos.
+     *
+     * @return o resultado da remoção, ou vazio se o produto não existe
+     */
+    @Transactional
+    public Optional<ProductRemovalOutcome> delete(UUID id) {
+        return productRepository.findById(id).map(product -> {
+            if (productRepository.isReferencedByOrders(id) || productRepository.isReferencedByCarts(id)) {
+                product.setActive(false);
+                productRepository.save(product);
+                return ProductRemovalOutcome.ARCHIVED;
+            }
+            productRepository.delete(product);
+            return ProductRemovalOutcome.DELETED;
+        });
     }
 }

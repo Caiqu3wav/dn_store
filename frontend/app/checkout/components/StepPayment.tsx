@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { FileText, Loader2, QrCode } from 'lucide-react';
+import { isValidCnpj, isValidCpf } from '@/utils/authValidation';
 
 export type PaymentMethod = 'PIX' | 'BOLETO';
 
@@ -51,8 +52,10 @@ function formatDocument(value: string) {
 export function StepPayment({ data, onChange, onConfirm, onNext, onBack }: Props) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const isValid = data.cpfCnpj.replace(/\D/g, '').length === 11
-        || data.cpfCnpj.replace(/\D/g, '').length === 14;
+    const documentDigits = data.cpfCnpj.replace(/\D/g, '');
+    const isValid = (documentDigits.length === 11 && isValidCpf(documentDigits))
+        || (documentDigits.length === 14 && isValidCnpj(documentDigits));
+    const showDocumentError = (documentDigits.length === 11 || documentDigits.length === 14) && !isValid;
 
     const handleConfirm = async () => {
         setError('');
@@ -82,9 +85,13 @@ export function StepPayment({ data, onChange, onConfirm, onNext, onBack }: Props
             </div>
 
             <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">CPF / CNPJ *</label>
+                <label htmlFor="payment-document" className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">CPF / CNPJ *</label>
                 <input
+                    id="payment-document"
                     type="text"
+                    inputMode="numeric"
+                    aria-invalid={showDocumentError}
+                    aria-describedby={showDocumentError ? 'payment-document-error' : undefined}
                     value={data.cpfCnpj}
                     onChange={event => onChange({
                         ...data,
@@ -95,6 +102,11 @@ export function StepPayment({ data, onChange, onConfirm, onNext, onBack }: Props
                     autoComplete="off"
                     className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-secondary transition"
                 />
+                {showDocumentError && (
+                    <p id="payment-document-error" role="alert" className="mt-1 text-xs text-red-700">
+                        Informe um CPF ou CNPJ válido.
+                    </p>
+                )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
