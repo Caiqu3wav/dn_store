@@ -22,7 +22,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
@@ -117,8 +116,22 @@ class PaymentSchemaMySqlIT {
         webhookEventIds.clear();
     }
 
+    /** Versões dos arquivos db/migration/V<n>__*.sql, em ordem numérica (há lacuna em V19). */
+    private static java.util.List<String> migrationVersionsOnClasspath() throws java.io.IOException {
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("^V(\\d+)__.+\\.sql$");
+        return java.util.Arrays.stream(
+                        new org.springframework.core.io.support.PathMatchingResourcePatternResolver()
+                                .getResources("classpath:db/migration/V*__*.sql"))
+                .map(resource -> pattern.matcher(java.util.Objects.requireNonNull(resource.getFilename())))
+                .filter(java.util.regex.Matcher::matches)
+                .map(matcher -> Integer.valueOf(matcher.group(1)))
+                .sorted()
+                .map(String::valueOf)
+                .toList();
+    }
+
     @Test
-    void flywayAndHibernateValidateTheCompleteSchemaAgainstLocalMysql8() throws SQLException {
+    void flywayAndHibernateValidateTheCompleteSchemaAgainstLocalMysql8() throws SQLException, java.io.IOException {
         try (Connection connection = dataSource.getConnection()) {
             assertThat(connection.getMetaData().getURL())
                     .startsWith("jdbc:mysql://127.0.0.1:33316/dn_store_it");
@@ -126,10 +139,11 @@ class PaymentSchemaMySqlIT {
         }
 
         flyway.validate();
-                assertThat(flyway.info().applied())
-                .hasSize(22)
+        assertThat(flyway.info().pending()).isEmpty();
+        assertThat(flyway.info().applied())
+                .isNotEmpty()
                 .extracting(info -> info.getVersion().getVersion())
-                .containsExactlyElementsOf(IntStream.rangeClosed(1, 22).mapToObj(String::valueOf).toList());
+                .containsExactlyElementsOf(migrationVersionsOnClasspath());
         assertThat(entityManagerFactory).isNotNull();
         assertThat(entityManagerFactory.isOpen()).isTrue();
         java.util.Map<String, ColumnDefinition> eventColumns = jdbc.query(
