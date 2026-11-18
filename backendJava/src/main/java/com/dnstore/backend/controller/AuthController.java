@@ -3,6 +3,7 @@ package com.dnstore.backend.controller;
 import com.dnstore.backend.model.Address;
 import com.dnstore.backend.model.User;
 import com.dnstore.backend.model.enums.Role;
+import com.dnstore.backend.security.LogSanitizer;
 import com.dnstore.backend.exception.ConflictException;
 import com.dnstore.backend.repository.AddressRepository;
 import com.dnstore.backend.repository.UserRepository;
@@ -71,7 +72,7 @@ public class AuthController {
     @Transactional
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            LOGGER.warn("auth.register.duplicate email={}", request.getEmail());
+            LOGGER.warn("auth.register.duplicate email={}", LogSanitizer.maskEmail(request.getEmail()));
             throw new ConflictException("Email já cadastrado.");
         }
         if (request.getAddress() == null) {
@@ -88,7 +89,7 @@ public class AuthController {
         user.setEmailVerified(false);
         issueEmailVerification(user);
         userRepository.save(user);
-        LOGGER.info("auth.register.success email={}", user.getEmail());
+        LOGGER.info("auth.register.success userId={}", user.getId());
 
         Address address = new Address();
         address.setUser(user);
@@ -120,7 +121,7 @@ public class AuthController {
             authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
         } catch (org.springframework.security.core.AuthenticationException e) {
-            LOGGER.warn("auth.login.failed email={}", request.getEmail());
+            LOGGER.warn("auth.login.failed email={}", LogSanitizer.maskEmail(request.getEmail()));
             throw e;
         }
         User user = (User) authentication.getPrincipal();
@@ -165,7 +166,7 @@ public class AuthController {
         user.setEmailVerificationExpiration(null);
         user.setEmailVerificationAttempts(0);
         userRepository.save(user);
-        LOGGER.info("auth.email_verified email={}", user.getEmail());
+        LOGGER.info("auth.email_verified userId={}", user.getId());
         return ResponseEntity.ok(authResponse(user));
     }
 

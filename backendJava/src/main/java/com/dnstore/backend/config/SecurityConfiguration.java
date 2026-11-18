@@ -1,5 +1,6 @@
 package com.dnstore.backend.config;
 
+import com.dnstore.backend.security.AuthRateLimitFilter;
 import com.dnstore.backend.security.JwtAuthenticationFilter;
 import com.dnstore.backend.security.ApiSecurityExceptionHandler;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ import static org.springframework.security.config.Customizer.withDefaults;
 public class SecurityConfiguration {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final AuthRateLimitFilter authRateLimitFilter;
     private final UserDetailsService userDetailsService;
     private final PasswordEncoder passwordEncoder;
     private final ApiSecurityExceptionHandler apiSecurityExceptionHandler;
@@ -42,6 +44,22 @@ public class SecurityConfiguration {
                         .authenticated()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/payment/webhook").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
+                        // Rotas administrativas: exigem ADMIN já na URL (defesa em profundidade além de
+                        // @PreAuthorize) e precisam vir antes das liberações públicas de leitura do catálogo.
+                        .requestMatchers(HttpMethod.GET, "/api/products/admin", "/api/products/admin/**",
+                                "/api/events/all", "/api/orders/all")
+                        .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/products", "/api/products/**",
+                                "/api/categories", "/api/categories/**", "/api/events", "/api/events/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/products/**", "/api/categories/**",
+                                "/api/events/**", "/api/orders/*/status")
+                        .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/products/**", "/api/categories/**",
+                                "/api/events/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers("/api/users", "/api/users/**").hasRole("ADMIN")
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/zip-code/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/categories").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/shipping/quote").authenticated()
@@ -60,6 +78,7 @@ public class SecurityConfiguration {
                         .authenticationEntryPoint(apiSecurityExceptionHandler)
                         .accessDeniedHandler(apiSecurityExceptionHandler))
                 .authenticationProvider(authenticationProvider())
+                .addFilterBefore(authRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .cors(withDefaults());
 
