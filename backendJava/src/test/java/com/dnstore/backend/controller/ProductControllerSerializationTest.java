@@ -42,7 +42,9 @@ class ProductControllerSerializationTest {
                 mock(ProductVariantRepository.class),
                 mock(ProductDefaultsService.class));
         mockMvc = MockMvcBuilders.standaloneSetup(
-                new ProductController(productService, mock(ProductDefaultsService.class))).build();
+                new ProductController(
+                        productService,
+                        mock(ProductDefaultsService.class))).build();
     }
 
     @Test
