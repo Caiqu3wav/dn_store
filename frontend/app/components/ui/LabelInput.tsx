@@ -31,10 +31,10 @@ const StyledLabel = styled.label`
 
 `;
 
-const FieldContainer = styled.div<{ inputWidth: string }>`
+const FieldContainer = styled.div<{ $inputWidth: string }>`
   display: flex;
   flex-direction: column;
-  width: ${({ inputWidth }) => inputWidth};
+  width: ${({ $inputWidth }) => $inputWidth};
   margin-bottom: 1rem;
 `;
 
@@ -47,7 +47,7 @@ export function LabelInput({
 }: LabelInputProps) {
   return (
     <>
-      <FieldContainer inputWidth={width}>
+      <FieldContainer $inputWidth={width}>
         <StyledLabel aria-label={label} htmlFor={name}>
           {label}
         </StyledLabel>

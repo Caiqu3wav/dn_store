@@ -370,6 +370,73 @@ class OrderServiceTest {
                 verify(orderInventoryService).releaseReservedStock(order);
         }
 
+        private Coupon percentageCoupon() {
+                Coupon coupon = new Coupon();
+                coupon.setId(UUID.randomUUID());
+                coupon.setCode("DN10");
+                coupon.setActive(true);
+                coupon.setDiscountPercentage(new BigDecimal("10"));
+                return coupon;
+        }
+
+        @Test
+        void checkout_withCoupon_shouldConsumeUsageAtomicallyAndApplyDiscount() {
+                Coupon coupon = percentageCoupon();
+                when(couponService.validateCoupon("DN10")).thenReturn(Optional.of(coupon));
+                UUID shippingOptionId = orderService.quoteShipping(user, address.getZipCode()).get(0).id();
+
+                Order order = orderService.checkout(user, null, shippingOptionId, "DN10", address.getId());
+
+                // 2 x 100,00 - 10% + 10,00 de frete
+                assertThat(order.getTotal()).isEqualByComparingTo("190.00");
+                assertThat(order.getDiscountAmount()).isEqualByComparingTo("20.00");
+                assertThat(order.getCoupon()).isSameAs(coupon);
+                verify(couponService).registerUsage(coupon);
+                // Nunca mais "ler, incrementar e gravar" o cupom: o contador só muda pelo UPDATE atômico.
+                verify(couponRepository, never()).save(any(Coupon.class));
+        }
+
+        @Test
+        void checkout_whenCouponLimitWasReached_shouldFailBeforeTouchingStockOrOrder() {
+                Coupon coupon = percentageCoupon();
+                when(couponService.validateCoupon("DN10")).thenReturn(Optional.of(coupon));
+                org.mockito.Mockito.doThrow(new IllegalArgumentException("Este cupom já atingiu o limite máximo de uso."))
+                                .when(couponService).registerUsage(coupon);
+                UUID shippingOptionId = orderService.quoteShipping(user, address.getZipCode()).get(0).id();
+
+                assertThatThrownBy(() -> orderService.checkout(user, null, shippingOptionId, "DN10", address.getId()))
+                                .isInstanceOf(IllegalArgumentException.class)
+                                .hasMessageContaining("limite máximo de uso");
+
+                assertThat(variant.getStock()).isEqualTo(5);
+                verify(orderRepository, never()).save(any(Order.class));
+        }
+
+        @Test
+        void updateStatus_markingPaidThroughTheGenericEndpoint_shouldBeRejected() {
+                assertThatThrownBy(() -> orderService.updateStatus(UUID.randomUUID(), "PAID"))
+                                .isInstanceOf(IllegalArgumentException.class)
+                                .hasMessageContaining("confirmação manual de pagamento");
+
+                verifyNoInteractions(orderRepository);
+        }
+
+        @Test
+        void updateStatus_cancelledOrderWithReleasedStock_cannotGoBackToLogistics() {
+                Order order = new Order();
+                order.setId(UUID.randomUUID());
+                order.setStatus("CANCELLED");
+                order.setStockReleased(true);
+                when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
+
+                assertThatThrownBy(() -> orderService.updateStatus(order.getId(), "PROCESSING"))
+                                .isInstanceOf(ConflictException.class)
+                                .hasMessageContaining("estoque deste pedido já foi devolvido");
+
+                assertThat(order.getStatus()).isEqualTo("CANCELLED");
+                verify(orderRepository, never()).save(order);
+        }
+
         private PhysicalProduct physicalProduct() {
                 return (PhysicalProduct) variant.getProduct();
         }

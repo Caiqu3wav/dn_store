@@ -15,7 +15,8 @@ Referências: `DEPLOY.md` (arquitetura, variáveis, perfis), `BACKUP_RECUPERACAO
 ## 1. Banco de dados
 
 - [ ] Backup do banco atual (`db-backup.sh`).
-- [ ] Verificar o histórico do Flyway no banco do Aiven (`BACKUP_RECUPERACAO.md`, seção 4). Se houver V19 ou V20/V22/V23 divergentes, **pare** e avalie antes de subir o backend.
+- [x] Verificar o histórico do Flyway no banco do Aiven (`BACKUP_RECUPERACAO.md`, seção 4). Feito em 17/11/2026: 24 migrations aplicadas (V1–V18, V20–V25), todas com sucesso, `validate` do Flyway OK e 0 pendentes. Repetir antes de cada deploy com migration nova.
+- [ ] ⚠ Decidir quando aplicar a **V26** (aditiva) no Aiven: backup antes, e ela será aplicada na próxima inicialização normal do backend contra o Aiven (`BACKUP_RECUPERACAO.md`, seção 4). Até lá o perfil `readonly` não sobe contra o Aiven.
 - [ ] Primeiro administrador (`BACKUP_RECUPERACAO.md`, seção 5), depois que o e-mail estiver funcionando.
 
 ## 2. Homologação (staging) com sandbox, sem dinheiro real

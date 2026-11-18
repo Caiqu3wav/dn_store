@@ -61,13 +61,13 @@ export default function AdminDashboard() {
     };
 
     const stats = dashboardData ? [
-        { title: 'Receita Total', value: `R$ ${dashboardData.totalRevenue.toFixed(2).replace('.', ',')}`, icon: DollarSign, trend: '', isPositive: true },
-        { title: 'Total de Pedidos', value: dashboardData.totalOrders.toString(), icon: ShoppingBag, trend: '', isPositive: true },
+        { title: 'Receita (pedidos pagos)', value: `R$ ${dashboardData.totalRevenue.toFixed(2).replace('.', ',')}`, icon: DollarSign, trend: '', isPositive: true },
+        { title: 'Pedidos (pagos/total)', value: `${dashboardData.paidOrders ?? 0}/${dashboardData.totalOrders}`, icon: ShoppingBag, trend: '', isPositive: true },
         { title: 'Total de Produtos', value: dashboardData.totalProducts.toString(), icon: Package, trend: '', isPositive: true },
         { title: 'Total Usuários', value: dashboardData.totalUsers.toString(), icon: Users, trend: '', isPositive: true },
     ] : [
-        { title: 'Receita Total', value: 'R$ 0,00', icon: DollarSign, trend: '', isPositive: true },
-        { title: 'Total de Pedidos', value: '0', icon: ShoppingBag, trend: '', isPositive: true },
+        { title: 'Receita (pedidos pagos)', value: 'R$ 0,00', icon: DollarSign, trend: '', isPositive: true },
+        { title: 'Pedidos (pagos/total)', value: '0/0', icon: ShoppingBag, trend: '', isPositive: true },
         { title: 'Total de Produtos', value: '0', icon: Package, trend: '', isPositive: true },
         { title: 'Total Usuários', value: '0', icon: Users, trend: '', isPositive: true },
     ];

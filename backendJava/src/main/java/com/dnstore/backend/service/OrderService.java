@@ -273,10 +273,8 @@ public class OrderService {
                         "O valor mínimo do carrinho para usar este cupom é R$ " + coupon.getMinCartValue());
             }
 
-            if (coupon.getMaxUsage() != null && coupon.getCurrentUsage() != null
-                    && coupon.getCurrentUsage() >= coupon.getMaxUsage()) {
-                throw new IllegalArgumentException("Este cupom já atingiu o limite máximo de uso.");
-            }
+            // Limite de uso: UPDATE atômico no banco (sem ler-e-gravar), seguro contra checkouts simultâneos.
+            couponService.registerUsage(coupon);
 
             if (coupon.getDiscountPercentage() != null) {
                 discount = productTotal.multiply(coupon.getDiscountPercentage())
@@ -289,8 +287,6 @@ public class OrderService {
                 discount = productTotal;
             }
 
-            coupon.setCurrentUsage((coupon.getCurrentUsage() != null ? coupon.getCurrentUsage() : 0) + 1);
-            couponRepository.save(coupon);
             appliedCoupon = coupon;
         }
 
@@ -477,11 +473,22 @@ public class OrderService {
             log.warn("order.invalid_status status={}", status);
             throw new IllegalArgumentException("Status inválido: " + status);
         }
+        if ("PAID".equals(status)) {
+            // Marcar como pago exige justificativa e auditoria: use a confirmação manual de pagamento.
+            throw new IllegalArgumentException(
+                    "Para marcar um pedido como pago use a confirmação manual de pagamento, com justificativa.");
+        }
         java.util.Optional<Order> found = orderRepository.findByIdForUpdate(id);
         if (found.isEmpty()) {
             return java.util.Optional.empty();
         }
         Order order = found.get();
+        if (order.isStockReleased()
+                && ("PROCESSING".equals(status) || "SHIPPED".equals(status) || "DELIVERED".equals(status))) {
+            // Pedido cancelado/expirado já devolveu estoque (e cupom): não pode seguir para a logística.
+            throw new ConflictException(
+                    "O estoque deste pedido já foi devolvido (cancelado ou expirado); ele não pode seguir para envio.");
+        }
         if (financialBlockRepository != null
                 && ("PROCESSING".equals(status) || "SHIPPED".equals(status) || "DELIVERED".equals(status))
                 && financialBlockRepository.existsByOrder_IdAndActiveTrue(id)) {

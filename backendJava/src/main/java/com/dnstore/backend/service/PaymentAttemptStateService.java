@@ -572,15 +572,23 @@ public class PaymentAttemptStateService {
                         default -> false;
                 };
 
-                if (needsBlock
+                // Um pagamento do Asaas confirmado depois de o admin já ter confirmado o pedido manualmente
+                // significa que o cliente pagou duas vezes: exige reconciliação (e bloqueia a logística).
+                boolean duplicateOfManualPayment = status == PaymentStatus.PAID
+                                && order.isManualPaymentConfirmed();
+
+                if ((needsBlock || duplicateOfManualPayment)
                                 && !blockRepository.existsByOrder_IdAndActiveTrue(order.getId())) {
 
                         FinancialBlock block = new FinancialBlock();
                         block.setPayment(payment);
                         block.setOrder(order);
-                        block.setBlockType(status.name());
-                        block.setReason(
-                                        "Ocorrência financeira requer reconciliação.");
+                        block.setBlockType(duplicateOfManualPayment
+                                        ? "MANUAL_CONFIRMATION_CONFLICT"
+                                        : status.name());
+                        block.setReason(duplicateOfManualPayment
+                                        ? "Pagamento do Asaas recebido em pedido já confirmado manualmente. Requer reconciliação."
+                                        : "Ocorrência financeira requer reconciliação.");
 
                         blockRepository.save(block);
                 }

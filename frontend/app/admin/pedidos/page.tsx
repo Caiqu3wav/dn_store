@@ -2,14 +2,54 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import { ShoppingBag, Eye, Loader2, Calendar, User, MapPin } from 'lucide-react';
+import { ShoppingBag, Eye, Loader2, Calendar, User, MapPin, BadgeCheck, History } from 'lucide-react';
 import { fetcher } from '@/services/productService';
-import { adminService, AdminOrder } from '@/services/adminService';
+import { adminService, AdminOrder, OrderStatusAuditEntry } from '@/services/adminService';
 import { toast } from 'react-hot-toast';
+
+// Os valores enviados à API são os status reais do backend (antes o seletor enviava 'enviado', 'entregue'...
+// e todo pedido de alteração era recusado com 400).
+const STATUS_LABELS: Record<string, string> = {
+    PENDING_PAYMENT: 'Aguardando pagamento',
+    PAID: 'Pago',
+    PAYMENT_FAILED: 'Pagamento falhou',
+    PAYMENT_REVIEW: 'Revisar pagamento',
+    PROCESSING: 'Em separação',
+    SHIPPED: 'Enviado',
+    DELIVERED: 'Entregue',
+    CANCELLED: 'Cancelado',
+    EXPIRED: 'Expirado',
+};
+
+// Status que o administrador pode definir diretamente. "Pago" só pela confirmação manual (com justificativa);
+// aguardando/falha/expirado/revisão são controlados pelo sistema.
+const ADMIN_SETTABLE_STATUSES = ['PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+const MANUAL_CONFIRMABLE_STATUSES = ['PENDING_PAYMENT', 'PAYMENT_FAILED'];
+const MIN_REASON_LENGTH = 10;
+
+const statusLabel = (status: string) => STATUS_LABELS[status] ?? status;
+
+const errorMessage = (error: unknown, fallback: string) => {
+    const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
+    return typeof message === 'string' && message.trim() ? message : fallback;
+};
 
 export default function AdminOrdersPage() {
     const { data: orders, mutate } = useSWR<AdminOrder[]>('/orders/all', fetcher);
     const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
+    const [confirmingPayment, setConfirmingPayment] = useState(false);
+    const [paymentReason, setPaymentReason] = useState('');
+    const [submittingPayment, setSubmittingPayment] = useState(false);
+    const { data: auditEntries, mutate: reloadAudit } = useSWR<OrderStatusAuditEntry[]>(
+        selectedOrder ? `/orders/${selectedOrder.id}/status-audit` : null,
+        fetcher
+    );
+
+    const selectOrder = (order: AdminOrder) => {
+        setSelectedOrder(order);
+        setConfirmingPayment(false);
+        setPaymentReason('');
+    };
 
     const handleUpdateStatus = async (orderId: string, newStatus: string) => {
         try {
@@ -21,26 +61,48 @@ export default function AdminOrdersPage() {
                     ? { ...previousOrder, status: newStatus }
                     : previousOrder
             ));
-        } catch {
-            toast.error('Erro ao atualizar status do pedido.');
+        } catch (error) {
+            toast.error(errorMessage(error, 'Erro ao atualizar status do pedido.'));
+        }
+    };
+
+    const handleConfirmPayment = async () => {
+        if (!selectedOrder || submittingPayment) return;
+        setSubmittingPayment(true);
+        try {
+            const updated = await adminService.confirmPaymentManually(selectedOrder.id, paymentReason.trim());
+            toast.success('Pagamento confirmado manualmente.');
+            setSelectedOrder({
+                ...selectedOrder,
+                status: updated.status,
+                manualPaymentConfirmed: updated.manualPaymentConfirmed,
+            });
+            setConfirmingPayment(false);
+            setPaymentReason('');
+            mutate();
+            reloadAudit();
+        } catch (error) {
+            toast.error(errorMessage(error, 'Não foi possível confirmar o pagamento.'));
+        } finally {
+            setSubmittingPayment(false);
         }
     };
 
     const getStatusStyle = (status: string) => {
-        const cleanStatus = status.toLowerCase();
-        if (cleanStatus === 'pending' || cleanStatus === 'pendente') {
-            return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+        switch (status) {
+            case 'PENDING_PAYMENT':
+            case 'PAYMENT_REVIEW':
+                return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+            case 'PAID':
+            case 'PROCESSING':
+                return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+            case 'SHIPPED':
+                return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+            case 'DELIVERED':
+                return 'bg-green-500/10 text-green-500 border-green-500/20';
+            default:
+                return 'bg-red-500/10 text-red-500 border-red-500/20';
         }
-        if (cleanStatus === 'confirmado' || cleanStatus === 'confirmed' || cleanStatus === 'pago') {
-            return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-        }
-        if (cleanStatus === 'enviado' || cleanStatus === 'shipped') {
-            return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
-        }
-        if (cleanStatus === 'entregue' || cleanStatus === 'delivered') {
-            return 'bg-green-500/10 text-green-500 border-green-500/20';
-        }
-        return 'bg-red-500/10 text-red-500 border-red-500/20';
     };
 
     return (
@@ -91,7 +153,7 @@ export default function AdminOrdersPage() {
                                             className={`hover:bg-white/[0.01] transition-colors cursor-pointer ${
                                                 selectedOrder?.id === order.id ? 'bg-white/[0.03]' : ''
                                             }`}
-                                            onClick={() => setSelectedOrder(order)}
+                                            onClick={() => selectOrder(order)}
                                         >
                                             <td className="p-4 font-mono text-xs text-gray-400">
                                                 {order.id.slice(0, 8)}...
@@ -108,13 +170,18 @@ export default function AdminOrdersPage() {
                                             </td>
                                             <td className="p-4">
                                                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusStyle(order.status)}`}>
-                                                    {order.status}
+                                                    {statusLabel(order.status)}
                                                 </span>
+                                                {order.manualPaymentConfirmed && (
+                                                    <span className="ml-2 text-[10px] font-semibold text-amber-400" title="Pagamento confirmado manualmente por um administrador">
+                                                        manual
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex justify-end gap-2">
                                                     <button
-                                                        onClick={() => setSelectedOrder(order)}
+                                                        onClick={() => selectOrder(order)}
                                                         className="p-1.5 bg-[#3A3A3A] hover:bg-white/10 rounded text-gray-300 hover:text-white transition-colors"
                                                         title="Visualizar Detalhes"
                                                     >
@@ -122,14 +189,16 @@ export default function AdminOrdersPage() {
                                                     </button>
                                                     <select
                                                         value={order.status}
+                                                        aria-label={`Alterar status do pedido ${order.id.slice(0, 8)}`}
                                                         onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
-                                                        className="bg-[#3A3A3A] border border-white/5 rounded px-2 py-1 text-white text-xs font-semibold focus:outline-none focus:border-brand-secondary"
+                                                        className="w-32 truncate bg-[#3A3A3A] border border-white/5 rounded px-2 py-1 text-white text-xs font-semibold focus:outline-none focus:border-brand-secondary"
                                                     >
-                                                        <option value="pending">Pendente</option>
-                                                        <option value="CONFIRMADO">Confirmado</option>
-                                                        <option value="enviado">Enviado</option>
-                                                        <option value="entregue">Entregue</option>
-                                                        <option value="cancelado">Cancelado</option>
+                                                        {!ADMIN_SETTABLE_STATUSES.includes(order.status) && (
+                                                            <option value={order.status} disabled>{statusLabel(order.status)}</option>
+                                                        )}
+                                                        {ADMIN_SETTABLE_STATUSES.map((status) => (
+                                                            <option key={status} value={status}>{statusLabel(status)}</option>
+                                                        ))}
                                                     </select>
                                                 </div>
                                             </td>
@@ -233,24 +302,113 @@ export default function AdminOrdersPage() {
                                 </div>
                             </div>
 
+                            {/* Status e confirmação manual de pagamento */}
+                            <div className="space-y-3 border-t border-white/5 pt-4">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-gray-400 font-semibold text-xs">STATUS ATUAL</span>
+                                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusStyle(selectedOrder.status)}`}>
+                                        {statusLabel(selectedOrder.status)}
+                                    </span>
+                                </div>
+                                {selectedOrder.manualPaymentConfirmed && (
+                                    <div className="flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300">
+                                        <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" />
+                                        <span>Pagamento confirmado <strong>manualmente</strong> por um administrador (não pelo Asaas).</span>
+                                    </div>
+                                )}
+
+                                {MANUAL_CONFIRMABLE_STATUSES.includes(selectedOrder.status) && !confirmingPayment && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfirmingPayment(true)}
+                                        className="w-full rounded border border-amber-500/40 py-2 text-xs font-bold text-amber-300 transition-colors hover:bg-amber-500/10"
+                                    >
+                                        Confirmar pagamento manualmente
+                                    </button>
+                                )}
+
+                                {confirmingPayment && (
+                                    <div className="space-y-2 rounded-lg border border-amber-500/30 bg-[#1A1B1D] p-3">
+                                        <p className="text-xs text-gray-300">
+                                            Use somente quando o pagamento foi recebido <strong>fora do Asaas</strong>. A confirmação fica registrada
+                                            com o seu usuário, data, horário e esta justificativa, e não pode ser desfeita por aqui.
+                                        </p>
+                                        <label htmlFor="manual-payment-reason" className="block text-xs font-semibold text-gray-400">
+                                            JUSTIFICATIVA (mín. {MIN_REASON_LENGTH} caracteres)
+                                        </label>
+                                        <textarea
+                                            id="manual-payment-reason"
+                                            value={paymentReason}
+                                            onChange={(e) => setPaymentReason(e.target.value)}
+                                            maxLength={500}
+                                            rows={3}
+                                            placeholder="Ex.: Transferência bancária conferida no extrato em 17/11."
+                                            className="w-full rounded border border-white/10 bg-[#2A2A2A] p-2 text-sm text-white focus:border-brand-secondary focus:outline-none"
+                                        />
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => { setConfirmingPayment(false); setPaymentReason(''); }}
+                                                disabled={submittingPayment}
+                                                className="flex-1 rounded bg-[#3A3A3A] py-2 text-xs font-bold text-white hover:bg-white/10 disabled:opacity-50"
+                                            >
+                                                Cancelar
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleConfirmPayment}
+                                                disabled={submittingPayment || paymentReason.trim().length < MIN_REASON_LENGTH}
+                                                className="flex-1 rounded bg-amber-600 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                {submittingPayment ? 'Confirmando...' : 'Confirmar pagamento'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
                             {/* Quick Action Status Change */}
                             <div className="space-y-2 pt-2">
                                 <label className="text-xs text-gray-400 font-semibold block">ALTERAR STATUS</label>
                                 <div className="flex gap-2">
                                     <button 
-                                        onClick={() => handleUpdateStatus(selectedOrder.id, 'enviado')}
+                                        onClick={() => handleUpdateStatus(selectedOrder.id, 'SHIPPED')}
                                         className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 text-xs font-bold rounded text-white transition-colors"
                                     >
                                         Marcar como Enviado
                                     </button>
                                     <button 
-                                        onClick={() => handleUpdateStatus(selectedOrder.id, 'entregue')}
+                                        onClick={() => handleUpdateStatus(selectedOrder.id, 'DELIVERED')}
                                         className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-xs font-bold rounded text-white transition-colors"
                                     >
                                         Marcar como Entregue
                                     </button>
                                 </div>
                             </div>
+
+                            {/* Auditoria de alterações administrativas */}
+                            {auditEntries && auditEntries.length > 0 && (
+                                <div className="space-y-2 border-t border-white/5 pt-4">
+                                    <h3 className="flex items-center gap-2 text-sm font-bold text-gray-400">
+                                        <History className="h-4 w-4" />
+                                        Histórico administrativo
+                                    </h3>
+                                    <ul className="space-y-2">
+                                        {auditEntries.map((entry) => (
+                                            <li key={entry.id} className="rounded-lg bg-[#1A1B1D] p-3 text-xs text-gray-300 space-y-1">
+                                                <div className="font-semibold text-white">
+                                                    {statusLabel(entry.previousStatus)} → {statusLabel(entry.newStatus)}
+                                                    <span className="ml-2 font-normal text-amber-400">(confirmação manual)</span>
+                                                </div>
+                                                <div className="text-gray-400">
+                                                    {entry.actorName} · {new Date(entry.createdAt).toLocaleString('pt-BR')}
+                                                </div>
+                                                <div>{entry.reason}</div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

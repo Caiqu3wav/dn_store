@@ -8,8 +8,10 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import org.springframework.context.annotation.Profile;
 
 @Component
+@Profile("!readonly")
 @RequiredArgsConstructor
 public class ShippingDataCleanupScheduler {
 

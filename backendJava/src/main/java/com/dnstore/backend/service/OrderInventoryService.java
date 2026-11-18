@@ -20,6 +20,7 @@ import java.util.UUID;
 public class OrderInventoryService {
 
     private final ProductVariantRepository productVariantRepository;
+    private final CouponService couponService;
 
     public void releaseReservedStock(Order order) {
         if (order.isStockReleased()) {
@@ -32,6 +33,11 @@ public class OrderInventoryService {
             variant.setStock(Math.addExact(variant.getStock(), quantity));
             productVariantRepository.save(variant);
         });
+        // A reserva do pedido é estoque + utilização do cupom. Os dois voltam juntos e uma única vez:
+        // a flag stockReleased (checada no início) impede devolução em dobro em cancelamento/expiração repetidos.
+        if (order.getCoupon() != null) {
+            couponService.releaseUsage(order.getCoupon());
+        }
         order.setStockReleased(true);
     }
 
@@ -54,6 +60,9 @@ public class OrderInventoryService {
             variant.setStock(variant.getStock() - quantity);
             productVariantRepository.save(variant);
         });
+        if (order.getCoupon() != null) {
+            couponService.reapplyUsage(order.getCoupon());
+        }
         order.setStockReleased(false);
     }
 

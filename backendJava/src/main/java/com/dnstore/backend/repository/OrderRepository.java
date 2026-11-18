@@ -35,6 +35,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
             @Param("statuses") List<String> statuses,
             @Param("createdBefore") LocalDateTime createdBefore);
 
-    @Query("SELECT COALESCE(SUM(o.total), 0) FROM Order o")
-    BigDecimal sumTotalRevenue();
+    @Query("SELECT COALESCE(SUM(o.total), 0) FROM Order o WHERE o.status IN :statuses")
+    BigDecimal sumTotalByStatusIn(@Param("statuses") java.util.Collection<String> statuses);
+
+    long countByStatusIn(java.util.Collection<String> statuses);
 }

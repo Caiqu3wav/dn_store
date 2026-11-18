@@ -407,6 +407,53 @@ class PaymentAttemptStateServiceTest {
         }
 
         @Test
+        void applyWebhook_asaasPaymentAfterManualConfirmationOpensReconciliationBlockInsteadOfSilentlyDoubleCharging() {
+                com.dnstore.backend.repository.FinancialBlockRepository blocks =
+                                org.mockito.Mockito.mock(com.dnstore.backend.repository.FinancialBlockRepository.class);
+                ReflectionTestUtils.setField(service, "blockRepository", blocks);
+                Order order = order(user(), "PAID", LocalDateTime.now().minusMinutes(5));
+                order.setManualPaymentConfirmed(true);
+                // tentativa já encerrada como FAILED que depois recebe um pagamento tardio no Asaas
+                Payment payment = payment(order, "FAILED", "key", "charge-1");
+
+                mockWebhookLookup(payment, order);
+                when(paymentRepository.save(payment)).thenReturn(payment);
+
+                service.applyWebhook(
+                                webhook("event-after-manual", "charge-1", "PAID"),
+                                provider("charge-1", "PAID", payment.getExternalReference()));
+
+                assertThat(payment.getStatus()).isEqualTo("PAID");
+                assertThat(order.getStatus()).isEqualTo("PAID");
+                org.mockito.ArgumentCaptor<com.dnstore.backend.model.FinancialBlock> captor =
+                                org.mockito.ArgumentCaptor.forClass(com.dnstore.backend.model.FinancialBlock.class);
+                verify(blocks).save(captor.capture());
+                assertThat(captor.getValue().getBlockType()).isEqualTo("MANUAL_CONFIRMATION_CONFLICT");
+                assertThat(captor.getValue().getOrder()).isSameAs(order);
+                assertThat(captor.getValue().getReason()).contains("confirmado manualmente");
+        }
+
+        @Test
+        void applyWebhook_paidOnAnOrderThatWasNotConfirmedManuallyDoesNotOpenABlock() {
+                com.dnstore.backend.repository.FinancialBlockRepository blocks =
+                                org.mockito.Mockito.mock(com.dnstore.backend.repository.FinancialBlockRepository.class);
+                ReflectionTestUtils.setField(service, "blockRepository", blocks);
+                Order order = order(user(), "PENDING_PAYMENT", LocalDateTime.now().minusMinutes(5));
+                Payment payment = payment(order, "PENDING", "key", "charge-1");
+
+                mockWebhookLookup(payment, order);
+                when(paymentRepository.save(payment)).thenReturn(payment);
+                when(orderRepository.save(order)).thenReturn(order);
+
+                service.applyWebhook(
+                                webhook("event-normal", "charge-1", "PAID"),
+                                provider("charge-1", "PAID", payment.getExternalReference()));
+
+                assertThat(order.getStatus()).isEqualTo("PAID");
+                verify(blocks, never()).save(any());
+        }
+
+        @Test
         void applyWebhook_afterCancellationOrExpirationShouldNotReactivateOrder() {
                 for (String logisticalStatus : List.of("CANCELLED", "EXPIRED")) {
                         Order order = order(

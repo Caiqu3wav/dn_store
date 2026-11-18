@@ -9,8 +9,10 @@ import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 import java.util.List;
+import org.springframework.context.annotation.Profile;
 
 @Component
+@Profile("!readonly")
 @RequiredArgsConstructor
 @Slf4j
 public class DatabaseSeeder implements CommandLineRunner {

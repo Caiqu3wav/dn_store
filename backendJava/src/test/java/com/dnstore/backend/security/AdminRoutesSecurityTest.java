@@ -54,6 +54,8 @@ class AdminRoutesSecurityTest {
             {"DELETE", "/api/events/123"},
             {"GET", "/api/orders/all"},
             {"PUT", "/api/orders/123/status"},
+            {"POST", "/api/orders/123/confirm-payment"},
+            {"GET", "/api/orders/123/status-audit"},
             {"GET", "/api/users"},
             {"PUT", "/api/users/123/role"},
             {"DELETE", "/api/users/123"},

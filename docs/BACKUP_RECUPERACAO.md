@@ -49,9 +49,19 @@ export DB_NAME=dn_store_restore CONFIRM_RESTORE=yes
 ## 4. Migrations (Flyway)
 
 - Em produção o Hibernate só valida (`ddl-auto=validate`); o schema muda **somente** por migrations em `backendJava/src/main/resources/db/migration/`.
-- A numeração tem uma lacuna (não existe V19). As migrations atuais são V1–V18 e V20–V25 e foram aplicadas com sucesso em um MySQL 8.4 vazio, além do `PaymentSchemaMySqlIT` (9 testes) passar.
+- A numeração tem uma lacuna (não existe V19). As migrations atuais são V1–V18 e V20–V26 (a V26 ainda **não** foi aplicada no Aiven, ver abaixo) e foram aplicadas com sucesso em um MySQL 8.4 vazio, além do `PaymentSchemaMySqlIT` (9 testes) passar.
 - O Flyway 10.20 (do Spring Boot 3.4.0) avisa que o MySQL 8.4 é mais novo do que a versão testada por ele (8.1). Nos testes locais as 24 migrations funcionaram; mantenha o aviso em observação.
 - Nunca edite uma migration já aplicada; crie uma nova.
+
+### V26: confirmação manual de pagamento (pendente no Aiven)
+
+`V26__add_order_manual_payment_audit.sql` é **apenas aditiva**: adiciona a coluna `orders.manual_payment_confirmed` (`NOT NULL DEFAULT FALSE`) e cria a tabela `order_status_audit`. Não altera nem remove dados. Foi aplicada e testada somente em MySQL descartável.
+
+Atenção: o Flyway aplica a V26 sozinho na **próxima inicialização normal do backend contra o Aiven**. Por isso:
+
+1. Faça backup antes (seção 2) e escolha conscientemente o momento de subir o backend com este código.
+2. Enquanto a V26 não estiver aplicada, o perfil `readonly` (DEPLOY.md, seção 11) **não sobe** contra o Aiven, porque o Hibernate valida o schema e a coluna/tabela ainda não existem. Para olhar o catálogo real até lá, use o código anterior ao commit desta mudança ou aplique a V26 de propósito.
+3. Rollback: a V26 não é desfeita automaticamente; como é aditiva, o código anterior continua funcionando com a coluna e a tabela extras.
 
 ### Verificação obrigatória em bancos que já existem (Aiven)
 
@@ -63,6 +73,8 @@ FROM flyway_schema_history ORDER BY installed_rank;
 ```
 
 - Esperado: versões entre 1 e 25 coerentes com os arquivos acima, todas `success = 1`.
+**Resultado da verificação (17/11/2026, somente leitura, sessão MySQL em `transaction_read_only`):** o banco do Aiven tem 24 registros em `flyway_schema_history`, todos `success = 1`: versões 1–18 e 20–25, sem V19, e as descrições de V22 e V23 conferem com os arquivos atuais. O `validate` do próprio Flyway (checksums incluídos) contra o Aiven retornou `valid=true`, 24 migrations validadas e **0 pendentes**. Ou seja, o backend atual sobe contra esse banco sem aplicar nada e sem divergência. Repita a consulta antes de qualquer deploy que traga uma migration nova.
+
 - Se aparecer V19 ou um V20/V22/V23 com descrição diferente da dos arquivos atuais, **não force nada**: pare e avalie caso a caso (envolve `flyway repair` e comparação de schema, que mexem no banco).
 
 ## 5. Primeiro administrador

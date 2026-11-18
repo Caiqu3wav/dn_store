@@ -137,3 +137,18 @@ Nada é fixo no código. Ao trocar a URL do backend ou do frontend:
 
 - Logs: pela plataforma (saída padrão). Em produção o nível é INFO e dados sensíveis não devem aparecer; veja o item de revisão de logs em `PREPARACAO_PRODUCAO.md`.
 - Rollback: reimplante a imagem/commit anterior. Migrations já aplicadas **não** são desfeitas automaticamente; por isso migrations devem ser aditivas e compatíveis com a versão anterior do código.
+
+## 11. Inspecionar a loja com dados reais sem escrever no banco (perfil `readonly`)
+
+Subir o backend normalmente contra um banco real **escreve nele**: o Flyway aplica migrations pendentes, o `DatabaseSeeder` roda e três agendadores gravam (expiração de pedidos, worker de webhooks, limpeza de cotações). Para olhar o catálogo verdadeiro com segurança, use o perfil `readonly`:
+
+```bash
+cd backendJava          # usa o .env habitual (Aiven)
+SPRING_PROFILES_ACTIVE=local,readonly ./mvnw spring-boot:run
+# em outro terminal: cd frontend && npm run dev  (usa http://localhost:8080/api)
+```
+
+O perfil desliga o Flyway, o seeder e os agendadores e abre todas as conexões do pool em sessão MySQL somente leitura (`ReadOnlyProfileMySqlIT` comprova isso contra MySQL real). Efeito esperado: navegar por catálogo, categorias, eventos e detalhes funciona; login, cadastro, carrinho e checkout **não** funcionam, porque precisam gravar. Não use este perfil em produção. **Atenção:** como o perfil não aplica migrations e o Hibernate valida o schema, ele só sobe contra um banco que já tenha todas as migrations do código atual. Hoje isso exclui o Aiven até a V26 ser aplicada (`BACKUP_RECUPERACAO.md`, seção 4). Para garantia total, o ideal continua sendo um usuário do banco com apenas `SELECT`.
+
+Testes automatizados destrutivos ou de integração devem usar sempre um MySQL descartável (`application-integration-local.properties`, porta 33316), nunca o `.env` do Aiven.
+

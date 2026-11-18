@@ -48,10 +48,11 @@ public class SecurityConfiguration {
                         // Rotas administrativas: exigem ADMIN já na URL (defesa em profundidade além de
                         // @PreAuthorize) e precisam vir antes das liberações públicas de leitura do catálogo.
                         .requestMatchers(HttpMethod.GET, "/api/products/admin", "/api/products/admin/**",
-                                "/api/events/all", "/api/orders/all")
+                                "/api/events/all", "/api/orders/all", "/api/orders/*/status-audit")
                         .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/products", "/api/products/**",
-                                "/api/categories", "/api/categories/**", "/api/events", "/api/events/**")
+                                "/api/categories", "/api/categories/**", "/api/events", "/api/events/**",
+                                "/api/orders/*/confirm-payment")
                         .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/products/**", "/api/categories/**",
                                 "/api/events/**", "/api/orders/*/status")

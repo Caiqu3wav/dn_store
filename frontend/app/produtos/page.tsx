@@ -180,7 +180,8 @@ function ProdutosCatalog() {
           </div>
 
           {/* Desktop Sidebar & Mobile Drawer */}
-            {(isMobileFiltersOpen || typeof window !== 'undefined' && window.innerWidth >= 1024) && (
+            {/* Sempre renderizado: a visibilidade (gaveta no mobile, coluna fixa no desktop) é decidida por CSS,
+                evitando divergência de hidratação e o sumiço dos filtros ao redimensionar a janela. */}
               <>
                 {/* Mobile Backdrop */}
                 {isMobileFiltersOpen && (
@@ -207,7 +208,7 @@ function ProdutosCatalog() {
                     ${!isMobileFiltersOpen ? 'hidden lg:block' : 'block'}
                   `}
                 >
-                  <div className="lg:sticky lg:top-28 space-y-8">
+                  <div className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto lg:p-1 lg:-m-1 [scrollbar-width:thin] space-y-8">
 
                     {/* Mobile Header */}
                     <div className="flex items-center justify-between lg:hidden mb-6">
@@ -372,7 +373,6 @@ function ProdutosCatalog() {
                   </div>
                 </motion.aside>
               </>
-            )}
 
           {/* Main Content */}
           <div className="flex-1">

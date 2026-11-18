@@ -7,6 +7,8 @@ export interface AdminDashboardData {
     totalProducts: number;
     totalRevenue: number;
     averageTicket: number;
+    /** Pedidos com pagamento confirmado: base da receita e do ticket médio. */
+    paidOrders?: number;
 }
 
 export interface MelhorEnvioAuthorizationResponse {
@@ -19,6 +21,8 @@ export interface AdminOrder {
     total?: number;
     createdAt?: string;
     discountAmount?: number;
+    /** Pagamento confirmado manualmente por um admin (não pelo Asaas). */
+    manualPaymentConfirmed?: boolean;
     user?: {
         name?: string;
         email?: string;
@@ -33,6 +37,17 @@ export interface AdminOrder {
         zipCode?: string;
     };
     items?: AdminOrderItem[];
+}
+
+export interface OrderStatusAuditEntry {
+    id: string;
+    changeType: string;
+    previousStatus: string;
+    newStatus: string;
+    reason: string;
+    createdAt: string;
+    actorId: string;
+    actorName: string;
 }
 
 interface AdminOrderItem {
@@ -79,6 +94,12 @@ export const adminService = {
 
     updateOrderStatus: async (id: string, status: string): Promise<AdminOrder> => {
         const response = await api.put(`/orders/${id}/status`, { status });
+        return response.data;
+    },
+
+    /** Confirmação manual de pagamento: exige justificativa e fica registrada com o admin responsável. */
+    confirmPaymentManually: async (id: string, reason: string): Promise<AdminOrder> => {
+        const response = await api.post(`/orders/${id}/confirm-payment`, { reason });
         return response.data;
     }
 };
