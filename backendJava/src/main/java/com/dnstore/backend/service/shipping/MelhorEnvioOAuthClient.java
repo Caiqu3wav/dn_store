@@ -105,7 +105,12 @@ public class MelhorEnvioOAuthClient {
         }
         try {
             JsonNode error = objectMapper.readTree(responseBody).get("error");
-            return error == null || !error.isTextual() ? null : error.textValue();
+            if (error == null || !error.isTextual()) {
+                return null;
+            }
+            // O código vai para logs e para o painel: só aceita o formato curto de um código OAuth.
+            String code = error.textValue();
+            return code.matches("[A-Za-z0-9_.-]{1,40}") ? code : null;
         } catch (Exception ignored) {
             return null;
         }

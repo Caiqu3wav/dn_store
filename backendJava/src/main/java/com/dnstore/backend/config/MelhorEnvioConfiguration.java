@@ -115,6 +115,21 @@ public class MelhorEnvioConfiguration {
                 || properties.getRefreshTokenTtl().isZero()) {
             throw new IllegalStateException("Melhor Envio state, quote, and refresh durations must be valid.");
         }
+        MelhorEnvioProperties.Retry retry = properties.getRetry();
+        if (isNotPositive(properties.getProactiveRefreshWindow())
+                || isNotPositive(properties.getQuoteReuseWindow())
+                || retry.getMaxAttempts() < 1 || retry.getMaxAttempts() > 5
+                || isNotPositive(retry.getInitialBackoff())
+                || isNotPositive(retry.getMaxBackoff())
+                || isNotPositive(retry.getMaxRetryAfter())
+                || isNotPositive(retry.getTotalBudget())) {
+            throw new IllegalStateException(
+                    "Melhor Envio renewal, quote reuse, and retry settings must be valid (1-5 attempts).");
+        }
+    }
+
+    private boolean isNotPositive(Duration value) {
+        return value == null || value.isNegative() || value.isZero();
     }
 
     private void require(String value, String variable) {

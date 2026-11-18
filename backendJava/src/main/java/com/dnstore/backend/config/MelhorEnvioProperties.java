@@ -20,7 +20,16 @@ public class MelhorEnvioProperties {
     private Duration stateTtl = Duration.ofMinutes(10);
     private Duration quoteTtl = Duration.ofMinutes(15);
     private Duration refreshSkew = Duration.ofMinutes(5);
-    private Duration refreshTokenTtl = Duration.ofDays(30);
+    /**
+     * Apenas informativo (coluna refresh_expires_at): o FAQ do Melhor Envio fala em 45 dias, mas a
+     * resposta OAuth só traz {@code expires_in} do access token. Não bloqueia nenhuma renovação.
+     */
+    private Duration refreshTokenTtl = Duration.ofDays(45);
+    /** Antecedência, antes do vencimento do access token, em que a renovação proativa começa. */
+    private Duration proactiveRefreshWindow = Duration.ofDays(7);
+    /** Janela em que uma cotação recente do mesmo carrinho e CEP é reaproveitada sem chamar o provedor. */
+    private Duration quoteReuseWindow = Duration.ofMinutes(5);
+    private Retry retry = new Retry();
 
     public String getEnvironment() {
         return environment;
@@ -132,5 +141,80 @@ public class MelhorEnvioProperties {
 
     public void setRefreshTokenTtl(Duration refreshTokenTtl) {
         this.refreshTokenTtl = refreshTokenTtl;
+    }
+
+    public Duration getProactiveRefreshWindow() {
+        return proactiveRefreshWindow;
+    }
+
+    public void setProactiveRefreshWindow(Duration proactiveRefreshWindow) {
+        this.proactiveRefreshWindow = proactiveRefreshWindow;
+    }
+
+    public Duration getQuoteReuseWindow() {
+        return quoteReuseWindow;
+    }
+
+    public void setQuoteReuseWindow(Duration quoteReuseWindow) {
+        this.quoteReuseWindow = quoteReuseWindow;
+    }
+
+    public Retry getRetry() {
+        return retry;
+    }
+
+    public void setRetry(Retry retry) {
+        this.retry = retry;
+    }
+
+    /** Política de tentativas para a cotação (erros 5xx, 429 e falhas de rede). */
+    public static class Retry {
+        private int maxAttempts = 3;
+        private Duration initialBackoff = Duration.ofMillis(300);
+        private Duration maxBackoff = Duration.ofSeconds(2);
+        /** Maior {@code Retry-After} que ainda vale esperar dentro de uma requisição do cliente. */
+        private Duration maxRetryAfter = Duration.ofSeconds(3);
+        /** Tempo total máximo gasto em tentativas e esperas de uma cotação. */
+        private Duration totalBudget = Duration.ofSeconds(15);
+
+        public int getMaxAttempts() {
+            return maxAttempts;
+        }
+
+        public void setMaxAttempts(int maxAttempts) {
+            this.maxAttempts = maxAttempts;
+        }
+
+        public Duration getInitialBackoff() {
+            return initialBackoff;
+        }
+
+        public void setInitialBackoff(Duration initialBackoff) {
+            this.initialBackoff = initialBackoff;
+        }
+
+        public Duration getMaxBackoff() {
+            return maxBackoff;
+        }
+
+        public void setMaxBackoff(Duration maxBackoff) {
+            this.maxBackoff = maxBackoff;
+        }
+
+        public Duration getMaxRetryAfter() {
+            return maxRetryAfter;
+        }
+
+        public void setMaxRetryAfter(Duration maxRetryAfter) {
+            this.maxRetryAfter = maxRetryAfter;
+        }
+
+        public Duration getTotalBudget() {
+            return totalBudget;
+        }
+
+        public void setTotalBudget(Duration totalBudget) {
+            this.totalBudget = totalBudget;
+        }
     }
 }
