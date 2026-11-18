@@ -2,6 +2,14 @@
 
 Este checklist prepara a homologação operacional do DN Store. Ele não autoriza chamadas de produção, compra de etiquetas ou geração de envios.
 
+## Escopo atual da integração
+
+A integração implementada cobre **autorização OAuth e cotação de frete** (escopo `shipping-calculate`). O valor cotado é gravado no pedido e usado no checkout.
+
+**Não** estão implementados: compra de etiquetas, impressão de etiquetas e rastreamento (exigiriam outros escopos do Melhor Envio e desenvolvimento adicional). Enquanto isso, o envio é operado manualmente: depois que o pagamento do pedido é confirmado, compre e imprima a etiqueta pelo painel do próprio Melhor Envio usando os dados do pedido.
+
+**Renovação da autorização:** o backend renova o token de acesso sozinho. Se o refresh token expirar ou for revogado (por exemplo, ficar muito tempo sem uso), a cotação passa a falhar (o checkout responde 503) até que um ADMIN clique em **Conectar Melhor Envio** de novo. Após o lançamento, teste uma cotação periodicamente e depois de qualquer troca de `MELHOR_ENVIO_*`.
+
 ## Informações necessárias do cliente
 
 - Client ID do aplicativo Melhor Envio.
@@ -75,7 +83,7 @@ Não comprar etiquetas, não gerar envios e não executar operações que possam
 - [ ] Redirect URI HTTPS cadastrada exatamente no aplicativo Melhor Envio.
 - [ ] Perfil, ambiente e URLs são coerentes.
 - [ ] `shipping-calculate` está concedido.
-- [ ] Banco de produção está migrado até a versão V18 e com `ddl-auto=validate`.
+- [ ] Banco de produção está com todas as migrations aplicadas (V1–V18 e V20–V25; não existe V19; ver `BACKUP_RECUPERACAO.md`) e com `ddl-auto=validate`.
 - [ ] Chave de criptografia é persistente, exclusiva do ambiente e possui 32 bytes após Base64.
 - [ ] CEP de origem e dados físicos dos produtos foram revisados.
 - [ ] HTTPS, domínio, CORS e disponibilidade do banco foram validados.
