@@ -1,6 +1,7 @@
 package com.dnstore.backend.service;
 
 import com.dnstore.backend.exception.DeliveryException;
+import com.dnstore.backend.exception.NoShippingOptionsException;
 import com.dnstore.backend.exception.ShippingGatewayException;
 import com.dnstore.backend.service.shipping.ShippingGateway;
 import com.dnstore.backend.service.shipping.ShippingGateway.ShippingItem;
@@ -51,7 +52,7 @@ public class DeliveryService {
         List<ShippingQuote> quotes = shippingGateway.quote(
                 new ShippingRequest(normalizedOrigin, normalizedDestination, items));
         if (quotes == null || quotes.isEmpty()) {
-            throw new DeliveryException("Não há modalidades de entrega disponíveis para este CEP.");
+            throw new NoShippingOptionsException();
         }
         boolean invalidQuote = quotes.stream().anyMatch(quote -> quote == null
                 || quote.serviceId() == null || quote.serviceId().isBlank()

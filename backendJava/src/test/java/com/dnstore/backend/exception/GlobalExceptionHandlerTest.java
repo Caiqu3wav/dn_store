@@ -33,6 +33,54 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void staleShippingQuote_shouldReturn409WithStableCode() throws Exception {
+        mockMvc.perform(get("/test-errors/stale-quote"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errors.code").value("SHIPPING_QUOTE_STALE"))
+                .andExpect(jsonPath("$.message").value("A opção de frete expirou."));
+    }
+
+    @Test
+    void plainConflict_shouldNotCarryTheStaleQuoteCode() throws Exception {
+        mockMvc.perform(get("/test-errors/conflict"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errors.code").doesNotExist());
+    }
+
+    @Test
+    void noShippingOptions_shouldReturn422WithCodeAndNeverAnOutageStatus() throws Exception {
+        mockMvc.perform(get("/test-errors/no-shipping"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.errors.code").value("SHIPPING_NOT_AVAILABLE"))
+                .andExpect(jsonPath("$.message").value("Não há modalidades de entrega disponíveis para este CEP."));
+    }
+
+    @Test
+    void shippingQuoteRejected_shouldReturn400WithCustomerMessage() throws Exception {
+        mockMvc.perform(get("/test-errors/quote-rejected"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("CEP sem cobertura."));
+    }
+
+    @Test
+    void shippingRateLimited_shouldReturn503WithRetryAfterAndNoProviderDetail() throws Exception {
+        mockMvc.perform(get("/test-errors/shipping-rate-limited"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("Retry-After", "30"))
+                .andExpect(jsonPath("$.message").value("Shipping quote is temporarily unavailable."));
+    }
+
+    @Test
+    void rateLimitExceeded_shouldReturn429WithRetryAfter() throws Exception {
+        mockMvc.perform(get("/test-errors/rate-limit"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string("Retry-After", "12"))
+                .andExpect(jsonPath("$.status").value(429));
+    }
+
+    @Test
     void resourceNotFound_shouldReturnStandard404() throws Exception {
         mockMvc.perform(get("/test-errors/missing"))
                 .andExpect(status().isNotFound())
@@ -131,6 +179,31 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/test-errors/payment-gateway")
         void paymentGateway() {
             throw new PaymentGatewayException("private-provider-detail");
+        }
+
+        @GetMapping("/test-errors/stale-quote")
+        void staleQuote() {
+            throw new StaleShippingQuoteException("A opção de frete expirou.");
+        }
+
+        @GetMapping("/test-errors/no-shipping")
+        void noShipping() {
+            throw new NoShippingOptionsException();
+        }
+
+        @GetMapping("/test-errors/quote-rejected")
+        void quoteRejected() {
+            throw new ShippingQuoteRejectedException("CEP sem cobertura.");
+        }
+
+        @GetMapping("/test-errors/shipping-rate-limited")
+        void shippingRateLimited() {
+            throw new ShippingRateLimitedException("private-provider-detail", 30L);
+        }
+
+        @GetMapping("/test-errors/rate-limit")
+        void rateLimit() {
+            throw new RateLimitExceededException("Muitas consultas de frete.", 12);
         }
 
         @GetMapping("/test-errors/shipping-gateway")

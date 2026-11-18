@@ -86,6 +86,24 @@ class DeliveryServiceTest {
     }
 
     @Test
+    void calculateOptions_emptyGatewayAnswerIsNoServiceNotAnOutage() {
+        when(gateway.quote(any(ShippingRequest.class))).thenReturn(List.of());
+
+        assertThatThrownBy(() -> deliveryService.calculateOptions("12500-000", List.of(item("1", "1", "1", "1", 1))))
+                .isInstanceOf(com.dnstore.backend.exception.NoShippingOptionsException.class)
+                .isNotInstanceOf(ShippingGatewayException.class);
+    }
+
+    @Test
+    void calculateOptions_noServiceFromGatewayPropagatesUntouched() {
+        when(gateway.quote(any(ShippingRequest.class)))
+                .thenThrow(new com.dnstore.backend.exception.NoShippingOptionsException());
+
+        assertThatThrownBy(() -> deliveryService.calculateOptions("12500-000", List.of(item("1", "1", "1", "1", 1))))
+                .isInstanceOf(com.dnstore.backend.exception.NoShippingOptionsException.class);
+    }
+
+    @Test
     void calculateOptions_shouldRejectInvalidGatewayResponse() {
         when(gateway.quote(any(ShippingRequest.class)))
                 .thenReturn(List.of(new ShippingQuote("PAC", null, 5)));

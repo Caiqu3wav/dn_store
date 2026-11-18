@@ -12,6 +12,7 @@ import com.dnstore.backend.model.ShippingQuoteOptionEntity;
 import com.dnstore.backend.model.User;
 import com.dnstore.backend.config.MelhorEnvioProperties;
 import com.dnstore.backend.exception.ConflictException;
+import com.dnstore.backend.exception.StaleShippingQuoteException;
 import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.repository.AddressRepository;
 import com.dnstore.backend.repository.CartRepository;
@@ -130,6 +131,14 @@ public class OrderService {
         LocalDateTime quotedAt = now();
         LocalDateTime expiresAt = quotedAt.plus(melhorEnvioProperties.getQuoteTtl());
 
+        // Mesmo cliente, carrinho e CEP cotados há pouco: devolve a cotação vigente em vez de
+        // chamar o provedor e gravar tudo de novo (blur repetido do CEP, recarga da página).
+        List<ShippingOption> reusable = reusableQuote(
+                user, fingerprint, normalizedDestination, originZip, quotedAt);
+        if (!reusable.isEmpty()) {
+            return reusable;
+        }
+
         return deliveryService.calculateOptions(normalizedDestination, items).stream()
                 .map(option -> {
                     ShippingQuoteOptionEntity saved = new ShippingQuoteOptionEntity();
@@ -146,15 +155,35 @@ public class OrderService {
                     saved.setQuotedAt(quotedAt);
                     saved.setExpiresAt(expiresAt);
                     saved = shippingQuoteOptionRepository.save(saved);
-                    return new ShippingOption(
-                            saved.getId(),
-                            saved.getServiceId(),
-                            saved.getServiceName(),
-                            saved.getPrice(),
-                            saved.getDeliveryDays(),
-                            saved.getSource());
+                    return toShippingOption(saved);
                 })
                 .toList();
+    }
+
+    private List<ShippingOption> reusableQuote(
+            User user, String fingerprint, String destinationZip, String originZip, LocalDateTime now) {
+        List<ShippingQuoteOptionEntity> candidates = shippingQuoteOptionRepository.findReusable(
+                user.getId(), fingerprint, destinationZip, originZip, currentProviderEnvironment(),
+                now.minus(melhorEnvioProperties.getQuoteReuseWindow()), now);
+        if (candidates == null || candidates.isEmpty()) {
+            return List.of();
+        }
+        // A consulta ordena pela cotação mais recente; só usa as opções dessa mesma consulta.
+        LocalDateTime latest = candidates.get(0).getQuotedAt();
+        return candidates.stream()
+                .filter(candidate -> latest.equals(candidate.getQuotedAt()))
+                .map(this::toShippingOption)
+                .toList();
+    }
+
+    private ShippingOption toShippingOption(ShippingQuoteOptionEntity saved) {
+        return new ShippingOption(
+                saved.getId(),
+                saved.getServiceId(),
+                saved.getServiceName(),
+                saved.getPrice(),
+                saved.getDeliveryDays(),
+                saved.getSource());
     }
 
     @Transactional
@@ -382,18 +411,18 @@ public class OrderService {
             String destinationZip,
             List<ShippingItem> items) {
         if (shippingOptionId == null) {
-            throw new ConflictException("Selecione uma opção de frete cotada antes de finalizar o pedido.");
+            throw new StaleShippingQuoteException("Selecione uma opção de frete cotada antes de finalizar o pedido.");
         }
         ShippingQuoteOptionEntity option = shippingQuoteOptionRepository
                 .findByIdAndUser_IdAndExpiresAtAfter(shippingOptionId, user.getId(), now())
-                .orElseThrow(() -> new ConflictException(
+                .orElseThrow(() -> new StaleShippingQuoteException(
                         "A opção de frete expirou ou não pertence a este cliente. Consulte novamente."));
 
         if (!option.getDestinationZip().equals(normalizeZip(destinationZip))
                 || !option.getOriginZip().equals(deliveryService.normalizedOriginZip())
                 || !option.getCartFingerprint().equals(cartFingerprint(items))
                 || !option.getProviderEnvironment().equals(providerEnvironment(option.getSource()))) {
-            throw new ConflictException(
+            throw new StaleShippingQuoteException(
                     "Os dados do carrinho ou da cotação foram alterados. Consulte e confirme o frete novamente.");
         }
         return option;
@@ -419,6 +448,10 @@ public class OrderService {
         }
     }
 
+    private String currentProviderEnvironment() {
+        return "melhorEnvio".equals(shippingGateway) ? melhorEnvioProperties.getEnvironment() : "simulated";
+    }
+
     private String providerEnvironment(String source) {
         if ("MELHOR_ENVIO".equals(source) && "melhorEnvio".equals(shippingGateway)) {
             return melhorEnvioProperties.getEnvironment();
@@ -426,7 +459,7 @@ public class OrderService {
         if ("SIMULATED".equals(source) && "simulated".equals(shippingGateway)) {
             return "simulated";
         }
-        throw new ConflictException(
+        throw new StaleShippingQuoteException(
                 "A configuração de frete mudou. Consulte e confirme uma nova opção antes de continuar.");
     }
 

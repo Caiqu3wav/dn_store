@@ -72,6 +72,11 @@ public class SecurityConfiguration {
                                 HttpMethod.GET,
                                 "/api/integrations/melhor-envio/callback")
                         .permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/integrations/melhor-envio/authorize",
+                                "/api/integrations/melhor-envio/status")
+                        .hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

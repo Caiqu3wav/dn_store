@@ -60,6 +60,8 @@ class AdminRoutesSecurityTest {
             {"PUT", "/api/users/123/role"},
             {"DELETE", "/api/users/123"},
             {"GET", "/api/admin/dashboard"},
+            {"GET", "/api/integrations/melhor-envio/authorize"},
+            {"GET", "/api/integrations/melhor-envio/status"},
     };
 
     private static final String[][] PUBLIC = {
@@ -68,6 +70,7 @@ class AdminRoutesSecurityTest {
             {"GET", "/api/categories"},
             {"GET", "/api/events"},
             {"GET", "/api/events/123"},
+            {"GET", "/api/integrations/melhor-envio/callback"},
     };
 
     @Autowired

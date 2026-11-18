@@ -39,6 +39,23 @@ public class GlobalExceptionHandler {
         return response(HttpStatus.NOT_FOUND, "Resource not found.", request);
     }
 
+    @ExceptionHandler(StaleShippingQuoteException.class)
+    public ResponseEntity<ApiErrorResponse> handleStaleShippingQuote(StaleShippingQuoteException exception,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.of(HttpStatus.CONFLICT, exception.getMessage(), request.getRequestURI(),
+                        Map.of("code", StaleShippingQuoteException.CODE)));
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleRateLimitExceeded(RateLimitExceededException exception,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(exception.getRetryAfterSeconds()))
+                .body(ApiErrorResponse.of(HttpStatus.TOO_MANY_REQUESTS, exception.getMessage(),
+                        request.getRequestURI()));
+    }
+
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ApiErrorResponse> handleConflict(ConflictException exception, HttpServletRequest request) {
         return response(HttpStatus.CONFLICT, exception.getMessage(), request);
@@ -93,6 +110,31 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handlePaymentGateway(PaymentGatewayException exception,
             HttpServletRequest request) {
         return response(HttpStatus.BAD_GATEWAY, "Payment provider could not process the request.", request);
+    }
+
+    @ExceptionHandler(NoShippingOptionsException.class)
+    public ResponseEntity<ApiErrorResponse> handleNoShippingOptions(NoShippingOptionsException exception,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(ApiErrorResponse.of(HttpStatus.UNPROCESSABLE_ENTITY, exception.getMessage(),
+                        request.getRequestURI(), Map.of("code", NoShippingOptionsException.CODE)));
+    }
+
+    @ExceptionHandler(ShippingQuoteRejectedException.class)
+    public ResponseEntity<ApiErrorResponse> handleShippingQuoteRejected(ShippingQuoteRejectedException exception,
+            HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(ShippingRateLimitedException.class)
+    public ResponseEntity<ApiErrorResponse> handleShippingRateLimited(ShippingRateLimitedException exception,
+            HttpServletRequest request) {
+        ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE);
+        if (exception.getRetryAfterSeconds() != null) {
+            builder.header("Retry-After", String.valueOf(exception.getRetryAfterSeconds()));
+        }
+        return builder.body(ApiErrorResponse.of(HttpStatus.SERVICE_UNAVAILABLE,
+                "Shipping quote is temporarily unavailable.", request.getRequestURI()));
     }
 
     @ExceptionHandler(ShippingGatewayException.class)
