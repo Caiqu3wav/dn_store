@@ -5,11 +5,45 @@ import { DollarSign, Package, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/services/productService';
-import { adminService, AdminDashboardData, AdminOrder } from '@/services/adminService';
+import { adminService, AdminDashboardData, AdminOrder, MelhorEnvioStatus } from '@/services/adminService';
 import { isUnpaidOrder, orderStatusLabel, orderStatusStyle } from '@/utils/orderStatus';
 import { toast } from 'react-hot-toast';
 
 const RECENT_ORDERS_LIMIT = 5;
+
+// Horários do backend vêm em UTC sem fuso; sem o "Z" o navegador os leria como horário local.
+const formatUtcDateTime = (value?: string | null) =>
+    value
+        ? new Date(`${value}Z`).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+        : null;
+
+const MELHOR_ENVIO_STATE_UI: Record<MelhorEnvioStatus['state'], { label: string; style: string; hint: string }> = {
+    CONNECTED: {
+        label: 'Conectado',
+        style: 'bg-green-500/15 text-green-400',
+        hint: 'O token é renovado automaticamente antes de vencer.',
+    },
+    RENEWAL_FAILING: {
+        label: 'Renovação falhando',
+        style: 'bg-yellow-500/15 text-yellow-400',
+        hint: 'A última renovação automática falhou. O sistema tenta de novo sozinho; se persistir, reconecte.',
+    },
+    REAUTH_REQUIRED: {
+        label: 'Reconexão necessária',
+        style: 'bg-red-500/15 text-red-400',
+        hint: 'O Melhor Envio recusou a renovação. Clique em Conectar Melhor Envio; sem isso o frete fica indisponível.',
+    },
+    NOT_CONNECTED: {
+        label: 'Não conectado',
+        style: 'bg-red-500/15 text-red-400',
+        hint: 'Conecte a conta para calcular fretes reais.',
+    },
+    DISABLED: {
+        label: 'Integração desativada',
+        style: 'bg-gray-500/15 text-gray-300',
+        hint: 'O backend não está configurado para usar o Melhor Envio.',
+    },
+};
 
 const formatCurrency = (value?: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value ?? 0);
@@ -19,6 +53,8 @@ export default function AdminDashboard() {
     const [loading, setLoading] = useState(true);
     const [connectingMelhorEnvio, setConnectingMelhorEnvio] = useState(false);
     const { data: orders, error: ordersError } = useSWR<AdminOrder[]>('/orders/all', fetcher);
+    const { data: melhorEnvioStatus, error: melhorEnvioStatusError, mutate: refreshMelhorEnvioStatus } =
+        useSWR<MelhorEnvioStatus>('/integrations/melhor-envio/status', fetcher);
 
     useEffect(() => {
         const searchParams = new URLSearchParams(window.location.search);
@@ -34,12 +70,13 @@ export default function AdminDashboard() {
                 ? 'A autorização do Melhor Envio foi cancelada.'
                 : 'Não foi possível conectar o Melhor Envio.';
         if (status === 'connected') {
+            refreshMelhorEnvioStatus();
             toast.success(message);
         } else {
             toast.error(message);
         }
         window.history.replaceState({}, '', '/admin');
-    }, []);
+    }, [refreshMelhorEnvioStatus]);
 
     useEffect(() => {
         const loadDashboard = async () => {
@@ -99,6 +136,37 @@ export default function AdminDashboard() {
                         <p className="mt-1 text-sm text-gray-400">
                             Conecte a conta administrativa do Melhor Envio para calcular fretes reais.
                         </p>
+                        <div className="mt-3 space-y-1 text-sm" role="status">
+                            {melhorEnvioStatus ? (
+                                <>
+                                    <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${MELHOR_ENVIO_STATE_UI[melhorEnvioStatus.state].style}`}>
+                                        Melhor Envio: {MELHOR_ENVIO_STATE_UI[melhorEnvioStatus.state].label}
+                                        {melhorEnvioStatus.environment ? ` (${melhorEnvioStatus.environment})` : ''}
+                                    </span>
+                                    <p className="text-gray-400">{MELHOR_ENVIO_STATE_UI[melhorEnvioStatus.state].hint}</p>
+                                    {melhorEnvioStatus.accessTokenExpiresAt && (
+                                        <p className="text-gray-500">
+                                            Token atual válido até {formatUtcDateTime(melhorEnvioStatus.accessTokenExpiresAt)}.
+                                        </p>
+                                    )}
+                                    {melhorEnvioStatus.persistencePending && (
+                                        <p className="text-yellow-400">
+                                            O Melhor Envio emitiu um token novo que ainda não foi gravado no banco. O sistema continua tentando; se persistir, verifique o banco de dados.
+                                        </p>
+                                    )}
+                                    {melhorEnvioStatus.lastRefreshFailure && (
+                                        <p className="text-gray-500">
+                                            Última falha de renovação: {formatUtcDateTime(melhorEnvioStatus.lastRefreshFailure.at)}
+                                            {melhorEnvioStatus.lastRefreshFailure.httpStatus ? ` (HTTP ${melhorEnvioStatus.lastRefreshFailure.httpStatus})` : ''}.
+                                        </p>
+                                    )}
+                                </>
+                            ) : melhorEnvioStatusError ? (
+                                <p className="text-yellow-400">Não foi possível consultar o estado da conexão.</p>
+                            ) : (
+                                <p className="text-gray-500">Consultando estado da conexão...</p>
+                            )}
+                        </div>
                     </div>
                     <button
                         type="button"

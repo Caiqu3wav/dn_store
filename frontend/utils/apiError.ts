@@ -50,6 +50,14 @@ export function isNetworkError(error: unknown): boolean {
     return axios.isAxiosError(error) && !error.response;
 }
 
+/** Código estável de negócio enviado pelo backend em `errors.code` (ex.: SHIPPING_QUOTE_STALE). */
+export function getApiErrorCode(error: unknown): string | undefined {
+    if (!axios.isAxiosError(error)) return undefined;
+    const data = error.response?.data as { errors?: { code?: unknown } } | undefined;
+    const code = data?.errors?.code;
+    return typeof code === 'string' ? code : undefined;
+}
+
 function backendMessage(error: unknown): string | undefined {
     if (!axios.isAxiosError(error)) return undefined;
     const data = error.response?.data as { message?: unknown } | string | undefined;

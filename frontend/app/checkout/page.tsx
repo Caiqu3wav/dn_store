@@ -10,7 +10,10 @@ import { OrderSummary } from './components/OrderSummary';
 import Link from 'next/link';
 import { useAuth } from '../context/AuthContext';
 import api from '@/lib/axios';
-import { getApiErrorMessage } from '@/utils/apiError';
+import { getApiErrorCode, getApiErrorMessage } from '@/utils/apiError';
+import { requestShippingQuotes } from './shippingQuote';
+
+const SHIPPING_QUOTE_STALE = 'SHIPPING_QUOTE_STALE';
 
 type Step = 1 | 2 | 3;
 
@@ -45,6 +48,8 @@ export default function CheckoutPage() {
     const [step, setStep] = useState<Step>(1);
     const [delivery, setDelivery] = useState<DeliveryData>(EMPTY_DELIVERY);
     const [shipping, setShipping] = useState<ShippingOption | null>(null);
+    const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
+    const [shippingNotice, setShippingNotice] = useState('');
     const [payment, setPayment] = useState<PaymentData>(EMPTY_PAYMENT);
     const [orderId, setOrderId] = useState<string>('');
     const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
@@ -95,6 +100,25 @@ export default function CheckoutPage() {
         );
     }
 
+    // A cotação vale por pouco tempo e é validada no servidor. Se venceu (ou o carrinho mudou),
+    // volta para a entrega, cota de novo com o mesmo CEP e pede só a escolha da opção.
+    const requoteAfterStaleShipping = async () => {
+        const cep = delivery.zipCode.replace(/\D/g, '');
+        setShipping(null);
+        setShippingOptions([]);
+        setShippingNotice('O frete escolhido expirou ou o carrinho mudou. Atualizando as opções de entrega...');
+        setStep(1);
+        try {
+            const options = await requestShippingQuotes(items, cep);
+            setShippingOptions(options);
+            setShippingNotice('O frete foi atualizado. Escolha a opção de entrega novamente para continuar.');
+        } catch (error: unknown) {
+            setShippingNotice(getApiErrorCode(error) === 'SHIPPING_NOT_AVAILABLE'
+                ? 'Não encontramos entrega disponível para este CEP com os itens do carrinho. Confira o CEP ou informe outro endereço.'
+                : 'O frete expirou e não foi possível atualizá-lo agora. Clique no campo CEP e saia dele para cotar de novo.');
+        }
+    };
+
     const handleConfirmPayment = async (idempotencyKey: string): Promise<PaymentResult | null> => {
         try {
             let currentOrderId = orderId;
@@ -128,6 +152,10 @@ export default function CheckoutPage() {
 
             return paymentRes.data as PaymentResult;
         } catch (error: unknown) {
+            if (getApiErrorCode(error) === SHIPPING_QUOTE_STALE) {
+                await requoteAfterStaleShipping();
+                throw new Error('O frete expirou e foi atualizado. Escolha a opção de entrega novamente.');
+            }
             throw new Error(getApiErrorMessage(error, 'Não foi possível criar o pedido ou processar o pagamento.'));
         }
     };
@@ -172,6 +200,10 @@ export default function CheckoutPage() {
                                 onChange={setDelivery}
                                 shipping={shipping}
                                 onShippingChange={setShipping}
+                                shippingOptions={shippingOptions}
+                                onShippingOptionsChange={setShippingOptions}
+                                shippingNotice={shippingNotice}
+                                onShippingNoticeChange={setShippingNotice}
                                 onNext={() => setStep(2)}
                             />
                         )}

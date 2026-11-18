@@ -15,6 +15,28 @@ export interface MelhorEnvioAuthorizationResponse {
     authorizationUrl: string;
 }
 
+export type MelhorEnvioConnectionState =
+    | 'DISABLED'
+    | 'NOT_CONNECTED'
+    | 'CONNECTED'
+    | 'RENEWAL_FAILING'
+    | 'REAUTH_REQUIRED';
+
+export interface MelhorEnvioStatus {
+    gateway: string;
+    state: MelhorEnvioConnectionState;
+    environment: string | null;
+    accessTokenExpiresAt: string | null;
+    renewalStartsAt: string | null;
+    lastRefreshFailure: {
+        at: string;
+        category: string;
+        httpStatus: number | null;
+        errorCode: string | null;
+    } | null;
+    persistencePending: boolean;
+}
+
 export interface AdminOrder {
     id: string;
     status: string;

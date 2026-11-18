@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
-import api from '@/lib/axios';
-import { getApiErrorMessage } from '@/utils/apiError';
+import { getApiErrorCode, getApiErrorMessage } from '@/utils/apiError';
 import { formatCep } from '@/utils/authFormatters';
+import { QuoteCartItem, requestShippingQuotes } from '../shippingQuote';
 
 export interface ShippingOption {
     id: string;
@@ -26,17 +26,16 @@ export interface DeliveryData {
 }
 
 interface Props {
-    items: {
-        id: string;
-        productId?: string;
-        productVariantId?: string;
-        size?: string;
-        quantity: number;
-    }[];
+    items: QuoteCartItem[];
     data: DeliveryData;
     onChange: (data: DeliveryData) => void;
     shipping: ShippingOption | null;
     onShippingChange: (shipping: ShippingOption | null) => void;
+    /** Opções e aviso ficam no checkout para sobreviverem a uma nova cotação feita fora desta etapa. */
+    shippingOptions: ShippingOption[];
+    onShippingOptionsChange: (options: ShippingOption[]) => void;
+    shippingNotice: string;
+    onShippingNoticeChange: (notice: string) => void;
     onNext: () => void;
 }
 
@@ -45,15 +44,18 @@ const STATES = [
     'PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'
 ];
 
-export function StepDelivery({ items, data, onChange, shipping, onShippingChange, onNext }: Props) {
+export function StepDelivery({
+    items, data, onChange, shipping, onShippingChange,
+    shippingOptions, onShippingOptionsChange, shippingNotice, onShippingNoticeChange, onNext,
+}: Props) {
     const [loadingCep, setLoadingCep] = useState(false);
-    const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
     const [shippingError, setShippingError] = useState('');
 
     const set = (field: keyof DeliveryData, value: string) => {
         onChange({ ...data, [field]: value });
         if (field === 'zipCode') {
-            setShippingOptions([]);
+            onShippingOptionsChange([]);
+            onShippingNoticeChange('');
             onShippingChange(null);
         }
     };
@@ -63,16 +65,11 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
         if (cep.length !== 8) return;
         setLoadingCep(true);
         setShippingError('');
+        onShippingNoticeChange('');
         try {
-            await api.put('/cart/sync', items.map(item => ({
-                productId: item.productId ?? item.id,
-                productVariantId: item.productVariantId,
-                size: item.size,
-                quantity: item.quantity,
-            })));
             const [addressResult, quoteResult] = await Promise.allSettled([
                 fetch(`https://viacep.com.br/ws/${cep}/json/`).then(response => response.json()),
-                api.post<ShippingOption[]>('/orders/shipping-quotes', { zipCode: cep }),
+                requestShippingQuotes(items, cep),
             ]);
 
             if (addressResult.status === 'fulfilled' && !addressResult.value.erro) {
@@ -87,23 +84,28 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
             }
 
             if (quoteResult.status === 'fulfilled') {
-                const options = quoteResult.value.data;
-                setShippingOptions(options);
+                const options = quoteResult.value;
+                onShippingOptionsChange(options);
                 onShippingChange(null);
                 if (options.length === 0) {
                     setShippingError('Não há opções de entrega disponíveis para este CEP.');
                 }
             } else {
-                setShippingOptions([]);
+                onShippingOptionsChange([]);
                 onShippingChange(null);
-                setShippingError(getApiErrorMessage(
-                    quoteResult.reason,
-                    'Não foi possível cotar o frete para este CEP. Tente novamente.',
-                    { 400: 'CEP inválido ou sem cobertura de entrega. Confira o CEP informado.' },
-                ));
+                if (getApiErrorCode(quoteResult.reason) === 'SHIPPING_NOT_AVAILABLE') {
+                    // O Melhor Envio respondeu, mas nenhum serviço atende: não é falha do site.
+                    onShippingNoticeChange('Não encontramos entrega disponível para este CEP com os itens do carrinho. Confira o CEP ou informe outro endereço.');
+                } else {
+                    setShippingError(getApiErrorMessage(
+                        quoteResult.reason,
+                        'Não foi possível cotar o frete para este CEP. Tente novamente.',
+                        { 400: 'CEP inválido ou sem cobertura de entrega. Confira o CEP informado.' },
+                    ));
+                }
             }
         } catch (error: unknown) {
-            setShippingOptions([]);
+            onShippingOptionsChange([]);
             onShippingChange(null);
             setShippingError(getApiErrorMessage(error, 'Não foi possível consultar o CEP. Verifique o número e tente novamente.'));
         } finally {
@@ -231,6 +233,7 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
             <section aria-labelledby="shipping-options-title" className="space-y-3">
                 <h3 id="shipping-options-title" className="text-sm font-bold uppercase text-gray-600">Opções de entrega</h3>
                 {loadingCep && <p role="status" className="text-sm text-gray-500">Consultando opções de entrega...</p>}
+                {shippingNotice && <p role="status" className="text-sm text-amber-700">{shippingNotice}</p>}
                 {shippingError && <p role="alert" className="text-sm text-red-700">{shippingError}</p>}
                 {!loadingCep && shippingOptions.length > 0 && (
                     <div className="grid gap-3 sm:grid-cols-2">
