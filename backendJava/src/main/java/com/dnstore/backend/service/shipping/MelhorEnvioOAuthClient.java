@@ -5,6 +5,7 @@ import com.dnstore.backend.exception.ShippingGatewayException;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -30,6 +31,7 @@ public class MelhorEnvioOAuthClient {
         this(restClientBuilder, properties, new ObjectMapper());
     }
 
+    @Autowired
     public MelhorEnvioOAuthClient(
             RestClient.Builder restClientBuilder,
             MelhorEnvioProperties properties,
