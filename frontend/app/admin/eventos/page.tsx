@@ -129,7 +129,7 @@ export default function AdminEventosPage() {
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                     <Calendar className="w-8 h-8 text-gray-600 mb-3" />
                     <p className="text-sm font-medium text-gray-300">Nenhum evento cadastrado</p>
-                    <p className="text-xs text-gray-500 mt-1">Clique em "Novo Evento" para começar.</p>
+                    <p className="text-xs text-gray-500 mt-1">Clique em &quot;Novo Evento&quot; para começar.</p>
                 </div>
             )}
 
