@@ -83,7 +83,7 @@ class OrderCouponAndManualPaymentMySqlIT {
         jdbc.update("INSERT INTO addresses (id, user_id, street, city, state, zip_code) VALUES (?, ?, ?, ?, ?, ?)",
                 addressId, customerId, "Rua IT", "Cidade IT", "TS", "00000-000");
         jdbc.update("INSERT INTO products (id, name, price, product_type, active) VALUES (?, ?, ?, ?, TRUE)",
-                productId, "Produto IT cupom", new BigDecimal("100.00"), "physical");
+                productId, "Produto IT cupom", new BigDecimal("100.00"), "PhysicalProduct");
         jdbc.update("INSERT INTO physical_products (id, stock) VALUES (?, 10)", productId);
         // estoque 4 já considera 1 unidade reservada por pedido aberto
         jdbc.update("INSERT INTO product_variants (id, product_id, size, stock, active) VALUES (?, ?, 'M', 4, TRUE)",

@@ -356,7 +356,7 @@ class PaymentSchemaMySqlIT {
         variantId = id();
         jdbc.update(
                 "INSERT INTO products (id, name, price, product_type, active) VALUES (?, ?, ?, ?, TRUE)",
-                productId, "Local Test Product", new BigDecimal("25.00"), "physical");
+                productId, "Local Test Product", new BigDecimal("25.00"), "PhysicalProduct");
         jdbc.update("INSERT INTO physical_products (id, stock) VALUES (?, 4)", productId);
         jdbc.update(
                 "INSERT INTO product_variants (id, product_id, size, stock, active) VALUES (?, ?, ?, 4, TRUE)",
