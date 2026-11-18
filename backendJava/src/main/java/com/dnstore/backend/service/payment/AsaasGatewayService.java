@@ -120,18 +120,29 @@ public class AsaasGatewayService implements PaymentGateway {
             String eventType = requireString(payload.get("event"), "event");
             String externalId = requireString(payment.get("id"), "payment.id");
             String status = requireString(payment.get("status"), "payment.status");
-            String normalizedStatus = PaymentStatus.fromAsaas(status).name();
             return new WebhookResult(
                     eventId,
                     externalId,
                     eventType,
-                    normalizedStatus,
+                    normalizeWebhookStatus(status),
                     optionalString(payment.get("externalReference")),
                     decimalValue(payment.get("value")),
                     optionalString(payment.get("currency")),
                     optionalString(payment.get("customer")));
         } catch (JsonProcessingException | ClassCastException exception) {
             throw new PaymentGatewayException("Webhook inválido.", exception);
+        }
+    }
+
+    /**
+     * O status do webhook é informativo: o worker consulta o estado canônico no Asaas antes de aplicar
+     * qualquer mudança. Um status ainda desconhecido não pode impedir a persistência do evento.
+     */
+    private String normalizeWebhookStatus(String status) {
+        try {
+            return PaymentStatus.fromAsaas(status).name();
+        } catch (IllegalArgumentException exception) {
+            return "UNSUPPORTED";
         }
     }
 

@@ -196,11 +196,17 @@ class AsaasGatewayServiceTest {
     }
 
     @Test
-    void processWebhook_withUnknownStatus_shouldRejectPayload() {
-        assertThatThrownBy(() -> gateway.processWebhook(
-                "{\"id\":\"evt-1\",\"event\":\"PAYMENT_UPDATED\",\"payment\":{\"id\":\"payment-1\",\"status\":\"UNKNOWN\"}}",
-                "webhook-secret"))
-                .isInstanceOf(IllegalArgumentException.class);
+    void processWebhook_withUnknownStatus_shouldStillAcceptAuthenticatedEventForDurableProcessing() {
+        // O worker consulta o estado canônico no Asaas; rejeitar aqui perderia o evento e faria o Asaas
+        // receber erro (o que pode interromper a fila de webhooks).
+        PaymentGateway.WebhookResult result = gateway.processWebhook(
+                "{\"id\":\"evt-1\",\"event\":\"PAYMENT_UPDATED\",\"payment\":{\"id\":\"payment-1\",\"status\":\"BRAND_NEW_STATUS\"}}",
+                "webhook-secret");
+
+        assertThat(result.eventId()).isEqualTo("evt-1");
+        assertThat(result.externalId()).isEqualTo("payment-1");
+        assertThat(result.eventType()).isEqualTo("PAYMENT_UPDATED");
+        assertThat(result.normalizedStatus()).isEqualTo("UNSUPPORTED");
     }
 
     @Test
