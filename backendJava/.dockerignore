@@ -1,5 +1,11 @@
-.git
+# Nunca enviar segredos nem artefatos locais para o contexto de build.
 .env
 .env.*
+!.env.example
 target
+.git
+.idea
+.vscode
 *.log
+Dockerfile
+docker-compose.yml

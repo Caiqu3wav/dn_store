@@ -60,9 +60,23 @@ public class BackendConfig {
             @Override
             public void addCorsMappings(org.springframework.web.servlet.config.annotation.CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins(allowedOrigins.split(","))
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS");
+                        .allowedOrigins(parseAllowedOrigins(allowedOrigins))
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .maxAge(3600);
             }
         };
+    }
+
+    /**
+     * Converte a lista separada por vírgulas em origens exatas. Remove espaços e barra final
+     * (o navegador envia a origem sem barra) para que um valor de ambiente como
+     * "https://loja.vercel.app/, https://www.loja.com" continue funcionando.
+     */
+    static String[] parseAllowedOrigins(String allowedOrigins) {
+        return java.util.Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .map(origin -> origin.endsWith("/") ? origin.substring(0, origin.length() - 1) : origin)
+                .filter(origin -> !origin.isEmpty())
+                .toArray(String[]::new);
     }
 }
