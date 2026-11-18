@@ -17,6 +17,8 @@ export interface AdminOrder {
     id: string;
     status: string;
     total?: number;
+    shippingCost?: number;
+    shippingType?: string;
     createdAt?: string;
     discountAmount?: number;
     user?: {

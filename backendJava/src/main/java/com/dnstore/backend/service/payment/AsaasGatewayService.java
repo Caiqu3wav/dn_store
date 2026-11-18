@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.List;
@@ -50,12 +51,17 @@ public class AsaasGatewayService implements PaymentGateway {
     @Override
     public PaymentResult createPayment(PaymentRequest request) {
         String cpfCnpj = normalizeCpfCnpj(request.payerCpfCnpj());
-        if (!"PIX".equalsIgnoreCase(request.paymentMethod()) && !"BOLETO".equalsIgnoreCase(request.paymentMethod())) {
+        String paymentMethod = request.paymentMethod().toUpperCase(Locale.ROOT);
+        if (!"PIX".equals(paymentMethod) && !"BOLETO".equals(paymentMethod)
+                && !"CREDIT_CARD".equals(paymentMethod)) {
             throw new IllegalArgumentException("Método de pagamento temporariamente indisponível.");
         }
         if (request.externalReference() == null || request.externalReference().isBlank()
                 || request.amount() == null || request.amount().signum() <= 0) {
             throw new IllegalArgumentException("Referência ou valor do pagamento inválido.");
+        }
+        if ("CREDIT_CARD".equals(paymentMethod)) {
+            validateCardRequest(request);
         }
 
         ProviderPayment existing = findPaymentByReference(request.externalReference());
@@ -65,14 +71,34 @@ public class AsaasGatewayService implements PaymentGateway {
         }
 
         String customerId = getOrCreateCustomer(request.payerName(), request.payerEmail(), cpfCnpj);
-        String billingType = request.paymentMethod().toUpperCase(Locale.ROOT);
         Map<String, Object> body = new HashMap<>();
         body.put("customer", customerId);
-        body.put("billingType", billingType);
+        body.put("billingType", paymentMethod);
         body.put("value", request.amount());
         body.put("dueDate", LocalDate.now().plusDays(1).toString());
         body.put("description", request.description());
         body.put("externalReference", request.externalReference());
+        if ("CREDIT_CARD".equals(paymentMethod)) {
+            PaymentGateway.CardData card = request.card();
+            body.put("creditCard", Map.of(
+                    "holderName", card.holderName().trim(),
+                    "number", card.number().replaceAll("\\D", ""),
+                    "expiryMonth", card.expiryMonth(),
+                    "expiryYear", card.expiryYear(),
+                    "ccv", card.ccv()));
+            Map<String, Object> holderInfo = new HashMap<>();
+            holderInfo.put("name", request.payerName());
+            holderInfo.put("email", request.payerEmail());
+            holderInfo.put("cpfCnpj", cpfCnpj);
+            holderInfo.put("postalCode", request.payerPostalCode().replaceAll("\\D", ""));
+            holderInfo.put("addressNumber", request.payerAddressNumber());
+            holderInfo.put("mobilePhone", request.payerPhone().replaceAll("\\D", ""));
+            if (request.payerAddressComplement() != null && !request.payerAddressComplement().isBlank()) {
+                holderInfo.put("addressComplement", request.payerAddressComplement());
+            }
+            body.put("creditCardHolderInfo", holderInfo);
+            body.put("remoteIp", request.remoteIp());
+        }
 
         ResponseEntity<Map> response;
         try {
@@ -101,6 +127,28 @@ public class AsaasGatewayService implements PaymentGateway {
         }
         verifyExpectedCharge(result, request.externalReference(), request.amount());
         return result;
+    }
+
+    private void validateCardRequest(PaymentRequest request) {
+        PaymentGateway.CardData card = request.card();
+        if (card == null || card.holderName() == null || card.holderName().isBlank()
+                || card.number() == null || !card.number().replaceAll("\\D", "").matches("\\d{13,19}")
+                || card.expiryMonth() == null || !card.expiryMonth().matches("(0[1-9]|1[0-2])")
+                || card.expiryYear() == null || !card.expiryYear().matches("\\d{4}")
+                || card.ccv() == null || !card.ccv().matches("\\d{3,4}")) {
+            throw new IllegalArgumentException("Dados do cartão inválidos.");
+        }
+        if (YearMonth.of(Integer.parseInt(card.expiryYear()), Integer.parseInt(card.expiryMonth()))
+                .isBefore(YearMonth.now())) {
+            throw new IllegalArgumentException("O cartão está vencido.");
+        }
+        if (request.payerPhone() == null || !request.payerPhone().replaceAll("\\D", "").matches("\\d{10,11}")
+                || request.payerPostalCode() == null
+                || !request.payerPostalCode().replaceAll("\\D", "").matches("\\d{8}")
+                || request.payerAddressNumber() == null || request.payerAddressNumber().isBlank()
+                || request.remoteIp() == null || request.remoteIp().isBlank()) {
+            throw new IllegalArgumentException("Dados de cobrança incompletos para cartão.");
+        }
     }
 
     @Override

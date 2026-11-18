@@ -65,6 +65,8 @@ public class OrderService {
     private final FinancialBlockRepository financialBlockRepository;
     private final ShippingQuoteOptionRepository shippingQuoteOptionRepository;
     private final MelhorEnvioProperties melhorEnvioProperties;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private StockService stockService;
 
     @Value("${shipping.gateway:simulated}")
     private String shippingGateway;
@@ -337,6 +339,7 @@ public class OrderService {
 
         // 5. Persistir
         Order savedOrder = orderRepository.save(order);
+        if (stockService != null) stockService.recordSale(savedOrder);
         log.info("order.checkout_complete orderId={} userId={} total={} shipping={}",
                 savedOrder.getId(), user.getId(), savedOrder.getTotal(), savedOrder.getShippingCost());
 

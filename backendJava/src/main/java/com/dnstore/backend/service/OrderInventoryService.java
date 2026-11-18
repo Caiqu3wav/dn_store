@@ -7,6 +7,7 @@ import com.dnstore.backend.model.OrderItem;
 import com.dnstore.backend.model.ProductVariant;
 import com.dnstore.backend.repository.ProductVariantRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -20,6 +21,8 @@ import java.util.UUID;
 public class OrderInventoryService {
 
     private final ProductVariantRepository productVariantRepository;
+    @Autowired(required = false)
+    private StockService stockService;
 
     public void releaseReservedStock(Order order) {
         if (order.isStockReleased()) {
@@ -33,6 +36,7 @@ public class OrderInventoryService {
             productVariantRepository.save(variant);
         });
         order.setStockReleased(true);
+        if (stockService != null) stockService.recordRelease(order);
     }
 
     public void reserveReleasedStock(Order order) {

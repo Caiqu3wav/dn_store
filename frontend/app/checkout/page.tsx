@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../context/CartContext';
 import { StepDelivery, DeliveryData, ShippingOption } from './components/StepDelivery';
-import { StepPayment, PaymentData } from './components/StepPayment';
+import { StepPayment, PaymentData, EMPTY_CARD } from './components/StepPayment';
 import { StepConfirmation } from './components/StepConfirmation';
 import { OrderSummary } from './components/OrderSummary';
 import Link from 'next/link';
@@ -22,6 +22,8 @@ const EMPTY_PAYMENT: PaymentData = {
     method: 'PIX',
     cpfCnpj: '',
     idempotencyKey: '',
+    payerPhone: '',
+    card: EMPTY_CARD,
 };
 
 interface PaymentResult {
@@ -55,6 +57,12 @@ export default function CheckoutPage() {
             router.replace('/auth?next=/checkout');
         }
     }, [authLoading, router, user]);
+
+    useEffect(() => {
+        if (user?.phone && !payment.payerPhone) {
+            setPayment(current => ({ ...current, payerPhone: user.phone ?? '' }));
+        }
+    }, [payment.payerPhone, user]);
 
     useEffect(() => {
         if (authLoading || !user) return;
@@ -119,11 +127,24 @@ export default function CheckoutPage() {
                 paymentMethod: payment.method,
                 cpfCnpj: payment.cpfCnpj.replace(/\D/g, ''),
                 installments: null,
+                card: payment.method === 'CREDIT_CARD' ? {
+                    holderName: payment.card.holderName,
+                    number: payment.card.number.replace(/\D/g, ''),
+                    expiryMonth: payment.card.expiry.slice(0, 2),
+                    expiryYear: payment.card.expiry.slice(3),
+                    ccv: payment.card.ccv,
+                } : null,
+                payerPhone: payment.method === 'CREDIT_CARD'
+                    ? payment.payerPhone.replace(/\D/g, '')
+                    : null,
             });
 
             if (items.length > 0) setConfirmedItems([...items]);
             setConfirmedTotal(paymentRes.data.amount ?? total + (shipping?.cost ?? 0));
             clearCart();
+            if (payment.method === 'CREDIT_CARD') {
+                setPayment(current => ({ ...current, card: EMPTY_CARD }));
+            }
 
             return paymentRes.data as PaymentResult;
         } catch (error: unknown) {
@@ -200,6 +221,7 @@ export default function CheckoutPage() {
                                     }));
                                     setStep(2);
                                 }}
+                                onBack={() => setStep(2)}
                             />
                         )}
                     </div>

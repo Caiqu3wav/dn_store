@@ -20,9 +20,10 @@ interface Props {
     paymentMethod: string;
     result: PaymentResult;
     onRetry: () => void;
+    onBack: () => void;
 }
 
-export function StepConfirmation({ orderId, paymentMethod, result, onRetry }: Props) {
+export function StepConfirmation({ orderId, paymentMethod, result, onRetry, onBack }: Props) {
     const [status, setStatus] = useState(result.status);
     const [orderStatus, setOrderStatus] = useState(result.orderStatus);
     const [copied, setCopied] = useState(false);
@@ -205,6 +206,22 @@ export function StepConfirmation({ orderId, paymentMethod, result, onRetry }: Pr
                     </p>
                 </div>
             )}
+
+            {paymentMethod === 'CREDIT_CARD' && (
+                <div role="status" className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+                    <Clock className="w-4 h-4 shrink-0" />
+                    Aguardando confirmação do pagamento no cartão...
+                    <Loader2 className="w-3 h-3 animate-spin ml-auto" />
+                </div>
+            )}
+
+            <button
+                type="button"
+                onClick={onBack}
+                className="w-full border-2 border-gray-200 text-gray-600 font-bold py-4 rounded-xl hover:border-gray-300 transition"
+            >
+                ← Voltar às formas de pagamento
+            </button>
 
         </div>
     );

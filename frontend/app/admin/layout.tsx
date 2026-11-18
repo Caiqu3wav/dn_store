@@ -10,6 +10,7 @@ import {
     Users, 
     Tags,
     CalendarDays,
+    Warehouse,
     Menu, 
     X,
     LogOut
@@ -21,6 +22,7 @@ import { toast } from 'react-hot-toast';
 const adminLinks = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Produtos', href: '/admin/produtos', icon: Package },
+    { name: 'Estoque', href: '/admin/estoque', icon: Warehouse },
     { name: 'Pedidos', href: '/admin/pedidos', icon: ShoppingCart },
     { name: 'Categorias', href: '/admin/categorias', icon: Tags },
     { name: 'Eventos', href: '/admin/eventos', icon: CalendarDays },

@@ -2,7 +2,9 @@ package com.dnstore.backend.controller;
 
 import com.dnstore.backend.dto.AdminDashboardDTO;
 import com.dnstore.backend.model.Order;
+import com.dnstore.backend.model.PaymentFinancialHistory;
 import com.dnstore.backend.repository.OrderRepository;
+import com.dnstore.backend.repository.PaymentFinancialHistoryRepository;
 import com.dnstore.backend.repository.ProductRepository;
 import com.dnstore.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -22,6 +25,7 @@ public class AdminController {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
+    private final PaymentFinancialHistoryRepository historyRepository;
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/dashboard")
@@ -39,5 +43,11 @@ public class AdminController {
                 productRepository.count(),
                 totalRevenue,
                 averageTicket));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/orders/{orderId}/history")
+    public ResponseEntity<List<PaymentFinancialHistory>> orderHistory(@PathVariable UUID orderId) {
+        return ResponseEntity.ok(historyRepository.findByOrderIdOrderByProcessedAtDesc(orderId));
     }
 }

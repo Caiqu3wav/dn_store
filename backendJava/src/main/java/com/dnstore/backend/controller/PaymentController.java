@@ -6,6 +6,7 @@ import com.dnstore.backend.model.enums.Role;
 import com.dnstore.backend.exception.ConflictException;
 import com.dnstore.backend.service.PaymentService;
 import com.dnstore.backend.service.PaymentWebhookIngestionService;
+import com.dnstore.backend.service.payment.PaymentGateway;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import jakarta.servlet.http.HttpServletRequest;
 
 @Slf4j
 @RestController
@@ -41,7 +43,8 @@ public class PaymentController {
     @PostMapping("/init")
     public ResponseEntity<?> initPayment(
             @AuthenticationPrincipal User user,
-            @Valid @RequestBody PaymentInitRequest request) {
+            @Valid @RequestBody PaymentInitRequest request,
+            HttpServletRequest servletRequest) {
 
         try {
             Payment payment = paymentService.initPayment(
@@ -50,7 +53,10 @@ public class PaymentController {
                     request.idempotencyKey(),
                     request.cpfCnpj(),
                     request.paymentMethod(),
-                    request.installments());
+                    request.installments(),
+                    request.card(),
+                    request.payerPhone(),
+                    servletRequest.getRemoteAddr());
 
             log.info("payment.init orderId={} userId={} method={} status={}",
                     request.orderId(), user.getId(), request.paymentMethod(), payment.getStatus());
@@ -100,7 +106,9 @@ public class PaymentController {
             @NotBlank String paymentMethod,
             @NotBlank String cpfCnpj,
             @Size(max = 64) @NotBlank String idempotencyKey,
-            Integer installments) {}
+            Integer installments,
+            @Valid PaymentGateway.CardData card,
+            @Size(max = 20) String payerPhone) {}
 
     public record PaymentResponse(
             UUID id,
