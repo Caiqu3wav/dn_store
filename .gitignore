@@ -254,3 +254,9 @@ bower_components
 # Temporary folders
 tmp/
 temp/
+
+# Backups de banco (contêm dados de clientes)
+*.sql.gz
+
+# Credenciais de teste: nunca versionar
+contas_teste
