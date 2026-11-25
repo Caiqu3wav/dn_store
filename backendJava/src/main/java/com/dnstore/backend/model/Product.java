@@ -9,6 +9,7 @@ import lombok.AllArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.JdbcTypeCode;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +62,9 @@ public abstract class Product {
     @JoinColumn(name = "category_id")
     private Category category;
 
+    // variants já vem por EntityGraph; images não pode entrar no mesmo fetch (duas List => MultipleBagFetchException).
+    // O BatchSize carrega as imagens de até 50 produtos por SELECT em vez de um SELECT por produto.
+    @BatchSize(size = 50)
     @JsonManagedReference
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductImage> images = new ArrayList<>();

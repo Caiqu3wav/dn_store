@@ -2,12 +2,16 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import { Plus, Edit2, Trash2, Save, X, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Tags } from 'lucide-react';
 import { fetcher } from '@/services/productService';
 import { categoryService } from '@/services/categoryService';
 import { Category } from '@/types';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
+import { Button, Card, CardHeader, EmptyState, ErrorState, IconButton, PageHeader, TableSkeletonRows } from '../_components/ui';
+import { Field, Input, Textarea } from '../_components/form';
+import { Table, TableWrap, Tbody, Td, Th, Thead, rowClass } from '../_components/table';
+import { useConfirm } from '../_components/confirm';
 
 function getErrorMessage(error: unknown, fallback: string) {
     if (!axios.isAxiosError(error)) return fallback;
@@ -27,11 +31,12 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 export default function AdminCategoriesPage() {
-    const { data: categories, mutate } = useSWR<Category[]>('/categories', fetcher);
+    const confirm = useConfirm();
+    const { data: categories, error: categoriesError, mutate } = useSWR<Category[]>('/categories', fetcher);
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
-    
+
     // Edit mode states
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editName, setEditName] = useState('');
@@ -82,7 +87,12 @@ export default function AdminCategoriesPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Deseja excluir esta categoria? Isso pode afetar produtos vinculados.')) return;
+        const confirmed = await confirm({
+            title: 'Excluir categoria',
+            message: 'Deseja excluir esta categoria? Isso pode afetar produtos vinculados.',
+            confirmLabel: 'Excluir',
+        });
+        if (!confirmed) return;
 
         try {
             await categoryService.deleteCategory(id);
@@ -94,148 +104,125 @@ export default function AdminCategoriesPage() {
     };
 
     return (
-        <div className="space-y-8 text-white max-w-6xl mx-auto">
-            <div>
-                <h1 className="text-3xl font-bold">Categorias</h1>
-                <p className="text-gray-400 mt-1">Gerencie as categorias de produtos da loja.</p>
-            </div>
+        <div className="mx-auto max-w-6xl space-y-6">
+            <PageHeader title="Categorias" description="Gerencie as categorias de produtos da loja." />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
                 {/* Form Criação */}
-                <div className="bg-[#2A2A2A] border border-white/5 p-6 rounded-xl h-fit space-y-4">
-                    <h2 className="text-xl font-bold border-b border-white/5 pb-2">Nova Categoria</h2>
-                    <form onSubmit={handleCreate} className="space-y-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-300">Nome *</label>
-                            <input 
+                <Card as="section" aria-label="Nova categoria">
+                    <CardHeader title="Nova Categoria" />
+                    <form onSubmit={handleCreate} className="space-y-4 p-5">
+                        <Field label="Nome *">
+                            <Input
                                 required
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="w-full bg-[#1A1B1D] border border-white/10 rounded-lg py-2 px-3 text-white focus:outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary"
                                 placeholder="Ex: Acessórios"
                             />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-300">Descrição</label>
-                            <textarea 
+                        </Field>
+                        <Field label="Descrição">
+                            <Textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 rows={3}
-                                className="w-full bg-[#1A1B1D] border border-white/10 rounded-lg py-2 px-3 text-white focus:outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary"
                                 placeholder="Ex: Itens e wearables adicionais..."
                             />
-                        </div>
-                        <button
-                            type="submit"
-                            disabled={isSaving}
-                            className="w-full bg-brand-secondary hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-                        >
-                            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                        </Field>
+                        <Button type="submit" variant="primary" className="w-full" loading={isSaving}>
+                            {!isSaving && <Plus className="h-4 w-4" aria-hidden="true" />}
                             Criar Categoria
-                        </button>
+                        </Button>
                     </form>
-                </div>
+                </Card>
 
                 {/* Listagem */}
-                <div className="lg:col-span-2 bg-[#2A2A2A] border border-white/5 rounded-xl overflow-hidden">
-                    <div className="p-6 border-b border-white/5">
-                        <h2 className="text-xl font-bold">Categorias Cadastradas</h2>
-                    </div>
-                    
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b border-white/5 text-gray-400 text-sm">
-                                    <th className="p-4 font-semibold">Nome</th>
-                                    <th className="p-4 font-semibold">Descrição</th>
-                                    <th className="p-4 font-semibold text-right">Ações</th>
+                <Card as="section" aria-label="Categorias cadastradas" className="overflow-hidden lg:col-span-2">
+                    <CardHeader title="Categorias Cadastradas" />
+
+                    <TableWrap>
+                        <Table>
+                            <Thead>
+                                <tr>
+                                    <Th>Nome</Th>
+                                    <Th>Descrição</Th>
+                                    <Th className="text-right">Ações</Th>
                                 </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {!categories ? (
+                            </Thead>
+                            <Tbody>
+                                {categoriesError && !categories ? (
                                     <tr>
-                                        <td colSpan={3} className="p-8 text-center text-gray-500">
-                                            <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                                            Carregando categorias...
-                                        </td>
+                                        <td colSpan={3}><ErrorState title="Não foi possível carregar as categorias." onRetry={() => { void mutate(); }} /></td>
                                     </tr>
+                                ) : !categories ? (
+                                    <TableSkeletonRows rows={5} columns={3} />
                                 ) : categories.length === 0 ? (
                                     <tr>
-                                        <td colSpan={3} className="p-8 text-center text-gray-500">
-                                            Nenhuma categoria cadastrada.
-                                        </td>
+                                        <td colSpan={3}><EmptyState icon={Tags} title="Nenhuma categoria cadastrada." description="Use o formulário ao lado para criar a primeira." /></td>
                                     </tr>
                                 ) : (
                                     categories.map((category) => (
-                                        <tr key={category.id} className="hover:bg-white/[0.01] transition-colors">
+                                        <tr key={category.id} className={rowClass()}>
                                             {editingId === category.id ? (
                                                 <>
-                                                    <td className="p-4">
-                                                        <input 
+                                                    <Td>
+                                                        <Input
                                                             required
                                                             type="text"
+                                                            aria-label="Nome da categoria"
                                                             value={editName}
                                                             onChange={(e) => setEditName(e.target.value)}
-                                                            className="bg-[#1A1B1D] border border-brand-secondary rounded px-2 py-1 text-white text-sm w-full"
+                                                            className="min-h-9 border-adm-accent-ink py-1"
                                                         />
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <input 
+                                                    </Td>
+                                                    <Td>
+                                                        <Input
                                                             type="text"
+                                                            aria-label="Descrição da categoria"
                                                             value={editDescription}
                                                             onChange={(e) => setEditDescription(e.target.value)}
-                                                            className="bg-[#1A1B1D] border border-white/10 rounded px-2 py-1 text-white text-sm w-full"
+                                                            className="min-h-9 py-1"
                                                         />
-                                                    </td>
-                                                    <td className="p-4 text-right">
-                                                        <div className="flex justify-end gap-2">
-                                                            <button 
+                                                    </Td>
+                                                    <Td className="text-right">
+                                                        <div className="flex justify-end gap-1">
+                                                            <IconButton
+                                                                label="Salvar"
                                                                 onClick={() => handleUpdate(category.id)}
-                                                                className="p-1.5 bg-green-600 hover:bg-green-700 rounded text-white transition-colors"
-                                                                title="Salvar"
+                                                                disabled={isSaving}
+                                                                className="bg-adm-success/15 text-adm-success hover:bg-adm-success/25 hover:text-adm-success"
                                                             >
-                                                                <Save className="w-4 h-4" />
-                                                            </button>
-                                                            <button 
-                                                                onClick={handleEditCancel}
-                                                                className="p-1.5 bg-[#3A3A3A] hover:bg-[#4A4A4A] rounded text-gray-300 transition-colors"
-                                                                title="Cancelar"
-                                                            >
-                                                                <X className="w-4 h-4" />
-                                                            </button>
+                                                                <Save className="h-4 w-4" aria-hidden="true" />
+                                                            </IconButton>
+                                                            <IconButton label="Cancelar" onClick={handleEditCancel}>
+                                                                <X className="h-4 w-4" aria-hidden="true" />
+                                                            </IconButton>
                                                         </div>
-                                                    </td>
+                                                    </Td>
                                                 </>
                                             ) : (
                                                 <>
-                                                    <td className="p-4 font-semibold text-white">{category.name}</td>
-                                                    <td className="p-4 text-gray-400 text-sm max-w-xs truncate">{category.description || '-'}</td>
-                                                    <td className="p-4 text-right">
-                                                        <div className="flex justify-end gap-2">
-                                                            <button 
-                                                                onClick={() => handleEditStart(category)}
-                                                                className="p-1.5 bg-[#3A3A3A] hover:bg-white/10 rounded text-gray-300 hover:text-white transition-colors"
-                                                            >
-                                                                <Edit2 className="w-4 h-4" />
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => handleDelete(category.id)}
-                                                                className="p-1.5 bg-[#3A3A3A] hover:bg-red-500/20 rounded text-gray-400 hover:text-red-500 transition-colors"
-                                                            >
-                                                                <Trash2 className="w-4 h-4" />
-                                                            </button>
+                                                    <Td className="font-medium">{category.name}</Td>
+                                                    <Td className="max-w-xs truncate text-adm-ink-muted">{category.description || '-'}</Td>
+                                                    <Td className="text-right">
+                                                        <div className="flex justify-end gap-1">
+                                                            <IconButton label={`Editar ${category.name}`} onClick={() => handleEditStart(category)}>
+                                                                <Edit2 className="h-4 w-4" aria-hidden="true" />
+                                                            </IconButton>
+                                                            <IconButton tone="danger" label={`Excluir ${category.name}`} onClick={() => handleDelete(category.id)}>
+                                                                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                                                            </IconButton>
                                                         </div>
-                                                    </td>
+                                                    </Td>
                                                 </>
                                             )}
                                         </tr>
                                     ))
                                 )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                            </Tbody>
+                        </Table>
+                    </TableWrap>
+                </Card>
             </div>
         </div>
     );

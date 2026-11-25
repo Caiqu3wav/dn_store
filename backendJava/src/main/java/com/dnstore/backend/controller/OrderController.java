@@ -78,14 +78,27 @@ public class OrderController {
         return ResponseEntity.ok(orderService.findByUser(user.getId()));
     }
 
+    /** Teto de {@code limit} em GET /api/orders/all. */
+    static final int MAX_ADMIN_ORDERS_LIMIT = 100;
+
     /**
      * GET /api/orders/all
-     * Lista todos os pedidos (apenas ADMIN).
+     * Lista todos os pedidos (apenas ADMIN). Sem parâmetros, devolve a lista completa como sempre.
+     * Parâmetros opcionais: {@code limit} (1 a 100) e {@code excludeStatus} (repetível); quando algum é
+     * informado, os pedidos vêm do mais recente para o mais antigo.
      */
     @GetMapping("/all")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<Order>> listAll() {
-        return ResponseEntity.ok(orderService.findAll());
+    public ResponseEntity<List<Order>> listAll(
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false) List<String> excludeStatus) {
+        if (limit == null && (excludeStatus == null || excludeStatus.isEmpty())) {
+            return ResponseEntity.ok(orderService.findAll());
+        }
+        if (limit != null && (limit < 1 || limit > MAX_ADMIN_ORDERS_LIMIT)) {
+            throw new IllegalArgumentException("limit deve estar entre 1 e " + MAX_ADMIN_ORDERS_LIMIT + ".");
+        }
+        return ResponseEntity.ok(orderService.findRecent(limit, excludeStatus));
     }
 
     /**

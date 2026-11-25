@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Check, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { Check, Plus, Trash2 } from 'lucide-react';
 import useSWR from 'swr';
 import { toast } from 'react-hot-toast';
 import { fetcher, productService } from '@/services/productService';
@@ -14,6 +14,11 @@ import {
     PRODUCT_VARIANT_SIZES
 } from '@/types';
 import { productColorOptions } from '@/utils/productColor';
+import { Button, IconButton } from '../_components/ui';
+import { Modal } from '../_components/Modal';
+import { controlClass } from '../_components/form';
+import { useConfirm } from '../_components/confirm';
+import { cn } from '../../components/ui/Button';
 
 type Props = {
     products: Product[];
@@ -79,7 +84,7 @@ const initialValues: FormValues = {
     sizes: []
 };
 
-const fieldClass = 'mt-1 min-h-10 w-full rounded-md border border-white/10 bg-[#1A1B1D] px-3 text-sm text-white disabled:opacity-50';
+const fieldClass = cn(controlClass, 'mt-1');
 
 function getErrorMessage(error: unknown) {
     if (typeof error === 'object' && error !== null && 'response' in error) {
@@ -96,6 +101,7 @@ function getErrorMessage(error: unknown) {
 }
 
 export default function ProductDefaultsManager({ products, loading, categories, filters, onApplied }: Props) {
+    const confirm = useConfirm();
     const [open, setOpen] = useState(false);
     const [ruleName, setRuleName] = useState('');
     const [enabledFields, setEnabledFields] = useState<Set<FieldKey>>(new Set());
@@ -243,7 +249,12 @@ export default function ProductDefaultsManager({ products, loading, categories, 
     };
 
     const handleDelete = async (rule: ProductDefaultRule) => {
-        if (!confirm(`Remover o padrão "${rule.name}"? Os produtos já editados não serão revertidos.`)) return;
+        const confirmed = await confirm({
+            title: 'Remover padrão',
+            message: `Remover o padrão "${rule.name}"? Os produtos já editados não serão revertidos.`,
+            confirmLabel: 'Remover',
+        });
+        if (!confirmed) return;
         try {
             await productService.deleteDefaultRule(rule.id);
             await mutateRules();
@@ -254,51 +265,57 @@ export default function ProductDefaultsManager({ products, loading, categories, 
     };
 
     const checkbox = (field: FieldKey, label: string) => (
-        <label className="flex items-center gap-2 text-sm text-gray-200">
-            <input type="checkbox" checked={enabledFields.has(field)} onChange={() => toggleField(field)} className="accent-red-600" />
+        <label className="flex items-center gap-2 text-sm text-adm-ink">
+            <input type="checkbox" checked={enabledFields.has(field)} onChange={() => toggleField(field)} className="accent-adm-accent" />
             {label}
         </label>
     );
 
     return (
         <>
-            <button type="button" onClick={() => setOpen(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-brand-secondary/60 px-3 text-sm font-medium text-red-200 transition hover:bg-brand-secondary/10 sm:px-4">
-                <Check className="h-4 w-4" /> Definir padrões
-            </button>
+            <Button size="lg" onClick={() => setOpen(true)}>
+                <Check className="h-4 w-4" aria-hidden="true" /> Definir padrões
+            </Button>
 
-            {open && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 sm:p-6">
-                <section role="dialog" aria-modal="true" aria-labelledby="product-defaults-title" className="max-h-[92dvh] w-full max-w-4xl overflow-y-auto rounded-xl border border-white/10 bg-[#202123] p-4 text-white shadow-2xl sm:p-6">
-                    <header className="mb-5 flex items-start justify-between gap-4 border-b border-white/10 pb-4">
-                        <div>
-                            <h2 id="product-defaults-title" className="text-xl font-bold">Definir padrões de produto</h2>
-                            <p className="mt-1 text-sm text-gray-400">O padrão será aplicado agora aos produtos correspondentes e salvo para novos produtos que atendam aos filtros. Em caso de conflito, o padrão mais recente prevalece.</p>
-                        </div>
-                        <button type="button" aria-label="Fechar" onClick={close} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-gray-400 hover:bg-white/10 hover:text-white"><X className="h-5 w-5" /></button>
-                    </header>
-
+            <Modal
+                open={open}
+                onClose={close}
+                size="xl"
+                title="Definir padrões de produto"
+                description="O padrão será aplicado agora aos produtos correspondentes e salvo para novos produtos que atendam aos filtros. Em caso de conflito, o padrão mais recente prevalece."
+                footer={
+                    <>
+                        <Button onClick={close}>Fechar</Button>
+                        <Button variant="primary" onClick={handleCreate} loading={saving} disabled={loading}>
+                            {!saving && <Plus className="h-4 w-4" aria-hidden="true" />}
+                            Salvar e aplicar padrão
+                        </Button>
+                    </>
+                }
+            >
                     <div className="space-y-5">
                         <section className="space-y-2">
                             <h3 className="text-sm font-semibold">Filtros usados para encontrar produtos</h3>
                             {Object.keys(criteria).length === 0
-                                ? <p className="rounded-lg border border-amber-400/30 bg-amber-400/5 p-3 text-sm text-amber-200">Nenhum filtro definido. Feche esta janela e use a busca ou os filtros da lista antes de criar um padrão.</p>
+                                ? <p className="rounded-lg border border-adm-warning/30 bg-adm-warning/10 p-3 text-sm text-adm-warning">Nenhum filtro definido. Feche esta janela e use a busca ou os filtros da lista antes de criar um padrão.</p>
                                 : <div className="flex flex-wrap gap-2 text-xs">
-                                    {criteria.nameContains && <span className="rounded-full bg-white/10 px-3 py-1">Nome contém “{criteria.nameContains}”</span>}
-                                    {criteria.categoryId && <span className="rounded-full bg-white/10 px-3 py-1">Categoria: {categories.find(category => category.id === criteria.categoryId)?.name ?? 'selecionada'}</span>}
-                                    {criteria.color && <span className="rounded-full bg-white/10 px-3 py-1">Cor: {criteria.color}</span>}
-                                    {criteria.minPrice != null && <span className="rounded-full bg-white/10 px-3 py-1">Preço ≥ R$ {criteria.minPrice}</span>}
-                                    {criteria.maxPrice != null && <span className="rounded-full bg-white/10 px-3 py-1">Preço ≤ R$ {criteria.maxPrice}</span>}
+                                    {criteria.nameContains && <span className="rounded-full bg-adm-raised px-3 py-1">Nome contém “{criteria.nameContains}”</span>}
+                                    {criteria.categoryId && <span className="rounded-full bg-adm-raised px-3 py-1">Categoria: {categories.find(category => category.id === criteria.categoryId)?.name ?? 'selecionada'}</span>}
+                                    {criteria.color && <span className="rounded-full bg-adm-raised px-3 py-1">Cor: {criteria.color}</span>}
+                                    {criteria.minPrice != null && <span className="rounded-full bg-adm-raised px-3 py-1">Preço ≥ R$ {criteria.minPrice}</span>}
+                                    {criteria.maxPrice != null && <span className="rounded-full bg-adm-raised px-3 py-1">Preço ≤ R$ {criteria.maxPrice}</span>}
                                 </div>}
                         </section>
 
                         <section className="space-y-2">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <h3 className="text-sm font-semibold">Produtos encontrados: {products.length}</h3>
-                                <span className="text-xs text-gray-400">Desmarque os produtos que devem ficar de fora.</span>
+                                <span className="text-xs text-adm-ink-muted">Desmarque os produtos que devem ficar de fora.</span>
                             </div>
                             {loading
-                                ? <p className="rounded-lg border border-white/10 p-3 text-sm text-gray-400">Carregando produtos correspondentes...</p>
-                                : products.length > 0 && <div className="max-h-44 space-y-1 overflow-y-auto rounded-lg border border-white/10 bg-[#191A1B] p-2">
-                                {products.map(product => <label key={product.id} className="flex cursor-pointer items-center gap-3 rounded px-2 py-2 text-sm hover:bg-white/5">
+                                ? <p className="rounded-lg border border-adm-line p-3 text-sm text-adm-ink-muted">Carregando produtos correspondentes...</p>
+                                : products.length > 0 && <div className="max-h-44 space-y-1 overflow-y-auto rounded-lg border border-adm-line bg-adm-sunken p-2">
+                                {products.map(product => <label key={product.id} className="flex cursor-pointer items-center gap-3 rounded px-2 py-2 text-sm hover:bg-adm-hover">
                                     <input
                                         type="checkbox"
                                         checked={!excludedIds.has(product.id)}
@@ -308,61 +325,61 @@ export default function ProductDefaultsManager({ products, loading, categories, 
                                             else next.add(product.id);
                                             return next;
                                         })}
-                                        className="accent-red-600"
+                                        className="accent-adm-accent"
                                     />
                                     <span className="min-w-0 flex-1 truncate">{product.name}</span>
-                                    <span className="text-xs text-gray-500">{product.color || 'sem cor'}</span>
+                                    <span className="text-xs text-adm-ink-subtle">{product.color || 'sem cor'}</span>
                                 </label>)}
                             </div>}
-                            {!loading && products.length === 0 && <p className="rounded-lg border border-white/10 p-3 text-sm text-gray-400">Nenhum produto atual corresponde. A regra ainda poderá ser aplicada a novos produtos.</p>}
+                            {!loading && products.length === 0 && <p className="rounded-lg border border-adm-line p-3 text-sm text-adm-ink-muted">Nenhum produto atual corresponde. A regra ainda poderá ser aplicada a novos produtos.</p>}
                         </section>
 
                         <section className="space-y-3">
                             <h3 className="text-sm font-semibold">Campos para editar</h3>
                             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                <div className="rounded-lg border border-white/10 p-3">
+                                <div className="rounded-lg border border-adm-line p-3">
                                     {checkbox('name', 'Nome')}
                                     <input disabled={!enabledFields.has('name')} value={values.name} onChange={event => updateValue('name', event.target.value)} className={fieldClass} placeholder="Novo nome comum" />
                                 </div>
-                                <div className="rounded-lg border border-white/10 p-3">
+                                <div className="rounded-lg border border-adm-line p-3">
                                     {checkbox('price', 'Preço')}
                                     <input disabled={!enabledFields.has('price')} type="number" min="0" step="0.01" value={values.price} onChange={event => updateValue('price', event.target.value)} className={fieldClass} placeholder="0,00" />
                                 </div>
-                                <div className="rounded-lg border border-white/10 p-3">
+                                <div className="rounded-lg border border-adm-line p-3">
                                     {checkbox('promotionalPrice', 'Preço promocional')}
                                     <input disabled={!enabledFields.has('promotionalPrice') || values.clearPromotionalPrice} type="number" min="0" step="0.01" value={values.promotionalPrice} onChange={event => updateValue('promotionalPrice', event.target.value)} className={fieldClass} placeholder="0,00" />
-                                    <label className="mt-2 flex items-center gap-2 text-xs text-gray-400">
-                                        <input disabled={!enabledFields.has('promotionalPrice')} type="checkbox" checked={values.clearPromotionalPrice} onChange={event => updateValue('clearPromotionalPrice', event.target.checked)} className="accent-red-600" />
+                                    <label className="mt-2 flex items-center gap-2 text-xs text-adm-ink-muted">
+                                        <input disabled={!enabledFields.has('promotionalPrice')} type="checkbox" checked={values.clearPromotionalPrice} onChange={event => updateValue('clearPromotionalPrice', event.target.checked)} className="accent-adm-accent" />
                                         Remover preço promocional
                                     </label>
                                 </div>
-                                <div className="rounded-lg border border-white/10 p-3">
+                                <div className="rounded-lg border border-adm-line p-3">
                                     {checkbox('active', 'Disponibilidade')}
                                     <select disabled={!enabledFields.has('active')} value={values.active} onChange={event => updateValue('active', event.target.value)} className={fieldClass}>
                                         <option value="">Escolha...</option><option value="true">Ativo</option><option value="false">Inativo</option>
                                     </select>
                                 </div>
-                                <div className="rounded-lg border border-white/10 p-3">
+                                <div className="rounded-lg border border-adm-line p-3">
                                     {checkbox('color', 'Cor')}
                                     <select disabled={!enabledFields.has('color') || values.clearColor} value={values.color} onChange={event => updateValue('color', event.target.value)} className={fieldClass}>
                                         <option value="">Escolha...</option>{productColorOptions.map(color => <option key={color} value={color}>{color}</option>)}
                                     </select>
-                                    <label className="mt-2 flex items-center gap-2 text-xs text-gray-400">
-                                        <input disabled={!enabledFields.has('color')} type="checkbox" checked={values.clearColor} onChange={event => updateValue('clearColor', event.target.checked)} className="accent-red-600" />
+                                    <label className="mt-2 flex items-center gap-2 text-xs text-adm-ink-muted">
+                                        <input disabled={!enabledFields.has('color')} type="checkbox" checked={values.clearColor} onChange={event => updateValue('clearColor', event.target.checked)} className="accent-adm-accent" />
                                         Remover cor
                                     </label>
                                 </div>
-                                <div className="rounded-lg border border-white/10 p-3">
+                                <div className="rounded-lg border border-adm-line p-3">
                                     {checkbox('categoryId', 'Categoria')}
                                     <select disabled={!enabledFields.has('categoryId') || values.clearCategory} value={values.categoryId} onChange={event => updateValue('categoryId', event.target.value)} className={fieldClass}>
                                         <option value="">Escolha...</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
                                     </select>
-                                    <label className="mt-2 flex items-center gap-2 text-xs text-gray-400">
-                                        <input disabled={!enabledFields.has('categoryId')} type="checkbox" checked={values.clearCategory} onChange={event => updateValue('clearCategory', event.target.checked)} className="accent-red-600" />
+                                    <label className="mt-2 flex items-center gap-2 text-xs text-adm-ink-muted">
+                                        <input disabled={!enabledFields.has('categoryId')} type="checkbox" checked={values.clearCategory} onChange={event => updateValue('clearCategory', event.target.checked)} className="accent-adm-accent" />
                                         Remover categoria
                                     </label>
                                 </div>
-                                <div className="rounded-lg border border-white/10 p-3 sm:col-span-2 lg:col-span-3">
+                                <div className="rounded-lg border border-adm-line p-3 sm:col-span-2 lg:col-span-3">
                                     {checkbox('description', 'Descrição')}
                                     <textarea disabled={!enabledFields.has('description')} rows={2} value={values.description} onChange={event => updateValue('description', event.target.value)} className={fieldClass} placeholder="Descrição comum para os produtos selecionados" />
                                 </div>
@@ -377,7 +394,7 @@ export default function ProductDefaultsManager({ products, loading, categories, 
                                     ['width', 'Largura (cm)'],
                                     ['height', 'Altura (cm)'],
                                     ['depth', 'Comprimento (cm)']
-                                ] as const).map(([field, label]) => <div key={field} className="rounded-lg border border-white/10 p-3">
+                                ] as const).map(([field, label]) => <div key={field} className="rounded-lg border border-adm-line p-3">
                                     {checkbox(field, label)}
                                     <input disabled={!enabledFields.has(field)} type="number" min="0.01" step="0.01" value={values[field]} onChange={event => updateValue(field, event.target.value)} className={fieldClass} />
                                 </div>)}
@@ -386,20 +403,20 @@ export default function ProductDefaultsManager({ products, loading, categories, 
 
                         <section className="space-y-2">
                             <h3 className="text-sm font-semibold">Tamanhos</h3>
-                            <div className="flex flex-wrap gap-2 rounded-lg border border-white/10 p-3">
+                            <div className="flex flex-wrap gap-2 rounded-lg border border-adm-line p-3">
                                 {checkbox('sizes', 'Adicionar tamanhos ausentes')}
-                                {PRODUCT_VARIANT_SIZES.map(size => <label key={size} className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-1 text-xs text-gray-300">
+                                {PRODUCT_VARIANT_SIZES.map(size => <label key={size} className="flex items-center gap-1.5 rounded bg-adm-raised px-2 py-1 text-xs text-adm-ink-muted">
                                     <input
                                         disabled={!enabledFields.has('sizes')}
                                         type="checkbox"
                                         checked={values.sizes.includes(size)}
                                         onChange={() => toggleSize(size)}
-                                        className="accent-red-600"
+                                        className="accent-adm-accent"
                                     />
                                     {size}
                                 </label>)}
                             </div>
-                            <p className="text-xs text-gray-500">Tamanhos existentes e estoques são preservados. Os tamanhos adicionados começam com estoque zero.</p>
+                            <p className="text-xs text-adm-ink-subtle">Tamanhos existentes e estoques são preservados. Os tamanhos adicionados começam com estoque zero.</p>
                         </section>
 
                         <section className="space-y-2">
@@ -408,31 +425,22 @@ export default function ProductDefaultsManager({ products, loading, categories, 
                             </label>
                         </section>
 
-                        <div className="flex flex-col-reverse justify-end gap-2 border-t border-white/10 pt-4 sm:flex-row">
-                            <button type="button" onClick={close} className="min-h-10 rounded-lg border border-white/15 px-4 text-sm text-gray-300 hover:bg-white/5">Fechar</button>
-                            <button type="button" onClick={handleCreate} disabled={saving || loading} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-brand-secondary px-4 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
-                                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                                Salvar e aplicar padrão
-                            </button>
-                        </div>
-
-                        <section className="space-y-2 border-t border-white/10 pt-4">
+                        <section className="space-y-2 border-t border-adm-line pt-4">
                             <h3 className="text-sm font-semibold">Padrões salvos</h3>
                             {rulesError
-                                ? <p className="text-sm text-red-300">Não foi possível carregar os padrões salvos.</p>
+                                ? <p className="text-sm text-adm-danger">Não foi possível carregar os padrões salvos.</p>
                                 : rules?.length
-                                ? <ul className="space-y-2">{rules.map(rule => <li key={rule.id} className="flex items-center gap-3 rounded-lg border border-white/10 p-3">
+                                ? <ul className="space-y-2">{rules.map(rule => <li key={rule.id} className="flex items-center gap-3 rounded-lg border border-adm-line p-3">
                                     <div className="min-w-0 flex-1">
                                         <p className="truncate text-sm font-medium">{rule.name}</p>
-                                        <p className="text-xs text-gray-500">{rule.updatedProducts} produto(s) alterado(s) ao criar · aplicado a novos produtos correspondentes</p>
+                                        <p className="text-xs text-adm-ink-subtle">{rule.updatedProducts} produto(s) alterado(s) ao criar · aplicado a novos produtos correspondentes</p>
                                     </div>
-                                    <button type="button" onClick={() => handleDelete(rule)} title={`Remover padrão ${rule.name}`} className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-gray-400 hover:bg-red-500/10 hover:text-red-400"><Trash2 className="h-4 w-4" /></button>
+                                    <IconButton tone="danger" label={`Remover padrão ${rule.name}`} onClick={() => handleDelete(rule)}><Trash2 className="h-4 w-4" aria-hidden="true" /></IconButton>
                                 </li>)}</ul>
-                                : <p className="text-sm text-gray-500">{rules ? 'Nenhum padrão salvo.' : 'Carregando padrões...'}</p>}
+                                : <p className="text-sm text-adm-ink-subtle">{rules ? 'Nenhum padrão salvo.' : 'Carregando padrões...'}</p>}
                         </section>
                     </div>
-                </section>
-            </div>}
+            </Modal>
         </>
     );
 }

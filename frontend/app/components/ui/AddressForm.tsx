@@ -34,12 +34,11 @@ const AddressFormTitle = styled.h3`
   font-weight: bold;
 `
 
-const AddressFormRow = styled.div`
-    display: flex;
-    justify-content: space-between;
+const AddressFormRow = styled.div<{ $columns?: string }>`
+    display: grid;
+    grid-template-columns: ${({ $columns }) => $columns ?? "1fr 1fr"};
+    column-gap: 1rem;
     width: 100%;
-    flex-direction: row;
-
 `
 
 export function AddressForm({
@@ -57,9 +56,7 @@ export function AddressForm({
           Consultando CEP...
         </p>
       )}
-      <AddressFormRow>
       <LabelInput
-        width="25%"
         value={addressFormsData.zipCode}
         onChange={onChange}
         name="zipCode"
@@ -68,25 +65,24 @@ export function AddressForm({
         label="CEP"
         required
       />
-      </AddressFormRow>
 
       <AddressFormRow>
-        <LabelInput
-          label="Cidade"
-          name="city"
-          placeholder="Digite sua cidade"
-          type="text"
-          value={addressFormsData.city}
-          onChange={onChange}
-          required
-        />
-
         <LabelInput
           label="Estado"
           name="state"
           placeholder="Digite seu estado"
           type="text"
           value={addressFormsData.state}
+          onChange={onChange}
+          required
+        />
+
+        <LabelInput
+          label="Cidade"
+          name="city"
+          placeholder="Digite sua cidade"
+          type="text"
+          value={addressFormsData.city}
           onChange={onChange}
           required
         />
@@ -112,9 +108,8 @@ export function AddressForm({
         required
       />
 
-      <AddressFormRow>
+      <AddressFormRow $columns="1fr 2fr">
         <LabelInput
-          width="31%"
           label="Número"
           name="number"
           placeholder="XXX"

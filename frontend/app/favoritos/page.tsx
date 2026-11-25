@@ -33,7 +33,7 @@ export default function FavoritosPage() {
                         <p className="mb-6 text-gray-600">Entre na sua conta para ver seus favoritos.</p>
                         <Link
                             href={`/auth?next=${encodeURIComponent('/favoritos')}`}
-                            className="inline-block bg-brand-secondary hover:bg-brand-secondary/90 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
+                            className="inline-block bg-brand-red-primary hover:bg-brand-red-primary/90 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
                         >
                             Entrar
                         </Link>
