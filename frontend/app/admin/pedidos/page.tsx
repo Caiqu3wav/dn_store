@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { ShoppingBag, Eye, Calendar, User, MapPin, BadgeCheck, History } from 'lucide-react';
 import { fetcher } from '@/services/productService';
@@ -103,6 +103,19 @@ export default function AdminOrdersPage() {
         setConfirmingPayment(false);
         setPaymentReason('');
     }, []);
+
+    // Link vindo do módulo de estoque (?pedido=<id>): abre o pedido assim que a lista carrega, uma única vez.
+    const deepLinkHandled = useRef(false);
+    useEffect(() => {
+        if (deepLinkHandled.current || !allOrders) return;
+        deepLinkHandled.current = true;
+        const orderId = new URLSearchParams(window.location.search).get('pedido');
+        const order = orderId ? allOrders.find((item) => item.id === orderId) : undefined;
+        if (order) {
+            selectOrder(order);
+            if (isUnpaidOrder(order.status)) setShowUnpaid(true);
+        }
+    }, [allOrders, selectOrder]);
 
     const handleUpdateStatus = useCallback(async (orderId: string, newStatus: string) => {
         try {

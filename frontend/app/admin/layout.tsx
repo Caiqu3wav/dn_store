@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
     LayoutDashboard,
     Package,
+    Boxes,
     ShoppingCart,
     Users,
     Tags,
@@ -30,6 +31,7 @@ const adminSwrConfig = {
 const adminLinks = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Produtos', href: '/admin/produtos', icon: Package },
+    { name: 'Estoque', href: '/admin/estoque', icon: Boxes },
     { name: 'Pedidos', href: '/admin/pedidos', icon: ShoppingCart },
     { name: 'Categorias', href: '/admin/categorias', icon: Tags },
     { name: 'Eventos', href: '/admin/eventos', icon: CalendarDays },
