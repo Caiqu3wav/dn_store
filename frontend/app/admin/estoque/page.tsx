@@ -129,15 +129,18 @@ function StockMovementsContent() {
                         <Table>
                             <Thead>
                                 <tr>
-                                    <Th>Data</Th><Th>Tipo</Th><Th>Produto</Th><Th className="text-right">Movimento</Th>
-                                    <Th className="text-right">Saldo</Th><Th>Referência</Th><Th>Responsável</Th><Th>Motivo</Th><Th><span className="sr-only">Ações</span></Th>
+                                    <Th>Data</Th><Th>Tipo / motivo</Th><Th>Produto</Th><Th className="text-right">Movimento</Th>
+                                    <Th className="text-right">Saldo</Th><Th>Referência</Th><Th>Responsável</Th><Th><span className="sr-only">Ações</span></Th>
                                 </tr>
                             </Thead>
                             <Tbody>
-                                {isLoading ? <TableSkeletonRows columns={9} /> : rows.map(movement => (
+                                {isLoading ? <TableSkeletonRows columns={8} /> : rows.map(movement => (
                                     <tr key={movement.id} className={rowClass()}>
                                         <Td className="whitespace-nowrap text-adm-ink-muted">{formatDateTime(movement.createdAt)}</Td>
-                                        <Td><MovementTypeBadge type={movement.type} /></Td>
+                                        <Td className="min-w-40">
+                                            <MovementTypeBadge type={movement.type} />
+                                            {movement.reasonText && <span className="mt-1 block max-w-56 text-xs text-adm-ink-muted">{movement.reasonText}</span>}
+                                        </Td>
                                         <Td className="min-w-48">
                                             <span className="font-medium">{variantLabel(movement.variant)}</span>
                                             {movement.variant.sku && <span className="block text-xs text-adm-ink-subtle">{movement.variant.sku}</span>}
@@ -152,7 +155,6 @@ function StockMovementsContent() {
                                             ) : <span className="text-adm-ink-subtle">—</span>}
                                         </Td>
                                         <Td className="text-adm-ink-muted">{movement.actor ? (movement.actor.name ?? movement.actor.email) : <Badge>Sistema</Badge>}</Td>
-                                        <Td className="max-w-64 text-adm-ink-muted">{movement.reasonText ?? '—'}</Td>
                                         <Td>
                                             <IconButton label={`Ajustar estoque de ${variantLabel(movement.variant)}`} onClick={() => setAdjusting({ open: true, variantId: movement.variant.id })}>
                                                 <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />

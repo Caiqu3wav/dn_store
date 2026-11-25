@@ -26,7 +26,7 @@ export const MOVEMENT_TYPES: Record<StockMovementType, { label: string; tone: Ba
     DEVOLUCAO_PEDIDO: { label: 'Devolução de pedido', tone: 'violet' },
     AJUSTE: { label: 'Ajuste manual', tone: 'warning' },
     EDICAO_CADASTRO: { label: 'Edição no cadastro', tone: 'neutral' },
-    SALDO_INICIAL: { label: 'Saldo inicial', tone: 'accent' },
+    SALDO_INICIAL: { label: 'Saldo inicial', tone: 'neutral' },
 };
 
 export const ADJUSTMENT_REASONS: Record<StockAdjustmentReason, string> = {
