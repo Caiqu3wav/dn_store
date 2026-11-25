@@ -54,7 +54,7 @@ export default async function ProductPage({
                 <div className="flex items-center text-sm text-gray-500 mb-8">
                     <Link
                         href="/"
-                        className="hover:text-brand-red"
+                        className="hover:text-brand-red-primary"
                     >
                         Home
                     </Link>
@@ -63,7 +63,7 @@ export default async function ProductPage({
 
                     <Link
                         href="/produtos"
-                        className="hover:text-brand-red"
+                        className="hover:text-brand-red-primary"
                     >
                         Loja
                     </Link>

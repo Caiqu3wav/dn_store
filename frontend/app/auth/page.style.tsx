@@ -47,7 +47,7 @@ export const Button = styled.button`
   border: none;
   border-radius: 0.25rem;
   font-size: 1rem;
-  background-color: #ff0000;
+  background-color: var(--brand-red-primary);
   color: white;
   cursor: pointer;
   box-sizing: border-box;
@@ -58,7 +58,7 @@ export const Button = styled.button`
   }
 
   &:active {
-    background-color: #c70808;
+    background-color: #9f0606;
     transform: translateY(2px) scale(0.98);
   }
 `;

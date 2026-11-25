@@ -131,7 +131,7 @@ export default function ProductInteractive({
                                     rounded-md overflow-hidden border-2
                                     ${
                                         currentImage === index
-                                            ? 'border-brand-red'
+                                            ? 'border-brand-red-primary'
                                             : 'border-transparent'
                                     }
                                 `}
@@ -152,7 +152,7 @@ export default function ProductInteractive({
             {/* Product info */}
             <div>
 
-                <span className="text-brand-red font-bold tracking-wider uppercase text-sm">
+                <span className="text-brand-red-primary font-bold tracking-wider uppercase text-sm">
                     {typeof product.category === 'object' &&
                     product.category !== null
                         ? product.category.name
