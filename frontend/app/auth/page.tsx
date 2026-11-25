@@ -217,7 +217,7 @@ function Auth() {
           </section>
         ) : <>
         {errorMsg && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded-lg text-sm text-center mb-4 w-full max-w-sm">
+          <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded-lg text-sm text-center mt-4 mb-4 w-full max-w-sm">
             {errorMsg}
           </div>
         )}

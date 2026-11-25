@@ -46,6 +46,10 @@ const FormContainer = styled.form`
   flex-direction: column;
   align-items: center;
   justify-content: center;
+
+  & > * {
+    max-width: 24rem;
+  }
 `;
 
 const initialFormData: FormData = {
@@ -260,14 +264,23 @@ export const AuthForm = ({
 
   return (
     <FormContainer onSubmit={handleSubmit} noValidate>
-      <Title>{title}</Title>
+      <Title
+        style={{
+          fontFamily: "'DN', sans-serif",
+          fontSize: "2.75rem",
+          paddingTop: "1rem",
+          marginBottom: "0.75rem",
+        }}
+      >
+        {title}
+      </Title>
 
       {isRegister && (
         <div
           className="mb-2 w-full max-w-sm"
           aria-label={`Etapa ${step + 1} de 3: ${stepLabels[step]}`}
         >
-          <div className="mb-2 flex justify-between text-xs font-medium text-gray-500">
+          <div className="mb-2 grid grid-cols-3 gap-2 text-center text-xs font-medium text-gray-500">
             {stepLabels.map((label, index) => (
               <span
                 key={label}

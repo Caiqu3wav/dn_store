@@ -17,7 +17,7 @@ const StyledInput = styled.input`
   &:focus {
     border-color: #007bff;
   }
-  width: 90%;
+  width: 100%;
   :required {
     border-color: red;
   }
