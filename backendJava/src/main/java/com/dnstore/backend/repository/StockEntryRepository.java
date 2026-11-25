@@ -16,6 +16,14 @@ public interface StockEntryRepository extends JpaRepository<StockEntry, UUID>, J
     Optional<StockEntry> findBySupplier_IdAndInvoiceNumber(UUID supplierId, String invoiceNumber);
 
     @EntityGraph(attributePaths = { "supplier", "createdBy" })
+    org.springframework.data.domain.Page<StockEntry> findAll(
+            org.springframework.data.jpa.domain.Specification<StockEntry> specification,
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT e FROM StockEntry e JOIN FETCH e.supplier WHERE e.id IN :ids")
+    java.util.List<StockEntry> findAllWithSupplierByIdIn(@Param("ids") java.util.Collection<UUID> ids);
+
+    @EntityGraph(attributePaths = { "supplier", "createdBy" })
     @Query("SELECT e FROM StockEntry e WHERE e.id = :id")
     Optional<StockEntry> findDetailedById(@Param("id") UUID id);
 }

@@ -47,6 +47,19 @@ public class GlobalExceptionHandler {
                         Map.of("code", StaleShippingQuoteException.CODE)));
     }
 
+    @ExceptionHandler(DuplicateStockEntryException.class)
+    public ResponseEntity<ApiErrorResponse> handleDuplicateStockEntry(DuplicateStockEntryException exception,
+            HttpServletRequest request) {
+        Map<String, String> details = new LinkedHashMap<>();
+        details.put("code", DuplicateStockEntryException.CODE);
+        if (exception.getExistingEntryId() != null) {
+            details.put("existingEntryId", exception.getExistingEntryId().toString());
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.of(HttpStatus.CONFLICT, exception.getMessage(), request.getRequestURI(),
+                        details));
+    }
+
     @ExceptionHandler(RateLimitExceededException.class)
     public ResponseEntity<ApiErrorResponse> handleRateLimitExceeded(RateLimitExceededException exception,
             HttpServletRequest request) {

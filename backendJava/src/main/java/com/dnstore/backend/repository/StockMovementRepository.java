@@ -6,8 +6,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
@@ -22,10 +23,19 @@ public interface StockMovementRepository extends Repository<StockMovement, UUID>
 
     StockMovement save(StockMovement movement);
 
-    java.util.Optional<StockMovement> findByIdempotencyKey(String idempotencyKey);
+    @EntityGraph(attributePaths = { "productVariant", "productVariant.product", "actor" })
+    Page<StockMovement> findAll(Specification<StockMovement> specification, Pageable pageable);
 
-    List<StockMovement> findByReferenceTypeAndReferenceIdOrderBySeqAsc(
-            StockReferenceType referenceType, String referenceId);
+    @EntityGraph(attributePaths = { "productVariant", "productVariant.product", "actor" })
+    @Query("SELECT m FROM StockMovement m WHERE m.referenceType = :type AND m.referenceId = :referenceId "
+            + "ORDER BY m.seq ASC")
+    List<StockMovement> findByReference(@Param("type") StockReferenceType type,
+            @Param("referenceId") String referenceId);
+
+    @Query("SELECT COUNT(DISTINCT m.productVariant.id) FROM StockMovement m")
+    long countVariantsWithMovements();
+
+    java.util.Optional<StockMovement> findByIdempotencyKey(String idempotencyKey);
 
     /** Variantes cujo estoque atual diverge da soma dos deltas do livro. */
     @Query("""

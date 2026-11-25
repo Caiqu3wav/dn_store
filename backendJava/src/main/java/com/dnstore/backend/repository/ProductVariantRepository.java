@@ -29,4 +29,18 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT pv FROM ProductVariant pv WHERE pv.id IN :ids ORDER BY pv.id")
     List<ProductVariant> findAllByIdInForUpdate(@Param("ids") Collection<UUID> ids);
+
+    @Query(value = """
+            SELECT pv FROM ProductVariant pv JOIN FETCH pv.product p
+            WHERE (:q IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :q, '%'))
+                   OR LOWER(pv.sku) LIKE LOWER(CONCAT('%', :q, '%')))
+            ORDER BY p.name, pv.size
+            """,
+            countQuery = """
+            SELECT COUNT(pv) FROM ProductVariant pv JOIN pv.product p
+            WHERE (:q IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :q, '%'))
+                   OR LOWER(pv.sku) LIKE LOWER(CONCAT('%', :q, '%')))
+            """)
+    org.springframework.data.domain.Page<ProductVariant> searchForStock(
+            @Param("q") String q, org.springframework.data.domain.Pageable pageable);
 }
