@@ -10,7 +10,6 @@ import { fetcher } from '@/services/productService';
 import { Category, PRODUCT_VARIANT_SIZES } from '@/types';
 import { toast } from 'react-hot-toast';
 import { uploadToCloudinary } from '@/utils/cloudinary';
-import Papa from 'papaparse';
 import api from '@/lib/axios';
 import { normalizeProductColor } from '@/utils/productColor';
 
@@ -54,10 +53,13 @@ export default function BatchUpload() {
         }]);
     };
 
-    const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        e.target.value = '';
 
+        // papaparse só é necessário ao importar um CSV; carregá-lo sob demanda tira ele do bundle da rota.
+        const { default: Papa } = await import('papaparse');
         Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
@@ -113,7 +115,6 @@ export default function BatchUpload() {
                 console.error(err);
             }
         });
-        e.target.value = '';
     };
 
     const handlePhotosUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
