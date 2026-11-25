@@ -1,12 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import useSWR from 'swr';
-import { ShoppingBag, Eye, Loader2, Calendar, User, MapPin, BadgeCheck, History } from 'lucide-react';
+import { ShoppingBag, Eye, Calendar, User, MapPin, BadgeCheck, History } from 'lucide-react';
 import { fetcher } from '@/services/productService';
 import { adminService, AdminOrder, OrderStatusAuditEntry } from '@/services/adminService';
 import { toast } from 'react-hot-toast';
-import { isUnpaidOrder, orderStatusLabel as statusLabel, orderStatusStyle as getStatusStyle } from '@/utils/orderStatus';
+import { isUnpaidOrder, orderStatusLabel as statusLabel } from '@/utils/orderStatus';
+import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, IconButton, PageHeader, TableSkeletonRows } from '../_components/ui';
+import { OrderStatusBadge } from '../_components/OrderStatusBadge';
+import { Select, Textarea } from '../_components/form';
+import { Table, TableWrap, Tbody, Td, Th, Thead, rowClass } from '../_components/table';
+import { cn } from '../../components/ui/Button';
 
 // Status que o administrador pode definir diretamente. "Pago" só pela confirmação manual (com justificativa);
 // aguardando/falha/expirado/revisão são controlados pelo sistema.
@@ -22,8 +27,67 @@ const errorMessage = (error: unknown, fallback: string) => {
     return typeof message === 'string' && message.trim() ? message : fallback;
 };
 
+type OrderRowProps = {
+    order: AdminOrder;
+    selected: boolean;
+    onSelect: (order: AdminOrder) => void;
+    onStatusChange: (orderId: string, status: string) => void;
+};
+
+// Memoizada: clicar numa linha muda `selectedOrder` e antes re-renderizava todas as linhas (cada uma com um
+// <select>). Com callbacks estáveis, só a linha que muda de seleção ou de dados é redesenhada.
+const OrderRow = memo(function OrderRow({ order, selected, onSelect, onStatusChange }: OrderRowProps) {
+    return (
+        <tr className={cn(rowClass(selected), 'cursor-pointer')} onClick={() => onSelect(order)}>
+            <Td className="whitespace-nowrap font-mono text-xs text-adm-ink-muted">
+                {order.id.slice(0, 8)}...
+            </Td>
+            <Td className="max-w-44">
+                <div className="truncate font-medium">{order.user?.name || 'Cliente'}</div>
+                <div className="truncate text-xs text-adm-ink-subtle">{order.user?.email}</div>
+            </Td>
+            <Td className="whitespace-nowrap text-adm-ink-muted">
+                {order.createdAt ? new Date(order.createdAt).toLocaleDateString('pt-BR') : '-'}
+            </Td>
+            <Td className="whitespace-nowrap font-medium tabular-nums">
+                R$ {order.total?.toFixed(2).replace('.', ',')}
+            </Td>
+            <Td>
+                <div className="flex items-center gap-2">
+                    <OrderStatusBadge status={order.status} />
+                    {order.manualPaymentConfirmed && (
+                        <Badge tone="warning" className="px-2 py-0 text-[10px]">
+                            <span title="Pagamento confirmado manualmente por um administrador">manual</span>
+                        </Badge>
+                    )}
+                </div>
+            </Td>
+            <Td className="text-right" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-end gap-2">
+                    <IconButton label="Visualizar Detalhes" onClick={() => onSelect(order)}>
+                        <Eye className="h-4 w-4" aria-hidden="true" />
+                    </IconButton>
+                    <Select
+                        value={order.status}
+                        aria-label={`Alterar status do pedido ${order.id.slice(0, 8)}`}
+                        onChange={(e) => onStatusChange(order.id, e.target.value)}
+                        className="min-h-9 w-44 truncate py-1 text-xs font-medium"
+                    >
+                        {!ADMIN_SETTABLE_STATUSES.includes(order.status) && (
+                            <option value={order.status} disabled>{statusLabel(order.status)}</option>
+                        )}
+                        {ADMIN_SETTABLE_STATUSES.map((status) => (
+                            <option key={status} value={status}>{statusLabel(status)}</option>
+                        ))}
+                    </Select>
+                </div>
+            </Td>
+        </tr>
+    );
+});
+
 export default function AdminOrdersPage() {
-    const { data: allOrders, mutate } = useSWR<AdminOrder[]>('/orders/all', fetcher, ORDERS_SWR_OPTIONS);
+    const { data: allOrders, error: ordersError, mutate } = useSWR<AdminOrder[]>('/orders/all', fetcher, ORDERS_SWR_OPTIONS);
     const [showUnpaid, setShowUnpaid] = useState(false);
     const unpaidCount = allOrders?.filter((order) => isUnpaidOrder(order.status)).length ?? 0;
     const orders = showUnpaid ? allOrders : allOrders?.filter((order) => !isUnpaidOrder(order.status));
@@ -36,13 +100,13 @@ export default function AdminOrdersPage() {
         fetcher
     );
 
-    const selectOrder = (order: AdminOrder) => {
+    const selectOrder = useCallback((order: AdminOrder) => {
         setSelectedOrder(order);
         setConfirmingPayment(false);
         setPaymentReason('');
-    };
+    }, []);
 
-    const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+    const handleUpdateStatus = useCallback(async (orderId: string, newStatus: string) => {
         try {
             await adminService.updateOrderStatus(orderId, newStatus);
             toast.success('Status do pedido atualizado!');
@@ -55,7 +119,7 @@ export default function AdminOrdersPage() {
         } catch (error) {
             toast.error(errorMessage(error, 'Erro ao atualizar status do pedido.'));
         }
-    };
+    }, [mutate]);
 
     const handleConfirmPayment = async () => {
         if (!selectedOrder || submittingPayment) return;
@@ -80,154 +144,110 @@ export default function AdminOrdersPage() {
     };
 
     return (
-        <div className="space-y-6 text-white max-w-7xl mx-auto pb-12">
-            <div>
-                <h1 className="text-3xl font-bold">Pedidos</h1>
-                <p className="text-gray-400 mt-1">Gerencie os pedidos dos clientes e acompanhe as entregas.</p>
-            </div>
+        <div className="mx-auto max-w-7xl space-y-6 pb-12">
+            <PageHeader title="Pedidos" description="Gerencie os pedidos dos clientes e acompanhe as entregas." />
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
                 {/* List of Orders */}
-                <div className="xl:col-span-2 bg-[#2A2A2A] border border-white/5 rounded-xl overflow-hidden h-fit">
-                    <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                        <h2 className="text-xl font-bold">Histórico de Pedidos</h2>
-                        <div className="flex items-center gap-4">
-                            <button
-                                type="button"
-                                aria-pressed={showUnpaid}
-                                onClick={() => {
-                                    setShowUnpaid((previous) => !previous);
-                                    setSelectedOrder(null);
-                                }}
-                                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                                    showUnpaid
-                                        ? 'border-brand-secondary bg-brand-secondary/10 text-brand-secondary'
-                                        : 'border-white/10 text-gray-300 hover:bg-white/5'
-                                }`}
-                            >
-                                {showUnpaid ? 'Ocultar não pagos' : `Mostrar não pagos (${unpaidCount})`}
-                            </button>
-                            <span className="text-sm text-gray-400">Total: {orders?.length || 0}</span>
-                        </div>
-                    </div>
+                <Card as="section" aria-label="Histórico de pedidos" className="overflow-hidden xl:col-span-2">
+                    <CardHeader
+                        title="Histórico de Pedidos"
+                        actions={
+                            <>
+                                <Button
+                                    size="sm"
+                                    aria-pressed={showUnpaid}
+                                    onClick={() => {
+                                        setShowUnpaid((previous) => !previous);
+                                        setSelectedOrder(null);
+                                    }}
+                                    className={showUnpaid ? 'border-adm-accent-ink/60 bg-adm-accent/10 text-adm-accent-ink hover:bg-adm-accent/20' : undefined}
+                                >
+                                    {showUnpaid ? 'Ocultar não pagos' : `Mostrar não pagos (${unpaidCount})`}
+                                </Button>
+                                <span className="text-sm text-adm-ink-muted">Total: {orders?.length || 0}</span>
+                            </>
+                        }
+                    />
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b border-white/5 text-gray-400 text-sm">
-                                    <th className="px-3 py-4 font-semibold whitespace-nowrap">Cód Pedido</th>
-                                    <th className="px-3 py-4 font-semibold">Cliente</th>
-                                    <th className="px-3 py-4 font-semibold">Data</th>
-                                    <th className="px-3 py-4 font-semibold">Total</th>
-                                    <th className="px-3 py-4 font-semibold">Status</th>
-                                    <th className="px-3 py-4 font-semibold text-right">Ações</th>
+                    <TableWrap>
+                        <Table>
+                            <Thead>
+                                <tr>
+                                    <Th>Cód Pedido</Th>
+                                    <Th>Cliente</Th>
+                                    <Th>Data</Th>
+                                    <Th>Total</Th>
+                                    <Th>Status</Th>
+                                    <Th className="text-right">Ações</Th>
                                 </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5 text-sm">
-                                {!orders ? (
+                            </Thead>
+                            <Tbody>
+                                {ordersError && !allOrders ? (
                                     <tr>
-                                        <td colSpan={6} className="p-8 text-center text-gray-500">
-                                            <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                                            Carregando pedidos...
+                                        <td colSpan={6}>
+                                            <ErrorState title="Não foi possível carregar os pedidos." onRetry={() => { void mutate(); }} />
                                         </td>
                                     </tr>
+                                ) : !orders ? (
+                                    <TableSkeletonRows rows={8} columns={6} />
                                 ) : orders.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="p-8 text-center text-gray-500">
-                                            {showUnpaid || unpaidCount === 0
-                                                ? 'Nenhum pedido realizado ainda.'
-                                                : 'Nenhum pedido pago ainda. Use "Mostrar não pagos" para ver pedidos aguardando pagamento ou expirados.'}
+                                        <td colSpan={6}>
+                                            <EmptyState
+                                                icon={ShoppingBag}
+                                                title={showUnpaid || unpaidCount === 0
+                                                    ? 'Nenhum pedido realizado ainda.'
+                                                    : 'Nenhum pedido pago ainda.'}
+                                                description={showUnpaid || unpaidCount === 0
+                                                    ? undefined
+                                                    : 'Use "Mostrar não pagos" para ver pedidos aguardando pagamento ou expirados.'}
+                                            />
                                         </td>
                                     </tr>
                                 ) : (
                                     orders.map((order) => (
-                                        <tr 
-                                            key={order.id} 
-                                            className={`hover:bg-white/[0.01] transition-colors cursor-pointer ${
-                                                selectedOrder?.id === order.id ? 'bg-white/[0.03]' : ''
-                                            }`}
-                                            onClick={() => selectOrder(order)}
-                                        >
-                                            <td className="px-3 py-4 font-mono text-xs text-gray-400 whitespace-nowrap">
-                                                {order.id.slice(0, 8)}...
-                                            </td>
-                                            <td className="px-3 py-4 max-w-36">
-                                                <div className="font-semibold truncate">{order.user?.name || 'Cliente'}</div>
-                                                <div className="text-xs text-gray-400 truncate">{order.user?.email}</div>
-                                            </td>
-                                            <td className="px-3 py-4 text-gray-300 whitespace-nowrap">
-                                                {order.createdAt ? new Date(order.createdAt).toLocaleDateString('pt-BR') : '-'}
-                                            </td>
-                                            <td className="px-3 py-4 font-semibold whitespace-nowrap">
-                                                R$ {order.total?.toFixed(2).replace('.', ',')}
-                                            </td>
-                                            <td className="px-3 py-4">
-                                                <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold border whitespace-nowrap ${getStatusStyle(order.status)}`}>
-                                                    {statusLabel(order.status)}
-                                                </span>
-                                                {order.manualPaymentConfirmed && (
-                                                    <span className="ml-2 text-[10px] font-semibold text-amber-400" title="Pagamento confirmado manualmente por um administrador">
-                                                        manual
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-3 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <button
-                                                        onClick={() => selectOrder(order)}
-                                                        className="p-1.5 bg-[#3A3A3A] hover:bg-white/10 rounded text-gray-300 hover:text-white transition-colors"
-                                                        title="Visualizar Detalhes"
-                                                    >
-                                                        <Eye className="w-4 h-4" />
-                                                    </button>
-                                                    <select
-                                                        value={order.status}
-                                                        aria-label={`Alterar status do pedido ${order.id.slice(0, 8)}`}
-                                                        onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
-                                                        className="w-40 truncate bg-[#3A3A3A] border border-white/5 rounded px-2 py-1 text-white text-xs font-semibold focus:outline-none focus:border-brand-secondary"
-                                                    >
-                                                        {!ADMIN_SETTABLE_STATUSES.includes(order.status) && (
-                                                            <option value={order.status} disabled>{statusLabel(order.status)}</option>
-                                                        )}
-                                                        {ADMIN_SETTABLE_STATUSES.map((status) => (
-                                                            <option key={status} value={status}>{statusLabel(status)}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                            </td>
-                                        </tr>
+                                        <OrderRow
+                                            key={order.id}
+                                            order={order}
+                                            selected={selectedOrder?.id === order.id}
+                                            onSelect={selectOrder}
+                                            onStatusChange={handleUpdateStatus}
+                                        />
                                     ))
                                 )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                            </Tbody>
+                        </Table>
+                    </TableWrap>
+                </Card>
 
                 {/* Details Panel */}
-                <div className="bg-[#2A2A2A] border border-white/5 p-6 rounded-xl h-fit space-y-6">
-                    <div className="border-b border-white/5 pb-4">
-                        <h2 className="text-xl font-bold flex items-center gap-2">
-                            <ShoppingBag className="w-5 h-5 text-brand-secondary" />
+                <Card as="aside" aria-label="Detalhes do pedido" className="space-y-6 p-5 xl:sticky xl:top-6">
+                    <div className="border-b border-adm-line pb-4">
+                        <h2 className="flex items-center gap-2 text-base font-semibold">
+                            <ShoppingBag className="h-5 w-5 text-adm-accent-ink" aria-hidden="true" />
                             Detalhes do Pedido
                         </h2>
                     </div>
 
                     {!selectedOrder ? (
-                        <div className="text-center py-12 text-gray-500">
-                            Selecione um pedido na lista para visualizar os detalhes completos.
-                        </div>
+                        <EmptyState
+                            className="py-10"
+                            title="Nenhum pedido selecionado"
+                            description="Selecione um pedido na lista para visualizar os detalhes completos."
+                        />
                     ) : (
                         <div className="space-y-6">
                             {/* General info */}
-                            <div className="grid grid-cols-2 gap-4 bg-[#1A1B1D] p-4 rounded-lg text-sm">
+                            <div className="grid grid-cols-2 gap-4 rounded-adm-control bg-adm-sunken p-4 text-sm">
                                 <div className="space-y-1">
-                                    <div className="text-gray-500 text-xs font-semibold">CÓDIGO</div>
-                                    <div className="font-mono text-xs">{selectedOrder.id}</div>
+                                    <div className="text-xs font-semibold text-adm-ink-subtle">CÓDIGO</div>
+                                    <div className="break-all font-mono text-xs">{selectedOrder.id}</div>
                                 </div>
                                 <div className="space-y-1">
-                                    <div className="text-gray-500 text-xs font-semibold">DATA</div>
-                                    <div className="flex items-center gap-1.5 text-xs text-gray-300">
-                                        <Calendar className="w-3.5 h-3.5" />
+                                    <div className="text-xs font-semibold text-adm-ink-subtle">DATA</div>
+                                    <div className="flex items-center gap-1.5 text-xs text-adm-ink-muted">
+                                        <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
                                         {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString('pt-BR') : '-'}
                                     </div>
                                 </div>
@@ -235,45 +255,45 @@ export default function AdminOrdersPage() {
 
                             {/* Client Info */}
                             <div className="space-y-3">
-                                <h3 className="text-sm font-bold text-gray-400 flex items-center gap-2">
-                                    <User className="w-4 h-4" />
+                                <h3 className="flex items-center gap-2 text-sm font-semibold text-adm-ink-muted">
+                                    <User className="h-4 w-4" aria-hidden="true" />
                                     Informações do Cliente
                                 </h3>
-                                <div className="bg-[#1A1B1D] p-4 rounded-lg space-y-1 text-sm">
-                                    <div className="font-semibold">{selectedOrder.user?.name}</div>
-                                    <div className="text-gray-400">{selectedOrder.user?.email}</div>
-                                    <div className="text-gray-400">Tel: {selectedOrder.user?.phone || '-'}</div>
+                                <div className="space-y-1 rounded-adm-control bg-adm-sunken p-4 text-sm">
+                                    <div className="font-medium">{selectedOrder.user?.name}</div>
+                                    <div className="text-adm-ink-muted">{selectedOrder.user?.email}</div>
+                                    <div className="text-adm-ink-muted">Tel: {selectedOrder.user?.phone || '-'}</div>
                                 </div>
                             </div>
 
                             {/* Delivery Address */}
                             <div className="space-y-3">
-                                <h3 className="text-sm font-bold text-gray-400 flex items-center gap-2">
-                                    <MapPin className="w-4 h-4" />
+                                <h3 className="flex items-center gap-2 text-sm font-semibold text-adm-ink-muted">
+                                    <MapPin className="h-4 w-4" aria-hidden="true" />
                                     Endereço de Entrega
                                 </h3>
-                                <div className="bg-[#1A1B1D] p-4 rounded-lg text-sm text-gray-300 space-y-1">
+                                <div className="space-y-1 rounded-adm-control bg-adm-sunken p-4 text-sm text-adm-ink-muted">
                                     <div>{selectedOrder.address?.street}, {selectedOrder.address?.number}</div>
                                     <div>{selectedOrder.address?.neighborhood} - {selectedOrder.address?.city}/{selectedOrder.address?.state}</div>
-                                    <div className="text-xs text-gray-500">CEP: {selectedOrder.address?.zipCode}</div>
+                                    <div className="text-xs text-adm-ink-subtle">CEP: {selectedOrder.address?.zipCode}</div>
                                 </div>
                             </div>
 
                             {/* Items */}
                             <div className="space-y-3">
-                                <h3 className="text-sm font-bold text-gray-400">Itens do Pedido</h3>
-                                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                <h3 className="text-sm font-semibold text-adm-ink-muted">Itens do Pedido</h3>
+                                <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
                                     {selectedOrder.items?.map((item) => (
-                                        <div key={item.id} className="flex justify-between items-center bg-[#1A1B1D] p-3 rounded-lg text-sm">
-                                            <div className="space-y-0.5">
-                                                <div className="font-semibold text-white">
+                                        <div key={item.id} className="flex items-center justify-between gap-3 rounded-adm-control bg-adm-sunken p-3 text-sm">
+                                            <div className="min-w-0 space-y-0.5">
+                                                <div className="font-medium">
                                                     {item.productName || 'Produto'}
                                                 </div>
-                                                <div className="text-xs text-gray-400">
+                                                <div className="text-xs text-adm-ink-muted">
                                                     Qtd: {item.quantity} x R$ {item.price.toFixed(2).replace('.', ',')}
                                                 </div>
                                             </div>
-                                            <div className="font-bold text-white">
+                                            <div className="shrink-0 font-semibold tabular-nums">
                                                 R$ {item.totalPrice.toFixed(2).replace('.', ',')}
                                             </div>
                                         </div>
@@ -282,79 +302,78 @@ export default function AdminOrdersPage() {
                             </div>
 
                             {/* Order Total summary */}
-                            <div className="border-t border-white/5 pt-4 space-y-2 text-sm">
-                                <div className="flex justify-between text-gray-400">
+                            <div className="space-y-2 border-t border-adm-line pt-4 text-sm">
+                                <div className="flex justify-between text-adm-ink-muted">
                                     <span>Desconto Cupom</span>
-                                    <span>- R$ {selectedOrder.discountAmount?.toFixed(2).replace('.', ',') || '0,00'}</span>
+                                    <span className="tabular-nums">- R$ {selectedOrder.discountAmount?.toFixed(2).replace('.', ',') || '0,00'}</span>
                                 </div>
-                                <div className="flex justify-between text-lg font-bold text-white border-t border-white/5 pt-2">
+                                <div className="flex justify-between border-t border-adm-line pt-2 text-lg font-semibold">
                                     <span>Valor Total</span>
-                                    <span className="text-green-500">
+                                    <span className="tabular-nums text-adm-success">
                                         R$ {selectedOrder.total?.toFixed(2).replace('.', ',')}
                                     </span>
                                 </div>
                             </div>
 
                             {/* Status e confirmação manual de pagamento */}
-                            <div className="space-y-3 border-t border-white/5 pt-4">
+                            <div className="space-y-3 border-t border-adm-line pt-4">
                                 <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-400 font-semibold text-xs">STATUS ATUAL</span>
-                                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusStyle(selectedOrder.status)}`}>
-                                        {statusLabel(selectedOrder.status)}
-                                    </span>
+                                    <span className="text-xs font-semibold text-adm-ink-subtle">STATUS ATUAL</span>
+                                    <OrderStatusBadge status={selectedOrder.status} />
                                 </div>
                                 {selectedOrder.manualPaymentConfirmed && (
-                                    <div className="flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300">
-                                        <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <div className="flex items-start gap-2 rounded-adm-control border border-adm-warning/25 bg-adm-warning/10 p-3 text-xs text-adm-warning">
+                                        <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                                         <span>Pagamento confirmado <strong>manualmente</strong> por um administrador (não pelo Asaas).</span>
                                     </div>
                                 )}
 
                                 {MANUAL_CONFIRMABLE_STATUSES.includes(selectedOrder.status) && !confirmingPayment && (
-                                    <button
-                                        type="button"
+                                    <Button
+                                        variant="warning"
+                                        size="sm"
+                                        className="w-full"
                                         onClick={() => setConfirmingPayment(true)}
-                                        className="w-full rounded border border-amber-500/40 py-2 text-xs font-bold text-amber-300 transition-colors hover:bg-amber-500/10"
                                     >
                                         Confirmar pagamento manualmente
-                                    </button>
+                                    </Button>
                                 )}
 
                                 {confirmingPayment && (
-                                    <div className="space-y-2 rounded-lg border border-amber-500/30 bg-[#1A1B1D] p-3">
-                                        <p className="text-xs text-gray-300">
+                                    <div className="space-y-2 rounded-adm-control border border-adm-warning/30 bg-adm-sunken p-3">
+                                        <p className="text-xs text-adm-ink-muted">
                                             Use somente quando o pagamento foi recebido <strong>fora do Asaas</strong>. A confirmação fica registrada
                                             com o seu usuário, data, horário e esta justificativa, e não pode ser desfeita por aqui.
                                         </p>
-                                        <label htmlFor="manual-payment-reason" className="block text-xs font-semibold text-gray-400">
+                                        <label htmlFor="manual-payment-reason" className="block text-xs font-semibold text-adm-ink-muted">
                                             JUSTIFICATIVA (mín. {MIN_REASON_LENGTH} caracteres)
                                         </label>
-                                        <textarea
+                                        <Textarea
                                             id="manual-payment-reason"
                                             value={paymentReason}
                                             onChange={(e) => setPaymentReason(e.target.value)}
                                             maxLength={500}
                                             rows={3}
                                             placeholder="Ex.: Transferência bancária conferida no extrato em 17/11."
-                                            className="w-full rounded border border-white/10 bg-[#2A2A2A] p-2 text-sm text-white focus:border-brand-secondary focus:outline-none"
                                         />
                                         <div className="flex gap-2">
-                                            <button
-                                                type="button"
+                                            <Button
+                                                size="sm"
+                                                className="flex-1"
                                                 onClick={() => { setConfirmingPayment(false); setPaymentReason(''); }}
                                                 disabled={submittingPayment}
-                                                className="flex-1 rounded bg-[#3A3A3A] py-2 text-xs font-bold text-white hover:bg-white/10 disabled:opacity-50"
                                             >
                                                 Cancelar
-                                            </button>
-                                            <button
-                                                type="button"
+                                            </Button>
+                                            <Button
+                                                variant="caution"
+                                                size="sm"
+                                                className="flex-1"
                                                 onClick={handleConfirmPayment}
                                                 disabled={submittingPayment || paymentReason.trim().length < MIN_REASON_LENGTH}
-                                                className="flex-1 rounded bg-amber-600 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
                                             >
                                                 {submittingPayment ? 'Confirmando...' : 'Confirmar pagamento'}
-                                            </button>
+                                            </Button>
                                         </div>
                                     </div>
                                 )}
@@ -362,38 +381,40 @@ export default function AdminOrdersPage() {
 
                             {/* Quick Action Status Change */}
                             <div className="space-y-2 pt-2">
-                                <label className="text-xs text-gray-400 font-semibold block">ALTERAR STATUS</label>
+                                <span className="block text-xs font-semibold text-adm-ink-subtle">ALTERAR STATUS</span>
                                 <div className="flex gap-2">
-                                    <button 
+                                    <Button
+                                        size="sm"
+                                        className="flex-1 border-adm-violet/40 bg-adm-violet/15 text-adm-violet hover:bg-adm-violet/25"
                                         onClick={() => handleUpdateStatus(selectedOrder.id, 'SHIPPED')}
-                                        className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 text-xs font-bold rounded text-white transition-colors"
                                     >
                                         Marcar como Enviado
-                                    </button>
-                                    <button 
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        className="flex-1 border-adm-success/40 bg-adm-success/15 text-adm-success hover:bg-adm-success/25"
                                         onClick={() => handleUpdateStatus(selectedOrder.id, 'DELIVERED')}
-                                        className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-xs font-bold rounded text-white transition-colors"
                                     >
                                         Marcar como Entregue
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
 
                             {/* Auditoria de alterações administrativas */}
                             {auditEntries && auditEntries.length > 0 && (
-                                <div className="space-y-2 border-t border-white/5 pt-4">
-                                    <h3 className="flex items-center gap-2 text-sm font-bold text-gray-400">
-                                        <History className="h-4 w-4" />
+                                <div className="space-y-2 border-t border-adm-line pt-4">
+                                    <h3 className="flex items-center gap-2 text-sm font-semibold text-adm-ink-muted">
+                                        <History className="h-4 w-4" aria-hidden="true" />
                                         Histórico administrativo
                                     </h3>
                                     <ul className="space-y-2">
                                         {auditEntries.map((entry) => (
-                                            <li key={entry.id} className="rounded-lg bg-[#1A1B1D] p-3 text-xs text-gray-300 space-y-1">
-                                                <div className="font-semibold text-white">
+                                            <li key={entry.id} className="space-y-1 rounded-adm-control bg-adm-sunken p-3 text-xs text-adm-ink-muted">
+                                                <div className="font-semibold text-adm-ink">
                                                     {statusLabel(entry.previousStatus)} → {statusLabel(entry.newStatus)}
-                                                    <span className="ml-2 font-normal text-amber-400">(confirmação manual)</span>
+                                                    <span className="ml-2 font-normal text-adm-warning">(confirmação manual)</span>
                                                 </div>
-                                                <div className="text-gray-400">
+                                                <div className="text-adm-ink-subtle">
                                                     {entry.actorName} · {new Date(entry.createdAt).toLocaleString('pt-BR')}
                                                 </div>
                                                 <div>{entry.reason}</div>
@@ -404,7 +425,7 @@ export default function AdminOrdersPage() {
                             )}
                         </div>
                     )}
-                </div>
+                </Card>
             </div>
         </div>
     );
