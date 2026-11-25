@@ -221,6 +221,27 @@ antiga continua vendendo por alguns instantes e essas vendas não entram no livr
 - divergência que **cresce** ou aparece sem deploy → há uma escrita de estoque fora do livro; investigue (o teste
   `StockLedgerGuardTest` impede `setStock` fora dos serviços que registram no livro).
 
+### Migration V28 (notas operacionais)
+
+- **DDL do MySQL não é transacional.** Se a `V28__create_stock_ledger.sql` falhar no meio, ficam tabelas parciais e o Flyway
+  registra a migration como falha em `flyway_schema_history` (`success = 0`), impedindo a subida do app.
+- **Limpeza:** `DROP TABLE` das tabelas já criadas, nesta ordem: `stock_movement`, `stock_entry_item`, `stock_entry`, `supplier`
+  (use `IF EXISTS`); depois remova a linha `version = '28'` de `flyway_schema_history` (ou rode `flyway repair`) e publique de novo.
+- **Antes do merge:** a versão do MySQL (`CHECK` exige 8.0.16+) e a collation de `product_variants`/`users` (os FKs exigem
+  collation compatível) serão confirmadas no Aiven pelo responsável pela publicação. Isso ainda não foi verificado.
+
+### Script manual `db/catalog/01_cleanup_simulated_data.sql`
+
+Ele apaga `product_variants` e, com o livro de estoque, passa a falhar se existirem movimentos (o FK de `stock_movement` protege
+o histórico). Antes de `DELETE FROM product_variants` seria preciso apagar `stock_movement`, `stock_entry_item` e `stock_entry`
+(nessa ordem). O script **não foi alterado** e **não deve ser executado em produção**.
+
+### Exclusão de usuário
+
+`DELETE /api/users/{id}` responde **409** com mensagem clara quando o usuário registrou notas de entrada, ajustes ou
+movimentações de estoque (histórico que referencia o usuário). Para retirar o acesso, altere o papel do usuário. Usuários sem
+esse histórico continuam sendo excluídos normalmente.
+
 ## Executar o backend com Docker
 
 O backend no Docker conecta ao banco MySQL do Aiven; nenhum servidor MySQL local é iniciado. No PowerShell, entre na pasta `backendJava` e configure `.env` com os dados do Aiven. Se ainda não houver um `.env`, copie o exemplo:
