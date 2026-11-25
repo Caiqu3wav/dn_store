@@ -24,6 +24,8 @@ import com.dnstore.backend.repository.ProductVariantRepository;
 import com.dnstore.backend.repository.ShippingQuoteOptionRepository;
 import com.dnstore.backend.model.Payment;
 import com.dnstore.backend.model.enums.PaymentStatus;
+import com.dnstore.backend.model.enums.StockMovementType;
+import com.dnstore.backend.model.enums.StockReferenceType;
 import com.dnstore.backend.service.shipping.ShippingGateway.ShippingItem;
 import com.dnstore.backend.service.shipping.ShippingQuote;
 import lombok.extern.slf4j.Slf4j;
@@ -66,6 +68,7 @@ public class OrderService {
     private final FinancialBlockRepository financialBlockRepository;
     private final ShippingQuoteOptionRepository shippingQuoteOptionRepository;
     private final MelhorEnvioProperties melhorEnvioProperties;
+    private final StockLedgerService stockLedger;
 
     @Value("${shipping.gateway:simulated}")
     private String shippingGateway;
@@ -76,7 +79,7 @@ public class OrderService {
             CouponRepository couponRepository, ProductVariantRepository productVariantRepository,
             OrderInventoryService orderInventoryService, PaymentRepository paymentRepository,
             FinancialBlockRepository financialBlockRepository, ShippingQuoteOptionRepository shippingQuoteOptionRepository,
-            MelhorEnvioProperties melhorEnvioProperties) {
+            MelhorEnvioProperties melhorEnvioProperties, StockLedgerService stockLedger) {
         this.deliveryService = deliveryService;
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
@@ -89,6 +92,7 @@ public class OrderService {
         this.financialBlockRepository = financialBlockRepository;
         this.shippingQuoteOptionRepository = shippingQuoteOptionRepository;
         this.melhorEnvioProperties = melhorEnvioProperties;
+        this.stockLedger = stockLedger;
     }
 
     /** Compatibility constructor retained for focused controller serialization tests. */
@@ -99,7 +103,7 @@ public class OrderService {
             ShippingQuoteOptionRepository shippingQuoteOptionRepository, MelhorEnvioProperties melhorEnvioProperties) {
         this(deliveryService, orderRepository, cartRepository, addressRepository, couponService, couponRepository,
                 productVariantRepository, orderInventoryService, paymentRepository, null,
-                shippingQuoteOptionRepository, melhorEnvioProperties);
+                shippingQuoteOptionRepository, melhorEnvioProperties, null);
     }
 
     public record AddressData(
@@ -362,6 +366,7 @@ public class OrderService {
 
         // 5. Persistir
         Order savedOrder = orderRepository.save(order);
+        recordSaleMovements(savedOrder, cart, lockedVariants);
         log.info("order.checkout_complete orderId={} userId={} total={} shipping={}",
                 savedOrder.getId(), user.getId(), savedOrder.getTotal(), savedOrder.getShippingCost());
 
@@ -370,6 +375,27 @@ public class OrderService {
         cartRepository.save(cart);
 
         return savedOrder;
+    }
+
+    /**
+     * Registra no livro de estoque a baixa já aplicada acima (não altera quando nem quanto é baixado). As
+     * variantes continuam travadas por esta transação, então o saldo anterior é o atual somado à quantidade.
+     */
+    private void recordSaleMovements(Order savedOrder, Cart cart, java.util.Map<UUID, ProductVariant> lockedVariants) {
+        if (stockLedger == null) {
+            return;
+        }
+        java.util.Map<UUID, Integer> quantities = new java.util.LinkedHashMap<>();
+        for (CartItem cartItem : cart.getItems()) {
+            quantities.merge(cartItem.getProductVariant().getId(), cartItem.getQuantity(), Integer::sum);
+        }
+        StockLedgerService.MovementSpec spec = StockLedgerService.MovementSpec.of(
+                StockMovementType.SAIDA_VENDA, StockReferenceType.ORDER, savedOrder.getId())
+                .withActor(savedOrder.getUser());
+        quantities.forEach((variantId, quantity) -> {
+            ProductVariant variant = lockedVariants.get(variantId);
+            stockLedger.recordApplied(variant, variant.getStock() + quantity, spec);
+        });
     }
 
     private List<ShippingItem> shippingItems(Cart cart) {

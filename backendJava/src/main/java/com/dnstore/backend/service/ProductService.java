@@ -12,6 +12,8 @@ import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.repository.CategoryRepository;
 import com.dnstore.backend.repository.ProductRepository;
 import com.dnstore.backend.repository.ProductVariantRepository;
+import com.dnstore.backend.repository.StockMovementRepository;
+import com.dnstore.backend.model.enums.StockMovementType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -42,6 +44,8 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
     private final ProductVariantRepository productVariantRepository;
     private final ProductDefaultsService productDefaultsService;
+    private final StockLedgerService stockLedger;
+    private final StockMovementRepository stockMovementRepository;
 
     // --- R: Read ---
     public List<Product> findAll() {
@@ -127,6 +131,7 @@ public class ProductService {
             ensureLegacyDefaultVariant(saved);
         }
         persistMissingVariantSkus(saved);
+        recordInitialStock(saved);
         return saved;
     }
 
@@ -157,6 +162,7 @@ public class ProductService {
                 ensureLegacyDefaultVariant(savedProduct);
             }
             persistMissingVariantSkus(savedProduct);
+            recordInitialStock(savedProduct);
             saved.add(savedProduct);
         }
         return saved;
@@ -201,12 +207,14 @@ public class ProductService {
                 existingPhysical.setHeight(updatedPhysical.getHeight());
                 existingPhysical.setDepth(updatedPhysical.getDepth());
             }
+            List<ProductVariant> addedVariants = List.of();
             if (updatedData.getVariants() != null && !updatedData.getVariants().isEmpty()) {
-                mergeVariants(existing, updatedData.getVariants());
+                addedVariants = mergeVariants(existing, updatedData.getVariants());
             }
             synchronizeAggregateStock(existing);
             Product saved = productRepository.save(existing);
             persistMissingVariantSkus(saved);
+            recordInitialStock(addedVariants);
             return saved;
         });
     }
@@ -239,7 +247,8 @@ public class ProductService {
         }
     }
 
-    private void mergeVariants(Product product, List<ProductVariant> incomingVariants) {
+    /** @return as variações novas criadas por este merge (para registrar o estoque inicial no livro). */
+    private List<ProductVariant> mergeVariants(Product product, List<ProductVariant> incomingVariants) {
         validateVariants(incomingVariants);
         List<ProductVariant> currentVariants = product.getVariants() == null
                 ? new ArrayList<>()
@@ -250,8 +259,12 @@ public class ProductService {
                 .sorted(java.util.Comparator.comparing(UUID::toString))
                 .toList();
         if (!currentIds.isEmpty()) {
-            productVariantRepository.findAllByIdInForUpdate(currentIds);
+            // Trava e RE-LÊ as variações do banco (refresh com lock): o saldo anterior registrado no livro precisa
+            // ser o real, não o da coleção carregada antes do lock. O valor absoluto do formulário continua
+            // sobrescrevendo (comportamento anterior); o livro registra a diferença real.
+            stockLedger.lockVariants(currentIds);
         }
+        List<ProductVariant> added = new ArrayList<>();
         for (ProductVariant incoming : incomingVariants) {
             ProductVariant current = currentVariants.stream()
                     .filter(variant -> incoming.getSize().equals(variant.getSize()))
@@ -260,8 +273,13 @@ public class ProductService {
             if (current == null) {
                 incoming.setProduct(product);
                 currentVariants.add(incoming);
+                added.add(incoming);
             } else {
+                int stockBefore = current.getStock();
                 current.setStock(incoming.getStock());
+                stockLedger.recordApplied(current, stockBefore, StockLedgerService.MovementSpec
+                        .of(StockMovementType.EDICAO_CADASTRO)
+                        .withReason(null, "Alteração de estoque pelo cadastro do produto"));
                 current.setActive(incoming.isActive());
                 current.setColor(incoming.getColor());
                 current.setType(incoming.getType());
@@ -272,6 +290,26 @@ public class ProductService {
         }
         product.setVariants(currentVariants);
         synchronizeAggregateStock(product);
+        return added;
+    }
+
+    private void recordInitialStock(Product product) {
+        if (product.getVariants() != null) {
+            recordInitialStock(product.getVariants());
+        }
+    }
+
+    /** Variações recém-criadas com estoque > 0 entram no livro como saldo vindo do cadastro (antes = 0). */
+    private void recordInitialStock(List<ProductVariant> newVariants) {
+        for (ProductVariant variant : newVariants) {
+            if (variant.getStock() <= 0) {
+                continue;
+            }
+            ProductVariant persisted = variant.getId() == null ? productVariantRepository.save(variant) : variant;
+            stockLedger.recordApplied(persisted, 0, StockLedgerService.MovementSpec
+                    .of(StockMovementType.EDICAO_CADASTRO)
+                    .withReason(null, "Estoque inicial informado no cadastro do produto"));
+        }
     }
 
     private void synchronizeAggregateStock(Product product) {
@@ -426,15 +464,16 @@ public class ProductService {
 
     /**
      * Remove o produto. Se já houver pedidos ou carrinhos que o referenciam, o banco impede o
-     * DELETE (FK em order_items/cart_items); nesse caso ele é apenas arquivado (active=false),
-     * preservando o histórico de pedidos.
+     * DELETE (FK em order_items/cart_items/stock_movement); nesse caso ele é apenas arquivado
+     * (active=false), preservando o histórico de pedidos e do livro de estoque.
      *
      * @return o resultado da remoção, ou vazio se o produto não existe
      */
     @Transactional
     public Optional<ProductRemovalOutcome> delete(UUID id) {
         return productRepository.findById(id).map(product -> {
-            if (productRepository.isReferencedByOrders(id) || productRepository.isReferencedByCarts(id)) {
+            if (productRepository.isReferencedByOrders(id) || productRepository.isReferencedByCarts(id)
+                    || stockMovementRepository.isProductReferenced(id)) {
                 product.setActive(false);
                 productRepository.save(product);
                 return ProductRemovalOutcome.ARCHIVED;

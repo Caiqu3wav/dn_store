@@ -51,6 +51,12 @@ class ProductServiceTest {
     @Mock
     private ProductDefaultsService productDefaultsService;
 
+    @Mock
+    private StockLedgerService stockLedger;
+
+    @Mock
+    private com.dnstore.backend.repository.StockMovementRepository stockMovementRepository;
+
     @InjectMocks
     private ProductService productService;
 
@@ -63,7 +69,14 @@ class ProductServiceTest {
         category.setName("Roupas");
         category.setSlug("roupas");
         lenient().when(productVariantRepository.save(any(ProductVariant.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+                .thenAnswer(invocation -> {
+                    // Como o JPA: o save atribui o id da variação nova.
+                    ProductVariant saved = invocation.getArgument(0);
+                    if (saved.getId() == null) {
+                        saved.setId(UUID.randomUUID());
+                    }
+                    return saved;
+                });
     }
 
     @Test
@@ -89,6 +102,9 @@ class ProductServiceTest {
         assertThat(saved.getId()).isNotNull();
         verify(productVariantRepository)
                 .save(argThat(variant -> "Único".equals(variant.getSize()) && variant.getStock() == 12));
+        // D2: o estoque inicial entra no livro como EDICAO_CADASTRO, saldo anterior 0.
+        verify(stockLedger).recordApplied(argThat(variant -> variant.getStock() == 12), eq(0), argThat(spec ->
+                spec.type() == com.dnstore.backend.model.enums.StockMovementType.EDICAO_CADASTRO));
     }
 
     @Test
@@ -297,6 +313,24 @@ class ProductServiceTest {
 
         assertThat(outcome).contains(ProductRemovalOutcome.ARCHIVED);
         assertThat(product.isActive()).isFalse();
+        verify(productRepository, never()).delete(any(Product.class));
+    }
+
+    @Test
+    void delete_whenProductHasStockMovements_shouldArchiveInsteadOfDeleting() {
+        UUID id = UUID.randomUUID();
+        PhysicalProduct product = new PhysicalProduct();
+        product.setId(id);
+        product.setActive(true);
+        when(productRepository.findById(id)).thenReturn(Optional.of(product));
+        when(productRepository.isReferencedByOrders(id)).thenReturn(false);
+        when(productRepository.isReferencedByCarts(id)).thenReturn(false);
+        when(stockMovementRepository.isProductReferenced(id)).thenReturn(true);
+
+        Optional<ProductRemovalOutcome> outcome = productService.delete(id);
+
+        // A FK do livro (RESTRICT) impediria o DELETE físico: o produto é arquivado.
+        assertThat(outcome).contains(ProductRemovalOutcome.ARCHIVED);
         verify(productRepository, never()).delete(any(Product.class));
     }
 

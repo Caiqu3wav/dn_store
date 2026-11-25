@@ -8,6 +8,7 @@ import com.dnstore.backend.model.PhysicalProduct;
 import com.dnstore.backend.model.Product;
 import com.dnstore.backend.model.ProductDefaultRule;
 import com.dnstore.backend.model.ProductVariant;
+import com.dnstore.backend.model.enums.StockMovementType;
 import com.dnstore.backend.model.ProductVariantSizes;
 import com.dnstore.backend.repository.CategoryRepository;
 import com.dnstore.backend.repository.ProductDefaultRuleRepository;
@@ -39,6 +40,7 @@ public class ProductDefaultsService {
     private final ProductVariantRepository productVariantRepository;
     private final CategoryRepository categoryRepository;
     private final ObjectMapper objectMapper;
+    private final StockLedgerService stockLedger;
 
     @Transactional(readOnly = true)
     public List<ProductDefaultRuleResponse> listRules() {
@@ -57,12 +59,24 @@ public class ProductDefaultsService {
                 .filter(product -> !excludedIds.contains(product.getId()))
                 .toList();
 
+        List<ProductVariant> legacyVariants = new java.util.ArrayList<>();
         for (Product product : toUpdate) {
-            applyValues(product, normalized.values());
+            ProductVariant legacyVariant = applyValues(product, normalized.values());
+            if (legacyVariant != null) {
+                legacyVariants.add(legacyVariant);
+            }
         }
 
         List<Product> savedProducts = productRepository.saveAll(toUpdate);
         savedProducts.forEach(this::persistMissingVariantSkus);
+        // O estoque legado do produto virou uma variação "Único": registra-o no livro (antes = 0).
+        for (ProductVariant legacyVariant : legacyVariants) {
+            ProductVariant persisted = legacyVariant.getId() == null
+                    ? productVariantRepository.save(legacyVariant) : legacyVariant;
+            stockLedger.recordApplied(persisted, 0, StockLedgerService.MovementSpec
+                    .of(StockMovementType.EDICAO_CADASTRO)
+                    .withReason(null, "Estoque legado do produto convertido em variação por padrão de produto"));
+        }
 
         ProductDefaultRule rule = new ProductDefaultRule();
         rule.setName(normalized.name());
@@ -290,7 +304,8 @@ public class ProductDefaultsService {
                 || product.getPrice() != null && product.getPrice().compareTo(criteria.maxPrice()) <= 0;
     }
 
-    private void applyValues(Product product, ProductDefaultRuleRequest.Values values) {
+    /** @return a variação "Único" criada a partir do estoque legado do produto, se houve; senão null. */
+    private ProductVariant applyValues(Product product, ProductDefaultRuleRequest.Values values) {
         if (values.name() != null) product.setName(values.name());
         if (values.description() != null) product.setDescription(values.description());
         if (values.price() != null) product.setPrice(values.price());
@@ -320,17 +335,16 @@ public class ProductDefaultsService {
             if (values.depth() != null) physical.setDepth(values.depth());
         }
 
-        if (values.sizes() != null) {
-            addMissingVariants(product, values.sizes());
-        }
+        return values.sizes() == null ? null : addMissingVariants(product, values.sizes());
     }
 
-    private void addMissingVariants(Product product, List<String> sizes) {
+    private ProductVariant addMissingVariants(Product product, List<String> sizes) {
+        ProductVariant legacyVariant = null;
         List<ProductVariant> variants = product.getVariants() == null
                 ? new ArrayList<>()
                 : new ArrayList<>(product.getVariants());
         if (variants.isEmpty() && product instanceof PhysicalProduct physical && physical.getStock() > 0) {
-            ProductVariant legacyVariant = new ProductVariant();
+            legacyVariant = new ProductVariant();
             legacyVariant.setProduct(product);
             legacyVariant.setSize("Único");
             legacyVariant.setColor(product.getColor());
@@ -353,6 +367,7 @@ public class ProductDefaultsService {
             }
         }
         product.setVariants(variants);
+        return legacyVariant;
     }
 
     private void persistMissingVariantSkus(Product product) {

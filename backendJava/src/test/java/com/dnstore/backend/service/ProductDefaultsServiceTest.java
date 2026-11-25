@@ -42,13 +42,16 @@ class ProductDefaultsServiceTest {
     private ProductVariantRepository productVariantRepository;
     @Mock
     private CategoryRepository categoryRepository;
+    @Mock
+    private StockLedgerService stockLedger;
 
     private ProductDefaultsService service;
 
     @BeforeEach
     void setUp() {
         service = new ProductDefaultsService(
-                ruleRepository, productRepository, productVariantRepository, categoryRepository, new ObjectMapper());
+                ruleRepository, productRepository, productVariantRepository, categoryRepository, new ObjectMapper(),
+                stockLedger);
     }
 
     @Test

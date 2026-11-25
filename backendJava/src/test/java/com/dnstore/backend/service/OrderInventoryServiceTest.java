@@ -27,6 +27,9 @@ import static org.mockito.Mockito.lenient;
 class OrderInventoryServiceTest {
 
     @Mock
+    private StockLedgerService stockLedger;
+
+    @Mock
     private CouponService couponService;
 
     @Mock
@@ -38,7 +41,7 @@ class OrderInventoryServiceTest {
 
     @BeforeEach
     void setUp() {
-        inventoryService = new OrderInventoryService(productVariantRepository, couponService);
+        inventoryService = new OrderInventoryService(productVariantRepository, couponService, stockLedger);
         variant = new ProductVariant();
         variant.setId(UUID.randomUUID());
         variant.setStock(2);
@@ -51,6 +54,7 @@ class OrderInventoryServiceTest {
         item.setProductVariant(variant);
         item.setQuantity(3);
         order = new Order();
+        order.setId(UUID.randomUUID());
         order.setItems(List.of(item));
         when(productVariantRepository.findAllByIdInForUpdate(anyCollection()))
                 .thenReturn(List.of(variant));
@@ -66,6 +70,11 @@ class OrderInventoryServiceTest {
         assertThat(variant.getStock()).isEqualTo(5);
         assertThat(order.isStockReleased()).isTrue();
         verify(productVariantRepository, times(1)).save(variant);
+        // Livro: uma única devolução, com o saldo anterior (2) e a referência ao pedido.
+        verify(stockLedger, times(1)).recordApplied(eq(variant), eq(2), argThat(spec ->
+                spec.type() == com.dnstore.backend.model.enums.StockMovementType.DEVOLUCAO_PEDIDO
+                        && spec.referenceType() == com.dnstore.backend.model.enums.StockReferenceType.ORDER
+                        && order.getId().toString().equals(spec.referenceId())));
     }
 
     @Test
@@ -77,6 +86,8 @@ class OrderInventoryServiceTest {
 
         assertThat(variant.getStock()).isEqualTo(2);
         assertThat(order.isStockReleased()).isFalse();
+        verify(stockLedger).recordApplied(eq(variant), eq(5), argThat(spec ->
+                spec.type() == com.dnstore.backend.model.enums.StockMovementType.SAIDA_VENDA));
     }
 
     @Test
@@ -90,6 +101,7 @@ class OrderInventoryServiceTest {
 
         assertThat(variant.getStock()).isEqualTo(2);
         verify(productVariantRepository, never()).save(any(ProductVariant.class));
+        verifyNoInteractions(stockLedger);
     }
 
     @Test

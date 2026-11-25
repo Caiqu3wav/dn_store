@@ -5,6 +5,8 @@ import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.OrderItem;
 import com.dnstore.backend.model.ProductVariant;
+import com.dnstore.backend.model.enums.StockMovementType;
+import com.dnstore.backend.model.enums.StockReferenceType;
 import com.dnstore.backend.repository.ProductVariantRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ public class OrderInventoryService {
 
     private final ProductVariantRepository productVariantRepository;
     private final CouponService couponService;
+    private final StockLedgerService stockLedger;
 
     public void releaseReservedStock(Order order) {
         if (order.isStockReleased()) {
@@ -30,8 +33,11 @@ public class OrderInventoryService {
         Map<UUID, ProductVariant> variants = lockVariants(quantities.keySet());
         quantities.forEach((variantId, quantity) -> {
             ProductVariant variant = variants.get(variantId);
-            variant.setStock(Math.addExact(variant.getStock(), quantity));
+            int before = variant.getStock();
+            variant.setStock(Math.addExact(before, quantity));
             productVariantRepository.save(variant);
+            stockLedger.recordApplied(variant, before, StockLedgerService.MovementSpec.of(
+                    StockMovementType.DEVOLUCAO_PEDIDO, StockReferenceType.ORDER, order.getId()));
         });
         // A reserva do pedido é estoque + utilização do cupom. Os dois voltam juntos e uma única vez:
         // a flag stockReleased (checada no início) impede devolução em dobro em cancelamento/expiração repetidos.
@@ -57,8 +63,12 @@ public class OrderInventoryService {
         });
         quantities.forEach((variantId, quantity) -> {
             ProductVariant variant = variants.get(variantId);
-            variant.setStock(variant.getStock() - quantity);
+            int before = variant.getStock();
+            variant.setStock(before - quantity);
             productVariantRepository.save(variant);
+            stockLedger.recordApplied(variant, before, StockLedgerService.MovementSpec.of(
+                    StockMovementType.SAIDA_VENDA, StockReferenceType.ORDER, order.getId())
+                    .withReason(null, "Reativação de pedido que já havia devolvido o estoque"));
         });
         if (order.getCoupon() != null) {
             couponService.reapplyUsage(order.getCoupon());

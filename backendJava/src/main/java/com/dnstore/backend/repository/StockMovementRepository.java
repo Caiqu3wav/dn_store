@@ -9,17 +9,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
 /**
  * Livro append-only: este repositório expõe só leitura e inserção. Não declara (e um teste proíbe) métodos de
- * UPDATE/DELETE.
+ * UPDATE/DELETE. Por isso NÃO estende JpaSpecificationExecutor (que traz delete(Specification)); a busca com
+ * filtros é redeclarada abaixo e resolvida pelo SimpleJpaRepository.
  */
-public interface StockMovementRepository extends Repository<StockMovement, UUID>,
-        JpaSpecificationExecutor<StockMovement> {
+public interface StockMovementRepository extends Repository<StockMovement, UUID> {
 
     StockMovement save(StockMovement movement);
 
