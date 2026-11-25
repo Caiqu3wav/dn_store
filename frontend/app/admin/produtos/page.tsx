@@ -2,15 +2,26 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Plus, Search, Edit, Trash2, Filter, X, Package, Image as ImageIcon } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { Plus, Search, Edit, Trash2, Filter, X, Package, Check, Image as ImageIcon } from 'lucide-react';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'react-hot-toast';
 import { fetcher, productService } from '@/services/productService';
 import { Category, Product } from '@/types';
-import ProductDefaultsManager from './ProductDefaultsManager';
 import { productColorOptions } from '@/utils/productColor';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+
+// O modal de padrões (~440 linhas) só é usado ao clicar no botão; fica fora do bundle inicial da lista.
+// O placeholder reproduz o botão para o cabeçalho não mudar de tamanho enquanto o chunk carrega.
+const ProductDefaultsManager = dynamic(() => import('./ProductDefaultsManager'), {
+    ssr: false,
+    loading: () => (
+        <button type="button" disabled className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-brand-secondary/60 px-3 text-sm font-medium text-red-200 opacity-60 sm:px-4">
+            <Check className="h-4 w-4" /> Definir padrões
+        </button>
+    ),
+});
 
 export default function AdminProductsPage() {
     const [searchTerm, setSearchTerm] = useState('');
