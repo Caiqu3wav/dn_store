@@ -103,6 +103,8 @@ class OrderCouponAndManualPaymentMySqlIT {
         for (String couponId : couponIds) {
             jdbc.update("DELETE FROM coupons WHERE id = ?", couponId);
         }
+        // O livro de estoque referencia a variação (FK): devolução/cancelamento gravam movimentos.
+        jdbc.update("DELETE FROM stock_movement WHERE product_variant_id = ?", variantId);
         jdbc.update("DELETE FROM product_variants WHERE id = ?", variantId);
         jdbc.update("DELETE FROM physical_products WHERE id = ?", productId);
         jdbc.update("DELETE FROM products WHERE id = ?", productId);

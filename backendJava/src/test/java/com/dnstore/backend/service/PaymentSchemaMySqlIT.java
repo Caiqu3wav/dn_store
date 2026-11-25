@@ -105,6 +105,8 @@ class PaymentSchemaMySqlIT {
             jdbc.update("DELETE FROM shipping_quote_options WHERE id = ?", shippingQuoteOptionId);
         }
         if (variantId != null) {
+            // O livro de estoque referencia a variação (FK): devolução/cancelamento gravam movimentos.
+            jdbc.update("DELETE FROM stock_movement WHERE product_variant_id = ?", variantId);
             jdbc.update("DELETE FROM product_variants WHERE id = ?", variantId);
         }
         if (productId != null) {
