@@ -93,7 +93,7 @@ export function Modal({ open, onClose, title, description, children, footer, siz
 
     return createPortal(
         <div
-            className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 backdrop-blur-[2px] sm:items-center sm:p-6"
+            className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 backdrop-blur-[2px] [color-scheme:dark] sm:items-center sm:p-6"
             onMouseDown={(event) => {
                 if (dismissOnOverlay && event.target === event.currentTarget) onClose();
             }}

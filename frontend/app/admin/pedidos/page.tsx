@@ -39,21 +39,21 @@ type OrderRowProps = {
 const OrderRow = memo(function OrderRow({ order, selected, onSelect, onStatusChange }: OrderRowProps) {
     return (
         <tr className={cn(rowClass(selected), 'cursor-pointer')} onClick={() => onSelect(order)}>
-            <Td className="whitespace-nowrap font-mono text-xs text-adm-ink-muted">
-                {order.id.slice(0, 8)}...
+            <Td className="whitespace-nowrap px-3">
+                <div className="font-mono text-xs text-adm-ink-muted">{order.id.slice(0, 8)}...</div>
+                <div className="text-xs text-adm-ink-subtle">
+                    {order.createdAt ? new Date(order.createdAt).toLocaleDateString('pt-BR') : '-'}
+                </div>
             </Td>
-            <Td className="max-w-44">
+            <Td className="max-w-36 px-3">
                 <div className="truncate font-medium">{order.user?.name || 'Cliente'}</div>
                 <div className="truncate text-xs text-adm-ink-subtle">{order.user?.email}</div>
             </Td>
-            <Td className="whitespace-nowrap text-adm-ink-muted">
-                {order.createdAt ? new Date(order.createdAt).toLocaleDateString('pt-BR') : '-'}
-            </Td>
-            <Td className="whitespace-nowrap font-medium tabular-nums">
+            <Td className="whitespace-nowrap px-3 font-medium tabular-nums">
                 R$ {order.total?.toFixed(2).replace('.', ',')}
             </Td>
-            <Td>
-                <div className="flex items-center gap-2">
+            <Td className="px-3" onClick={(e) => e.stopPropagation()}>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <OrderStatusBadge status={order.status} />
                     {order.manualPaymentConfirmed && (
                         <Badge tone="warning" className="px-2 py-0 text-[10px]">
@@ -61,26 +61,24 @@ const OrderRow = memo(function OrderRow({ order, selected, onSelect, onStatusCha
                         </Badge>
                     )}
                 </div>
+                <Select
+                    value={order.status}
+                    aria-label={`Alterar status do pedido ${order.id.slice(0, 8)}`}
+                    onChange={(e) => onStatusChange(order.id, e.target.value)}
+                    className="mt-1.5 min-h-9 w-36 truncate py-1 text-xs font-medium"
+                >
+                    {!ADMIN_SETTABLE_STATUSES.includes(order.status) && (
+                        <option value={order.status} disabled>{statusLabel(order.status)}</option>
+                    )}
+                    {ADMIN_SETTABLE_STATUSES.map((status) => (
+                        <option key={status} value={status}>{statusLabel(status)}</option>
+                    ))}
+                </Select>
             </Td>
-            <Td className="text-right" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-end gap-2">
-                    <IconButton label="Visualizar Detalhes" onClick={() => onSelect(order)}>
-                        <Eye className="h-4 w-4" aria-hidden="true" />
-                    </IconButton>
-                    <Select
-                        value={order.status}
-                        aria-label={`Alterar status do pedido ${order.id.slice(0, 8)}`}
-                        onChange={(e) => onStatusChange(order.id, e.target.value)}
-                        className="min-h-9 w-44 truncate py-1 text-xs font-medium"
-                    >
-                        {!ADMIN_SETTABLE_STATUSES.includes(order.status) && (
-                            <option value={order.status} disabled>{statusLabel(order.status)}</option>
-                        )}
-                        {ADMIN_SETTABLE_STATUSES.map((status) => (
-                            <option key={status} value={status}>{statusLabel(status)}</option>
-                        ))}
-                    </Select>
-                </div>
+            <Td className="px-3 text-right" onClick={(e) => e.stopPropagation()}>
+                <IconButton label="Visualizar Detalhes" onClick={() => onSelect(order)}>
+                    <Eye className="h-4 w-4" aria-hidden="true" />
+                </IconButton>
             </Td>
         </tr>
     );
@@ -174,26 +172,25 @@ export default function AdminOrdersPage() {
                         <Table>
                             <Thead>
                                 <tr>
-                                    <Th>Cód Pedido</Th>
-                                    <Th>Cliente</Th>
-                                    <Th>Data</Th>
-                                    <Th>Total</Th>
-                                    <Th>Status</Th>
-                                    <Th className="text-right">Ações</Th>
+                                    <Th className="px-3">Cód Pedido / Data</Th>
+                                    <Th className="px-3">Cliente</Th>
+                                    <Th className="px-3">Total</Th>
+                                    <Th className="px-3">Status</Th>
+                                    <Th className="px-3 text-right">Ações</Th>
                                 </tr>
                             </Thead>
                             <Tbody>
                                 {ordersError && !allOrders ? (
                                     <tr>
-                                        <td colSpan={6}>
+                                        <td colSpan={5}>
                                             <ErrorState title="Não foi possível carregar os pedidos." onRetry={() => { void mutate(); }} />
                                         </td>
                                     </tr>
                                 ) : !orders ? (
-                                    <TableSkeletonRows rows={8} columns={6} />
+                                    <TableSkeletonRows rows={8} columns={5} />
                                 ) : orders.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6}>
+                                        <td colSpan={5}>
                                             <EmptyState
                                                 icon={ShoppingBag}
                                                 title={showUnpaid || unpaidCount === 0
