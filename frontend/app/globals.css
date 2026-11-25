@@ -56,3 +56,39 @@ body {
 .text-outline {
   -webkit-text-stroke: 1px black;
 }
+
+/*
+ * Tokens do painel admin (prefixo adm- para não colidir com a loja: o Button da loja já usa
+ * `hover:bg-accent`). Escala de superfícies: canvas < sunken < surface < raised.
+ * Contraste (WCAG) medido contra adm-surface: ink 15:1, ink-muted 7.5:1, ink-subtle 5.3:1,
+ * accent-ink 6.8:1; texto branco sobre adm-accent 6:1.
+ */
+@theme {
+  --color-adm-canvas: #141517;
+  --color-adm-sunken: #101113;
+  --color-adm-surface: #1c1d20;
+  --color-adm-raised: #25272b;
+  --color-adm-hover: #2b2d32;
+  --color-adm-line: #2e3035;
+  --color-adm-line-strong: #44464d;
+
+  --color-adm-ink: #f3f4f6;
+  --color-adm-ink-muted: #a9abb3;
+  --color-adm-ink-subtle: #8e9098;
+
+  --color-adm-accent: #c70808;
+  --color-adm-accent-hover: #a30606;
+  --color-adm-accent-ink: #ff7a7a;
+
+  --color-adm-success: #34d399;
+  --color-adm-warning: #fbbf24;
+  --color-adm-danger: #f87171;
+  --color-adm-info: #60a5fa;
+  --color-adm-violet: #a78bfa;
+
+  --radius-adm-card: 0.75rem;
+  --radius-adm-control: 0.5rem;
+
+  --shadow-adm-card: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-adm-overlay: 0 24px 64px rgb(0 0 0 / 0.55);
+}
