@@ -194,6 +194,33 @@ O banco de dados inclui:
 
 🚧 Em desenvolvimento  
 
+## 📦 Módulo de estoque (entradas, ajustes e log)
+
+O estoque fica por **variação (tamanho)** em `product_variants.stock`. Toda mudança de saldo gera uma linha no **livro de
+movimentações** (`stock_movement`, somente inserção), com saldo antes/depois, referência (nota ou pedido), responsável e data.
+
+- **Saída = venda:** o checkout baixa o estoque (reserva, status `PENDING_PAYMENT`) e registra `SAIDA_VENDA`. Cancelamento ou
+  expiração antes do pagamento devolve o estoque e registra `DEVOLUCAO_PEDIDO`. Pedido já pago e cancelado **não** devolve
+  estoque automaticamente: use um ajuste `DEVOLUCAO_CLIENTE`.
+- **Entrada = nota de fornecedor:** `/admin/estoque/entradas/nova`. Uma nota tem várias linhas, é gravada em uma única
+  transação (todas as linhas ou nenhuma) e não pode ser editada nem apagada; correções são ajustes. O par
+  (fornecedor, número da nota) é único e o reenvio com a mesma `idempotencyKey` devolve a nota original.
+- **Ajuste manual:** categoria (inventário, perda, avaria, devolução de cliente) + motivo obrigatório. O saldo nunca fica negativo.
+- **Log visual:** `/admin/estoque` (filtros por produto, tipo, período, responsável e referência).
+  `/admin/estoque/pedidos` lista os pedidos que baixaram estoque.
+- **Edição pelo cadastro do produto** continua sobrescrevendo o valor informado, mas a diferença é registrada como `EDICAO_CADASTRO`.
+
+### Reconciliação e a janela de deploy
+
+O livro começa a valer quando cada variação é movimentada pela primeira vez (grava-se um `SALDO_INICIAL` com o estoque
+daquele instante). A reconciliação (`GET /api/admin/stock/reconciliation`, alerta no topo do log) compara o estoque atual com a
+soma dos movimentos. **Pequenas divergências logo após um deploy são esperadas:** na troca de instância (Render) a versão
+antiga continua vendendo por alguns instantes e essas vendas não entram no livro. Como interpretar:
+
+- divergência pequena, estável e logo após a publicação → confira o estoque físico e corrija com um ajuste;
+- divergência que **cresce** ou aparece sem deploy → há uma escrita de estoque fora do livro; investigue (o teste
+  `StockLedgerGuardTest` impede `setStock` fora dos serviços que registram no livro).
+
 ## Executar o backend com Docker
 
 O backend no Docker conecta ao banco MySQL do Aiven; nenhum servidor MySQL local é iniciado. No PowerShell, entre na pasta `backendJava` e configure `.env` com os dados do Aiven. Se ainda não houver um `.env`, copie o exemplo:
