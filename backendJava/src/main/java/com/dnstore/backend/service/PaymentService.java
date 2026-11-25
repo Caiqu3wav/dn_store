@@ -43,9 +43,27 @@ public class PaymentService {
             String cpfCnpj,
             String paymentMethod,
             Integer installments) {
+        return initPayment(orderId, requestingUserId, idempotencyKey, cpfCnpj,
+                paymentMethod, installments, null, null, null);
+    }
+
+    public Payment initPayment(
+            UUID orderId,
+            UUID requestingUserId,
+            String idempotencyKey,
+            String cpfCnpj,
+            String paymentMethod,
+            Integer installments,
+            PaymentGateway.CardData card,
+            String payerPhone,
+            String remoteIp) {
         paymentMethod = paymentMethod == null ? "" : paymentMethod.trim().toUpperCase(Locale.ROOT);
-        if (!"PIX".equals(paymentMethod) && !"BOLETO".equals(paymentMethod)) {
-            throw new IllegalArgumentException("Cartão temporariamente indisponível. Use Pix ou boleto.");
+        if (!"PIX".equals(paymentMethod) && !"BOLETO".equals(paymentMethod)
+                && !"CREDIT_CARD".equals(paymentMethod)) {
+            throw new IllegalArgumentException("Método de pagamento inválido.");
+        }
+        if ("CREDIT_CARD".equals(paymentMethod) && (card == null || payerPhone == null || payerPhone.isBlank())) {
+            throw new IllegalArgumentException("Informe os dados do cartão e um telefone para pagamento.");
         }
         installments = null;
 
@@ -69,7 +87,12 @@ public class PaymentService {
                 "Pedido DN Store #" + order.getId(),
                 paymentMethod,
                 installments,
-                null);
+                card,
+                payerPhone,
+                card == null ? null : order.getAddress().getZipCode(),
+                card == null ? null : order.getAddress().getNumber(),
+                card == null ? null : order.getAddress().getComplement(),
+                remoteIp);
 
         try {
             PaymentGateway.PaymentResult result = gateway.createPayment(request);

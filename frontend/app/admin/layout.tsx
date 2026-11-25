@@ -10,9 +10,10 @@ import {
     Users,
     Tags,
     CalendarDays,
-    Menu,
+    Menu, 
     X,
-    LogOut
+    LogOut,
+    Warehouse
 } from 'lucide-react';
 import { cn } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
@@ -30,6 +31,7 @@ const adminSwrConfig = {
 const adminLinks = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Produtos', href: '/admin/produtos', icon: Package },
+    { name: 'Estoque', href: '/admin/estoque', icon: Warehouse },
     { name: 'Pedidos', href: '/admin/pedidos', icon: ShoppingCart },
     { name: 'Categorias', href: '/admin/categorias', icon: Tags },
     { name: 'Eventos', href: '/admin/eventos', icon: CalendarDays },

@@ -2,11 +2,13 @@ package com.dnstore.backend.controller;
 
 import com.dnstore.backend.model.PhysicalProduct;
 import com.dnstore.backend.model.Product;
+import com.dnstore.backend.model.ProductVariant;
 import com.dnstore.backend.dto.ProductResponse;
 import com.dnstore.backend.dto.ProductDefaultRuleRequest;
 import com.dnstore.backend.dto.ProductDefaultRuleResponse;
 import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.model.enums.ProductRemovalOutcome;
+import com.dnstore.backend.repository.ProductVariantRepository;
 import com.dnstore.backend.service.ProductDefaultsService;
 import com.dnstore.backend.service.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,7 @@ public class ProductController {
 
     private final ProductService productService;
     private final ProductDefaultsService productDefaultsService;
+    private final ProductVariantRepository productVariantRepository;
 
     /**
      * Lista todos os produtos.
@@ -82,6 +85,12 @@ public class ProductController {
     public ResponseEntity<Void> deleteDefaultRule(@PathVariable UUID id) {
         productDefaultsService.deleteRule(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/variants")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ProductVariant>> getVariants(@PathVariable UUID id) {
+        return ResponseEntity.ok(productVariantRepository.findByProductId(id));
     }
 
     /**

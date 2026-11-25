@@ -2,6 +2,8 @@ package com.dnstore.backend.service.payment;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 /**
  * Contrato de integração com gateways de pagamento.
@@ -35,7 +37,12 @@ public interface PaymentGateway {
                         String description,
                         String paymentMethod, // CREDIT_CARD | DEBIT_CARD | PIX | BOLETO
                         Integer installments,
-                        CardData card // null se não for cartão
+                        CardData card, // null se não for cartão
+                        String payerPhone,
+                        String payerPostalCode,
+                        String payerAddressNumber,
+                        String payerAddressComplement,
+                        String remoteIp
         ) {
                 public PaymentRequest(
                                 UUID orderId,
@@ -48,16 +55,47 @@ public interface PaymentGateway {
                                 Integer installments,
                                 CardData card) {
                         this(orderId, orderId.toString(), amount, payerName, payerEmail, payerCpfCnpj,
-                                        description, paymentMethod, installments, card);
+                                        description, paymentMethod, installments, card, null, null, null, null, null);
+                }
+
+                public PaymentRequest(
+                                UUID orderId,
+                                String externalReference,
+                                BigDecimal amount,
+                                String payerName,
+                                String payerEmail,
+                                String payerCpfCnpj,
+                                String description,
+                                String paymentMethod,
+                                Integer installments,
+                                CardData card) {
+                        this(orderId, externalReference, amount, payerName, payerEmail, payerCpfCnpj,
+                                        description, paymentMethod, installments, card, null, null, null, null, null);
+                }
+
+                @Override
+                public String toString() {
+                        return "PaymentRequest[orderId=" + orderId + ", externalReference=" + externalReference
+                                        + ", amount=" + amount + ", paymentMethod=" + paymentMethod + "]";
                 }
         }
 
         record CardData(
+                        @NotBlank @Size(max = 100)
                         String holderName,
+                        @NotBlank @Size(min = 13, max = 23)
                         String number,
+                        @NotBlank @Size(min = 2, max = 2)
                         String expiryMonth,
+                        @NotBlank @Size(min = 4, max = 4)
                         String expiryYear,
+                        @NotBlank @Size(min = 3, max = 4)
                         String ccv) {
+                @Override
+                public String toString() {
+                        return "CardData[holderName=[REDACTED], number=[REDACTED], expiryMonth=[REDACTED], "
+                                        + "expiryYear=[REDACTED], ccv=[REDACTED]]";
+                }
         }
 
         record PaymentResult(

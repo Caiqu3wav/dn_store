@@ -161,11 +161,55 @@ class AsaasGatewayServiceTest {
     }
 
     @Test
-    void createPayment_withCard_shouldBeRejected() {
+    void createPayment_withMissingCardData_shouldBeRejected() {
         assertThatThrownBy(() -> gateway.createPayment(
                 request(UUID.randomUUID(), "order:attempt", "CREDIT_CARD")))
                 .isInstanceOf(IllegalArgumentException.class);
         verifyNoInteractions(restTemplate);
+    }
+
+    @Test
+    void createPayment_withCard_shouldSendCardAndBillingDetailsToAsaas() {
+        UUID orderId = UUID.randomUUID();
+        String reference = orderId + ":attempt-1";
+        when(restTemplate.exchange(contains("/payments?externalReference="), eq(HttpMethod.GET),
+                any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(ResponseEntity.ok(Map.of("data", List.of())));
+        when(restTemplate.exchange(contains("/customers?cpfCnpj=52998224725"), eq(HttpMethod.GET),
+                any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(ResponseEntity.ok(Map.of("data", List.of(Map.of("id", "customer-1")))));
+        when(restTemplate.exchange(eq("https://api-sandbox.asaas.com/v3/payments"), eq(HttpMethod.POST),
+                any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(ResponseEntity.ok(Map.of(
+                        "id", "payment-card",
+                        "status", "PENDING",
+                        "billingType", "CREDIT_CARD",
+                        "customer", "customer-1",
+                        "externalReference", reference,
+                        "value", new BigDecimal("89.90"))));
+        PaymentGateway.PaymentRequest request = new PaymentGateway.PaymentRequest(
+                orderId, reference, new BigDecimal("89.90"), "Buyer", "buyer@example.com",
+                "52998224725", "Order", "CREDIT_CARD", null,
+                new PaymentGateway.CardData("Buyer Card", "4111 1111 1111 1111", "12", "2030", "123"),
+                "11999999999", "12345-678", "10", "Apto 2", "203.0.113.10");
+
+        PaymentGateway.PaymentResult result = gateway.createPayment(request);
+
+        assertThat(result.paymentMethod()).isEqualTo("CREDIT_CARD");
+        var captor = org.mockito.ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).exchange(eq("https://api-sandbox.asaas.com/v3/payments"), eq(HttpMethod.POST),
+                captor.capture(), eq(Map.class));
+        Map<?, ?> body = (Map<?, ?>) captor.getValue().getBody();
+        assertThat(body.get("billingType")).isEqualTo("CREDIT_CARD");
+        assertThat(body.get("remoteIp")).isEqualTo("203.0.113.10");
+        Map<?, ?> cardBody = (Map<?, ?>) body.get("creditCard");
+        assertThat(cardBody.get("number")).isEqualTo("4111111111111111");
+        assertThat(cardBody.get("ccv")).isEqualTo("123");
+        Map<?, ?> holderBody = (Map<?, ?>) body.get("creditCardHolderInfo");
+        assertThat(holderBody.get("cpfCnpj")).isEqualTo("52998224725");
+        assertThat(holderBody.get("postalCode")).isEqualTo("12345678");
+        assertThat(holderBody.get("addressNumber")).isEqualTo("10");
+        assertThat(holderBody.get("mobilePhone")).isEqualTo("11999999999");
     }
 
     @Test

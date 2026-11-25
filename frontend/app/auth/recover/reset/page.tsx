@@ -16,7 +16,7 @@ function ResetPasswordForm() {
     const [isLoading, setIsLoading] = useState(false);
     const [isComplete, setIsComplete] = useState(false);
 
-    const handleResetPassword = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
@@ -24,12 +24,10 @@ function ResetPasswordForm() {
             setError('Este link de redefinição é inválido. Solicite um novo link.');
             return;
         }
-
         if (password !== confirmPassword) {
             setError('As senhas não coincidem.');
             return;
         }
-
         if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
             setError('Use pelo menos 8 caracteres, incluindo uma letra e um número.');
             return;
@@ -91,7 +89,7 @@ function ResetPasswordForm() {
                 </p>
 
                 <form
-                    onSubmit={handleResetPassword}
+                    onSubmit={handleSubmit}
                     style={{
                         backgroundColor: '#f7f7f7',
                         padding: 20,
@@ -100,7 +98,6 @@ function ResetPasswordForm() {
                     }}
                 >
                     <label
-                        htmlFor="reset-password"
                         style={{
                             display: 'block',
                             fontWeight: 700,
@@ -112,9 +109,7 @@ function ResetPasswordForm() {
                     </label>
 
                     <input
-                        id="reset-password"
                         type="password"
-                        autoComplete="new-password"
                         placeholder="Digite sua nova senha"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -136,7 +131,6 @@ function ResetPasswordForm() {
                     />
 
                     <label
-                        htmlFor="reset-confirm-password"
                         style={{
                             display: 'block',
                             fontWeight: 700,
@@ -148,9 +142,7 @@ function ResetPasswordForm() {
                     </label>
 
                     <input
-                        id="reset-confirm-password"
                         type="password"
-                        autoComplete="new-password"
                         placeholder="Digite a senha novamente"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
@@ -172,9 +164,8 @@ function ResetPasswordForm() {
 
                     {error && (
                         <p
-                            role="alert"
                             style={{
-                                color: '#b91c1c',
+                                color: '#ff0000',
                                 marginTop: 12,
                                 marginBottom: 0,
                                 fontSize: 14,
@@ -184,23 +175,13 @@ function ResetPasswordForm() {
                         </p>
                     )}
 
-                    <button
-                        type="submit"
-                        disabled={isLoading || isComplete || !token}
-                        style={{
-                            marginTop: 16,
-                            width: '100%',
-                            padding: 12,
-                            border: 'none',
-                            borderRadius: 6,
-                            backgroundColor: isComplete ? '#166534' : '#ff0000',
-                            color: '#ffffff',
-                            cursor: 'pointer',
-                            fontSize: 16,
-                        }}
-                    >
-                        {isLoading ? 'Salvando...' : isComplete ? 'Senha atualizada' : 'Redefinir senha'}
-                    </button>
+                            <button
+                                type="submit"
+                                disabled={isLoading || !token}
+                                className="w-full rounded-lg bg-brand-secondary py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {isLoading ? 'Salvando...' : 'Redefinir senha'}
+                            </button>
 
                     <button
                         type="button"
@@ -215,26 +196,8 @@ function ResetPasswordForm() {
                             fontSize: 14,
                         }}
                     >
-                        {isComplete ? 'Ir para o login' : 'Voltar para o login'}
+                        Voltar para o login
                     </button>
-
-                    {!token && (
-                        <button
-                            type="button"
-                            onClick={() => router.push('/auth/recover')}
-                            style={{
-                                display: 'block',
-                                margin: '8px auto 0',
-                                border: 'none',
-                                backgroundColor: 'transparent',
-                                color: '#0070f3',
-                                cursor: 'pointer',
-                                fontSize: 14,
-                            }}
-                        >
-                            Solicitar novo link de redefinição
-                        </button>
-                    )}
                 </form>
             </div>
         </div>

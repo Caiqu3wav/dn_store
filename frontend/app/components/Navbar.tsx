@@ -148,7 +148,8 @@ export function Navbar() {
         const handleScroll = () => {
             setIsScrolled(window.scrollY > 20);
         };
-        window.addEventListener('scroll', handleScroll);
+        handleScroll();
+        window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
@@ -169,10 +170,10 @@ export function Navbar() {
     return (
         <header
             className={cn(
-                'sticky top-0 left-0 right-0 z-50 transition-all duration-300 border-b',
+                'sticky top-0 left-0 right-0 z-50 transition-colors duration-300 border-b py-3',
                 isScrolled 
-                    ? 'bg-foreground/80 backdrop-blur-lg border-gray-200 py-3 shadow-sm' 
-                    : 'bg-background border-transparent py-4'
+                    ? 'bg-foreground/80 backdrop-blur-lg border-gray-200 shadow-sm' 
+                    : 'bg-background border-transparent'
             )}
         >
            <div className="container mx-auto px-4 lg:px-8 relative flex items-center justify-between gap-4 h-12">

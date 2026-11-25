@@ -1,8 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { authService } from '@/services/authService';
-import { getApiErrorMessage } from '@/utils/apiError';
+
 
 export default function RecoverPasswordPage() {
     const [email, setEmail] = useState('');
@@ -10,20 +11,15 @@ export default function RecoverPasswordPage() {
     const [isSent, setIsSent] = useState(false);
     const [error, setError] = useState('');
 
-    const handleSendLink = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setIsLoading(true);
         try {
             await authService.forgotPassword({ email });
             setIsSent(true);
-        } catch (err: unknown) {
-            setError(getApiErrorMessage(err, 'Não foi possível solicitar a redefinição agora. Tente novamente.', {
-                400: 'Informe um e-mail válido.',
-                429: 'Você já solicitou um link há pouco. Aguarde alguns minutos para solicitar outro.',
-                502: 'Não foi possível enviar o e-mail agora. Tente novamente em instantes.',
-                503: 'O envio de e-mails está indisponível no momento. Tente novamente mais tarde.',
-            }));
+        } catch {
+            setError('Não foi possível solicitar a redefinição agora. Tente novamente.');
         } finally {
             setIsLoading(false);
         }
@@ -54,7 +50,6 @@ export default function RecoverPasswordPage() {
                 </h1>
 
                 <p
-                    role={isSent ? 'status' : undefined}
                     style={{
                         color: '#444444',
                         marginBottom: 20,
@@ -66,7 +61,7 @@ export default function RecoverPasswordPage() {
                 </p>
 
                 <form
-                    onSubmit={handleSendLink}
+                    onSubmit={handleSubmit}
                     style={{
                         background: '#f7f7f7',
                         padding: 20,
@@ -75,7 +70,6 @@ export default function RecoverPasswordPage() {
                     }}
                 >
                     <label
-                        htmlFor="recover-email"
                         style={{
                             display: 'block',
                             fontWeight: 700,
@@ -87,9 +81,7 @@ export default function RecoverPasswordPage() {
                     </label>
 
                     <input
-                        id="recover-email"
                         type="email"
-                        autoComplete="email"
                         placeholder="user@example.com"
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
@@ -128,40 +120,10 @@ export default function RecoverPasswordPage() {
                         {isLoading ? 'Enviando...' : isSent ? 'Solicitação enviada' : 'Enviar link'}
                     </button>
 
-                    {isSent && (
-                        <button
-                            type="button"
-                            onClick={() => { setIsSent(false); setError(''); }}
-                            style={{
-                                display: 'block',
-                                margin: '12px auto 0',
-                                border: 'none',
-                                background: 'transparent',
-                                color: '#0070f3',
-                                cursor: 'pointer',
-                                fontSize: 14,
-                            }}
-                        >
-                            Não recebeu? Enviar novamente ou usar outro e-mail
-                        </button>
-                    )}
-
-                    <button
-                        type="button"
-                        onClick={() => window.location.assign('/auth')}
-                        style={{
-                            display: 'block',
-                            margin: '16px auto 0',
-                            border: 'none',
-                            background: 'transparent',
-                            color: '#0070f3',
-                            cursor: 'pointer',
-                            fontSize: 14,
-                        }}
-                    >
-                        Voltar
-                    </button>
-                </form>
+                            <Link href="/auth" className="block text-center text-sm text-gray-500 hover:text-gray-800 transition">
+                                Voltar para o login
+                            </Link>
+                        </form>
             </div>
         </div>
     );

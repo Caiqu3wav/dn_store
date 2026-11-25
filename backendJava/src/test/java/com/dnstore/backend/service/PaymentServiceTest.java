@@ -10,6 +10,7 @@ import com.dnstore.backend.exception.GlobalExceptionHandler;
 import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.Payment;
 import com.dnstore.backend.model.User;
+import com.dnstore.backend.model.Address;
 import com.dnstore.backend.repository.OrderRepository;
 import com.dnstore.backend.repository.PaymentRepository;
 import com.dnstore.backend.service.payment.PaymentCreationUncertainException;
@@ -135,6 +136,37 @@ class PaymentServiceTest {
     }
 
     @Test
+    void initPayment_withCard_shouldPassTransientCardDataAndOrderAddressToGateway() {
+        UUID orderId = UUID.randomUUID();
+        UUID paymentId = UUID.randomUUID();
+        User user = user();
+        Order order = order(orderId, user);
+        Payment payment = payment(paymentId, order, "CREATING");
+        PaymentGateway.CardData card = new PaymentGateway.CardData(
+                "Buyer Card", "4111111111111111", "12", "2030", "123");
+        when(paymentState.prepareAttempt(orderId, user.getId(), "card-key", "CREDIT_CARD", null))
+                .thenReturn(new PaymentAttemptStateService.PreparedAttempt(payment, true));
+        when(orderRepository.findByIdWithUser(orderId)).thenReturn(Optional.of(order));
+        PaymentGateway.PaymentResult result = new PaymentGateway.PaymentResult(
+                "charge-card", "PENDING", "CREDIT_CARD", null, null, null, null,
+                order.getTotal(), payment.getExternalReference(), "customer-1", "BRL");
+        when(gateway.createPayment(any(PaymentGateway.PaymentRequest.class))).thenReturn(result);
+        when(paymentState.completeAttempt(paymentId, result)).thenReturn(payment);
+
+        paymentService.initPayment(orderId, user.getId(), "card-key", "52998224725", "CREDIT_CARD",
+                null, card, "11999999999", "203.0.113.10");
+
+        ArgumentCaptor<PaymentGateway.PaymentRequest> captor =
+                ArgumentCaptor.forClass(PaymentGateway.PaymentRequest.class);
+        verify(gateway).createPayment(captor.capture());
+        assertThat(captor.getValue().card()).isSameAs(card);
+        assertThat(captor.getValue().payerPhone()).isEqualTo("11999999999");
+        assertThat(captor.getValue().payerPostalCode()).isEqualTo("12345-678");
+        assertThat(captor.getValue().payerAddressNumber()).isEqualTo("10");
+        assertThat(captor.getValue().remoteIp()).isEqualTo("203.0.113.10");
+    }
+
+    @Test
     void findByOrderId_shouldReturnLatestAttempt() {
         UUID orderId = UUID.randomUUID();
         Payment latest = new Payment();
@@ -178,6 +210,11 @@ class PaymentServiceTest {
         order.setStatus("PENDING_PAYMENT");
         order.setCreatedAt(LocalDateTime.now().minusMinutes(5));
         order.setTotal(new BigDecimal("129.90"));
+        Address address = new Address();
+        address.setZipCode("12345-678");
+        address.setNumber("10");
+        address.setComplement("Apto 2");
+        order.setAddress(address);
         return order;
     }
 

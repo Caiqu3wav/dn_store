@@ -7,7 +7,7 @@ import { formatCep } from '@/utils/authFormatters';
 import { QuoteCartItem, requestShippingQuotes } from '../shippingQuote';
 
 export interface ShippingOption {
-    id: string;
+    id: string;          // UUID da ShippingQuoteOptionEntity — enviado no checkout
     serviceId: string;
     typeName: string;
     cost: number;

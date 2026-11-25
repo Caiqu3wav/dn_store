@@ -8,7 +8,6 @@ import java.math.RoundingMode;
 import java.util.List;
 
 @Component("simulatedShippingGateway")
-@org.springframework.context.annotation.Profile("!prod & !production")
 @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "shipping.gateway", havingValue = "simulated", matchIfMissing = true)
 public class SimulatedShippingGateway implements ShippingGateway {
 
