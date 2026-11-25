@@ -2,9 +2,8 @@
 
 import { useState, useRef } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Upload, FileSpreadsheet, Image as ImageIcon, Loader2, X, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Save, Upload, FileSpreadsheet, Image as ImageIcon, X, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import useSWR from 'swr';
 import { fetcher } from '@/services/productService';
 import { Category, PRODUCT_VARIANT_SIZES } from '@/types';
@@ -12,6 +11,8 @@ import { toast } from 'react-hot-toast';
 import { uploadToCloudinary } from '@/utils/cloudinary';
 import api from '@/lib/axios';
 import { normalizeProductColor } from '@/utils/productColor';
+import { Button, Card, EmptyState, IconButton, IconLink, PageHeader } from '../../_components/ui';
+import { Checkbox, Field, Input, Select, Textarea } from '../../_components/form';
 
 interface DraftProduct {
     id: string;
@@ -264,130 +265,122 @@ export default function BatchUpload() {
     };
 
     return (
-        <div className="space-y-6 text-white max-w-6xl mx-auto pb-12">
-            <div className="flex items-center gap-4">
-                <Link href="/admin/produtos" className="p-2 bg-[#2A2A2A] border border-white/10 rounded-lg hover:bg-white/10">
-                    <ArrowLeft className="w-5 h-5" />
-                </Link>
-                <div>
-                    <h1 className="text-3xl font-bold">Upload em Lote</h1>
-                    <p className="text-gray-400 mt-1">Crie múltiplos produtos de uma vez usando Fotos ou Planilha.</p>
-                </div>
-            </div>
+        <div className={`mx-auto max-w-6xl space-y-6 ${drafts.length > 0 ? 'pb-28' : 'pb-12'}`}>
+            <PageHeader
+                eyebrow="Catálogo"
+                title="Upload em Lote"
+                description="Crie múltiplos produtos de uma vez usando Fotos ou Planilha."
+                leading={
+                    <IconLink href="/admin/produtos" label="Voltar para produtos" className="h-10 w-10 border border-adm-line bg-adm-raised">
+                        <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+                    </IconLink>
+                }
+            />
 
             {/* Ações Globais */}
-            <div className="bg-[#2A2A2A] border border-white/5 p-6 rounded-xl shadow-sm flex flex-wrap gap-4">
-                <button onClick={() => csvInputRef.current?.click()} className="px-4 py-2 rounded-lg border border-brand-secondary text-brand-secondary hover:bg-brand-secondary/10 flex items-center gap-2">
-                    <FileSpreadsheet className="w-5 h-5" /> Importar CSV
-                </button>
-                <input type="file" accept=".csv" ref={csvInputRef} onChange={handleCsvUpload} className="hidden" />
+            <Card as="section" aria-label="Ações do lote" className="flex flex-wrap gap-3 p-5">
+                <Button variant="warning" onClick={() => csvInputRef.current?.click()} className="border-adm-accent-ink/50 text-adm-accent-ink hover:bg-adm-accent/10">
+                    <FileSpreadsheet className="h-5 w-5" aria-hidden="true" /> Importar CSV
+                </Button>
+                <input type="file" accept=".csv" ref={csvInputRef} onChange={handleCsvUpload} className="hidden" aria-label="Arquivo CSV" />
 
-                <button onClick={() => fileInputRef.current?.click()} className="px-4 py-2 rounded-lg border border-brand-secondary text-brand-secondary hover:bg-brand-secondary/10 flex items-center gap-2">
-                    <Upload className="w-5 h-5" /> Importar Fotos
-                </button>
-                <input type="file" multiple accept="image/*" ref={fileInputRef} onChange={handlePhotosUpload} className="hidden" />
-                
-                <button onClick={addDraft} className="px-4 py-2 rounded-lg border border-white/10 hover:bg-white/10 flex items-center gap-2 ml-auto">
-                    <Plus className="w-5 h-5" /> Adicionar Produto Manual
-                </button>
-            </div>
+                <Button variant="warning" onClick={() => fileInputRef.current?.click()} className="border-adm-accent-ink/50 text-adm-accent-ink hover:bg-adm-accent/10">
+                    <Upload className="h-5 w-5" aria-hidden="true" /> Importar Fotos
+                </Button>
+                <input type="file" multiple accept="image/*" ref={fileInputRef} onChange={handlePhotosUpload} className="hidden" aria-label="Fotos dos produtos" />
+
+                <Button onClick={addDraft} className="sm:ml-auto">
+                    <Plus className="h-5 w-5" aria-hidden="true" /> Adicionar Produto Manual
+                </Button>
+            </Card>
 
             {/* Lista de Drafts */}
             <div className="space-y-4">
                 {drafts.map((draft, index) => (
-                    <div key={draft.id} className="bg-[#2A2A2A] border border-white/10 rounded-xl overflow-hidden">
+                    <Card key={draft.id} className="overflow-hidden">
                         {/* Header do Card (Colapsável) */}
-                        <div className="flex items-center justify-between p-4 bg-[#1A1B1D] cursor-pointer" onClick={() => toggleExpand(draft.id)}>
-                            <div className="flex items-center gap-4">
-                                <span className="text-brand-secondary font-bold">#{index + 1}</span>
+                        <div className="flex cursor-pointer items-center justify-between gap-3 bg-adm-sunken p-4" onClick={() => toggleExpand(draft.id)}>
+                            <button type="button" aria-expanded={draft.isExpanded} className="flex min-w-0 flex-1 items-center gap-4 rounded text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adm-accent-ink">
+                                <span className="font-bold text-adm-accent-ink">#{index + 1}</span>
                                 {draft.previews[0] ? (
-                                    <Image src={draft.previews[0]} alt={`Prévia do produto ${draft.name || 'sem nome'}`} width={40} height={40} unoptimized className="h-10 w-10 rounded object-cover" />
+                                    <Image src={draft.previews[0]} alt={`Prévia do produto ${draft.name || 'sem nome'}`} width={40} height={40} unoptimized className="h-10 w-10 shrink-0 rounded object-cover" />
                                 ) : (
-                                    <div className="w-10 h-10 bg-black/30 rounded flex items-center justify-center"><ImageIcon className="w-5 h-5 text-gray-500" /></div>
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-adm-raised"><ImageIcon className="h-5 w-5 text-adm-ink-subtle" aria-hidden="true" /></div>
                                 )}
-                                <div>
-                                    <p className="font-medium">{draft.name || "Sem nome"}</p>
-                                    <p className="text-xs text-gray-400">
+                                <div className="min-w-0">
+                                    <p className="truncate font-medium">{draft.name || "Sem nome"}</p>
+                                    <p className="text-xs text-adm-ink-muted">
                                         R$ {draft.price || "0.00"} • {draft.files.length} fotos
                                     </p>
                                 </div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <button onClick={(e) => { e.stopPropagation(); removeDraft(draft.id); }} className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg">
-                                    <X className="w-5 h-5" />
-                                </button>
-                                {draft.isExpanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+                            </button>
+                            <div className="flex items-center gap-2">
+                                <IconButton tone="danger" label={`Remover produto ${draft.name || index + 1} do lote`} onClick={(e) => { e.stopPropagation(); removeDraft(draft.id); }}>
+                                    <X className="h-5 w-5" aria-hidden="true" />
+                                </IconButton>
+                                {draft.isExpanded ? <ChevronUp className="h-5 w-5 text-adm-ink-muted" aria-hidden="true" /> : <ChevronDown className="h-5 w-5 text-adm-ink-muted" aria-hidden="true" />}
                             </div>
                         </div>
 
                         {/* Corpo Expandido */}
                         {draft.isExpanded && (
-                            <div className="p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
+                            <div className="grid grid-cols-1 gap-6 p-5 md:grid-cols-12">
                                 {/* Formulário */}
-                                <div className="md:col-span-8 space-y-4">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                                        <div className="space-y-1">
-                                            <label className="text-xs text-gray-400">Nome *</label>
-                                            <input value={draft.name} onChange={e => updateDraft(draft.id, 'name', e.target.value)} className="w-full bg-[#1A1B1D] border border-white/10 rounded px-3 py-2 text-sm" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs text-gray-400">Categoria *</label>
-                                            <select value={draft.categoryId} onChange={e => updateDraft(draft.id, 'categoryId', e.target.value)} className="w-full bg-[#1A1B1D] border border-white/10 rounded px-3 py-2 text-sm">
+                                <div className="space-y-4 md:col-span-8">
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                        <Field label="Nome *">
+                                            <Input value={draft.name} onChange={e => updateDraft(draft.id, 'name', e.target.value)} />
+                                        </Field>
+                                        <Field label="Categoria *">
+                                            <Select value={draft.categoryId} onChange={e => updateDraft(draft.id, 'categoryId', e.target.value)}>
                                                 <option value="">Selecione...</option>
                                                 {categories?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs text-gray-400">Preço (R$) *</label>
-                                            <input type="number" step="0.01" value={draft.price} onChange={e => updateDraft(draft.id, 'price', e.target.value)} className="w-full bg-[#1A1B1D] border border-white/10 rounded px-3 py-2 text-sm" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs text-gray-400">Tamanhos e estoques *</label>
-                                            <input value={draft.variants} onChange={e => updateDraft(draft.id, 'variants', e.target.value)} placeholder="P:5; M:2; BL P:1" className="w-full bg-[#1A1B1D] border border-white/10 rounded px-3 py-2 text-sm" />
-                                        </div>
+                                            </Select>
+                                        </Field>
+                                        <Field label="Preço (R$) *">
+                                            <Input type="number" step="0.01" value={draft.price} onChange={e => updateDraft(draft.id, 'price', e.target.value)} />
+                                        </Field>
+                                        <Field label="Tamanhos e estoques *">
+                                            <Input value={draft.variants} onChange={e => updateDraft(draft.id, 'variants', e.target.value)} placeholder="P:5; M:2; BL P:1" />
+                                        </Field>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mt-3">
-                                        <div className="space-y-1">
-                                            <label className="text-xs text-gray-400">Preço promocional</label>
-                                            <input type="number" step="0.01" value={draft.promotionalPrice} onChange={e => updateDraft(draft.id, 'promotionalPrice', e.target.value)} className="w-full bg-[#1A1B1D] border border-white/10 rounded px-3 py-2 text-sm" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs text-gray-400">Cor</label>
-                                            <input value={draft.color} onChange={e => updateDraft(draft.id, 'color', e.target.value)} className="w-full bg-[#1A1B1D] border border-white/10 rounded px-3 py-2 text-sm" />
-                                        </div>
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                        <Field label="Preço promocional">
+                                            <Input type="number" step="0.01" value={draft.promotionalPrice} onChange={e => updateDraft(draft.id, 'promotionalPrice', e.target.value)} />
+                                        </Field>
+                                        <Field label="Cor">
+                                            <Input value={draft.color} onChange={e => updateDraft(draft.id, 'color', e.target.value)} />
+                                        </Field>
                                         {[['weight', 'Peso (kg)'], ['width', 'Largura (cm)'], ['height', 'Altura (cm)'], ['depth', 'Profundidade (cm)']].map(([field, label]) => (
-                                            <div key={field} className="space-y-1">
-                                                <label className="text-xs text-gray-400">{label}</label>
-                                                <input type="number" step="0.01" value={draft[field as keyof DraftProduct] as string} onChange={e => updateDraft(draft.id, field as keyof DraftProduct, e.target.value)} className="w-full bg-[#1A1B1D] border border-white/10 rounded px-3 py-2 text-sm" />
-                                            </div>
+                                            <Field key={field} label={label}>
+                                                <Input type="number" step="0.01" value={draft[field as keyof DraftProduct] as string} onChange={e => updateDraft(draft.id, field as keyof DraftProduct, e.target.value)} />
+                                            </Field>
                                         ))}
-                                        <label className="flex items-center gap-2 text-xs text-gray-400 self-end pb-2">
-                                            <input type="checkbox" checked={draft.active} onChange={e => updateDraft(draft.id, 'active', e.target.checked)} />
+                                        <Checkbox className="self-end pb-2" checked={draft.active} onChange={e => updateDraft(draft.id, 'active', e.target.checked)}>
                                             Produto ativo
-                                        </label>
+                                        </Checkbox>
                                     </div>
-                                    <div className="space-y-1 mt-3">
-                                        <label className="text-xs text-gray-400">Descrição</label>
-                                        <textarea rows={2} value={draft.description} onChange={e => updateDraft(draft.id, 'description', e.target.value)} className="w-full bg-[#1A1B1D] border border-white/10 rounded px-3 py-2 text-sm" />
-                                    </div>
+                                    <Field label="Descrição">
+                                        <Textarea rows={2} value={draft.description} onChange={e => updateDraft(draft.id, 'description', e.target.value)} />
+                                    </Field>
                                 </div>
                                 {/* Fotos */}
-                                <div className="md:col-span-4 bg-[#1A1B1D] p-4 rounded-lg border border-white/5">
-                                    <div className="flex items-center justify-between mb-3">
+                                <div className="rounded-adm-card border border-adm-line bg-adm-sunken p-4 md:col-span-4">
+                                    <div className="mb-3 flex items-center justify-between">
                                         <h4 className="text-sm font-medium">Fotos</h4>
-                                        <label className="cursor-pointer text-xs text-brand-secondary hover:underline flex items-center">
-                                            <input type="file" multiple accept="image/*" className="hidden" onChange={(e) => {
+                                        <label className="flex cursor-pointer items-center rounded text-xs font-medium text-adm-accent-ink hover:underline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-adm-accent-ink">
+                                            <input type="file" multiple accept="image/*" className="sr-only" onChange={(e) => {
                                                 if(e.target.files) addImagesToDraft(draft.id, Array.from(e.target.files));
                                             }} />
-                                            <Plus className="w-3 h-3 mr-1" /> Adicionar
+                                            <Plus className="mr-1 h-3 w-3" aria-hidden="true" /> Adicionar
                                         </label>
                                     </div>
                                     <div className="grid grid-cols-3 gap-2">
                                         {draft.previews.map((prev, i) => (
-                                            <div key={i} className="group relative aspect-square overflow-hidden rounded border border-white/10">
+                                            <div key={i} className="group relative aspect-square overflow-hidden rounded border border-adm-line">
                                                 <Image src={prev} alt={`Prévia ${i + 1} do produto ${draft.name || 'sem nome'}`} fill sizes="(max-width: 640px) 33vw, 160px" unoptimized className="rounded object-cover" />
-                                                <button onClick={() => removeImage(draft.id, i)} className="absolute -top-1 -right-1 p-1 bg-red-500 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
-                                                    <X className="w-3 h-3" />
+                                                <button type="button" onClick={() => removeImage(draft.id, i)} aria-label={`Remover foto ${i + 1}`} className="absolute -right-1 -top-1 rounded-full bg-adm-accent p-1 text-white shadow-lg transition-opacity focus-visible:opacity-100 group-hover:opacity-100 sm:opacity-0">
+                                                    <X className="h-3 w-3" aria-hidden="true" />
                                                 </button>
                                             </div>
                                         ))}
@@ -395,26 +388,27 @@ export default function BatchUpload() {
                                 </div>
                             </div>
                         )}
-                    </div>
+                    </Card>
                 ))}
 
                 {drafts.length === 0 && (
-                    <div className="text-center py-20 text-gray-500">
-                        <FileSpreadsheet className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                        <p>Nenhum produto na lista de upload.</p>
-                        <p className="text-sm mt-1">Importe via CSV, Fotos ou Adicione Manualmente.</p>
-                    </div>
+                    <EmptyState
+                        icon={FileSpreadsheet}
+                        className="py-20"
+                        title="Nenhum produto na lista de upload."
+                        description="Importe via CSV, Fotos ou Adicione Manualmente."
+                    />
                 )}
             </div>
 
             {/* Salvar Tudos */}
             {drafts.length > 0 && (
-                <div className="fixed bottom-0 left-0 right-0 bg-[#1A1B1D]/90 backdrop-blur border-t border-white/10 p-4 z-50">
-                    <div className="max-w-6xl mx-auto flex justify-end gap-4">
-                        <button disabled={loading} onClick={handleSubmit} className="px-8 py-3 rounded-xl bg-brand-secondary text-white font-bold flex items-center gap-2 hover:bg-red-700 transition-colors">
-                            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-adm-line bg-adm-sunken/90 p-4 backdrop-blur lg:left-64">
+                    <div className="mx-auto flex max-w-6xl justify-end gap-4">
+                        <Button variant="primary" size="lg" loading={loading} onClick={handleSubmit}>
+                            {!loading && <Save className="h-5 w-5" aria-hidden="true" />}
                             Salvar {drafts.length} Produtos
-                        </button>
+                        </Button>
                     </div>
                 </div>
             )}
