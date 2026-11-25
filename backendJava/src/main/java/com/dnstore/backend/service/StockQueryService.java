@@ -235,6 +235,14 @@ public class StockQueryService {
                         variant.isActive(), variant.getProduct().isActive()));
     }
 
+    public StockVariantResponse variantDetail(UUID id) {
+        ProductVariant variant = variantRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Variação não encontrada."));
+        return new StockVariantResponse(variant.getId(), variant.getProduct().getId(),
+                variant.getProduct().getName(), variant.getSize(), variant.getSku(), variant.getStock(),
+                variant.isActive(), variant.getProduct().isActive());
+    }
+
     // ---- Pedidos que baixaram estoque ----
 
     public Page<SaleOutflowResponse> searchSaleOutflows(LocalDate from, LocalDate to, int page, int size) {

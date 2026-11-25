@@ -69,6 +69,7 @@ class AdminRoutesSecurityTest {
             {"POST", "/api/admin/stock/adjustments"},
             {"GET", "/api/admin/stock/movements"},
             {"GET", "/api/admin/stock/variants"},
+            {"GET", "/api/admin/stock/variants/123"},
             {"GET", "/api/admin/stock/sales-outflows"},
             {"GET", "/api/admin/stock/reconciliation"},
             {"GET", "/api/integrations/melhor-envio/authorize"},

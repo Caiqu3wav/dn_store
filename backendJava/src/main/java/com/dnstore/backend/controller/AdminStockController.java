@@ -116,6 +116,11 @@ public class AdminStockController {
         return ResponseEntity.ok(PageResponse.of(queryService.searchVariants(q, page, size)));
     }
 
+    @GetMapping("/variants/{id}")
+    public ResponseEntity<StockVariantResponse> variant(@PathVariable UUID id) {
+        return ResponseEntity.ok(queryService.variantDetail(id));
+    }
+
     @GetMapping("/sales-outflows")
     public ResponseEntity<PageResponse<SaleOutflowResponse>> saleOutflows(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
