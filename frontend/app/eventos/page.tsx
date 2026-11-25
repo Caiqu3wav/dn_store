@@ -15,10 +15,10 @@ export default function EventosPage() {
 
         <div className="absolute inset-0 z-0 opacity-80">
   <Image
-    src="/assets/bg_hero.png"
-    alt="Eventos Hero"
+    src="/assets/Images/salto_bike.jpg"
+    alt="Ciclista de mountain bike em trilha de terra"
     fill
-    className="object-cover"
+    className="object-cover object-[76%_center]"
     priority
   />
 
