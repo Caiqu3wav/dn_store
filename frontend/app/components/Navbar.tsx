@@ -52,7 +52,7 @@ function AccountDropdown({ mobile = false, onNavigate }: { mobile?: boolean; onN
                 onClick={() => setIsOpen(open => !open)}
                 className={mobile
                     ? 'flex w-full items-center justify-between rounded-lg px-3 py-3 text-gray-800 hover:bg-gray-50'
-                    : 'flex items-center gap-1 rounded-md p-2 text-white transition-colors hover:text-brand-secondary'}
+                    : 'flex items-center gap-1 rounded-md p-2 text-white transition-colors hover:text-brand-red-primary'}
             >
                 <span className={mobile ? 'flex items-center gap-3' : 'flex items-center gap-1'}>
                     <UserRound className="h-5 w-5" />
@@ -95,7 +95,7 @@ function AccountDropdown({ mobile = false, onNavigate }: { mobile?: boolean; onN
                                 <button
                                     type="button"
                                     onClick={() => { closeMenu(); logout(); }}
-                                    className={`${itemClass} text-red-600 hover:bg-red-50`}
+                                    className={`${itemClass} text-brand-red-primary hover:bg-red-50`}
                                 >
                                     <LogOut className="h-4 w-4" /> Sair
                                 </button>

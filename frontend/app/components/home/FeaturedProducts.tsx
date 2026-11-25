@@ -90,7 +90,7 @@ export function FeaturedProducts() {
                         >
                             Produtos em destaque
                         </motion.h2>
-                        <p className="text-gray-500 text-sm md:text-base">
+                        <p className="text-gray-500 text-sm md:text-base pt-2">
                             Equipamentos essenciais aprovados pelos nossos atletas de elite.
                         </p>
                     </div>

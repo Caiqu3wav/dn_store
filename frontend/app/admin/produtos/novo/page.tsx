@@ -2,9 +2,8 @@
 
 import { useState, useRef } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Image as ImageIcon, Loader2, X } from 'lucide-react';
+import { ArrowLeft, Save, Image as ImageIcon, X } from 'lucide-react';
 import useSWR from 'swr';
 import { fetcher, productService } from '@/services/productService';
 import { Category } from '@/types';
@@ -12,6 +11,8 @@ import { toast } from 'react-hot-toast';
 import { uploadToCloudinary } from '@/utils/cloudinary';
 import { normalizeProductColor, productColorOptions } from '@/utils/productColor';
 import { VariantDraft, VariantStockEditor } from '../VariantStockEditor';
+import { Button, Card, IconLink, LinkButton, PageHeader } from '../../_components/ui';
+import { Checkbox, Field, Input, Select, Textarea } from '../../_components/form';
 
 export default function NovoProdutoPage() {
     const router = useRouter();
@@ -122,157 +123,147 @@ export default function NovoProdutoPage() {
         }
     };
 
-    return (
-        <div className="space-y-6 text-white max-w-5xl mx-auto pb-12">
-            <div className="flex items-center gap-4">
-                <Link 
-                    href="/admin/produtos"
-                    className="p-2 bg-[#2A2A2A] border border-white/10 rounded-lg hover:bg-white/10 transition-colors"
-                >
-                    <ArrowLeft className="w-5 h-5" />
-                </Link>
-                <div>
-                    <h1 className="text-3xl font-bold">Novo Produto</h1>
-                    <p className="text-gray-400 mt-1">Adicione um novo produto ao catálogo.</p>
-                </div>
-            </div>
+    const sectionClass = 'space-y-4 p-4 sm:p-5';
+    const sectionTitleClass = 'border-b border-adm-line pb-3 text-sm font-semibold uppercase tracking-wide text-adm-ink-muted';
 
-            <form className="space-y-8" onSubmit={handleSubmit}>
+    return (
+        <div className="mx-auto max-w-5xl space-y-6 pb-12">
+            <PageHeader
+                eyebrow="Catálogo"
+                title="Novo Produto"
+                description="Adicione um novo produto ao catálogo."
+                leading={
+                    <IconLink href="/admin/produtos" label="Voltar para produtos" className="h-10 w-10 border border-adm-line bg-adm-raised">
+                        <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+                    </IconLink>
+                }
+            />
+
+            <form className="space-y-5" onSubmit={handleSubmit}>
                 {/* Informações Básicas */}
-                <div className="bg-[#2A2A2A] border border-white/5 p-4 sm:p-6 rounded-xl shadow-sm space-y-5 sm:space-y-6">
-                    <h2 className="text-xl font-bold border-b border-white/5 pb-4">Informações Básicas</h2>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-300">Nome do Produto *</label>
-                            <input 
+                <Card as="section" className={sectionClass}>
+                    <h2 className={sectionTitleClass}>Informações Básicas</h2>
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <Field label="Nome do Produto *">
+                            <Input
                                 required
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                type="text" 
-                                className="w-full bg-[#1A1B1D] border border-white/10 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary"
+                                type="text"
                                 placeholder="Ex: Camiseta Classic"
                             />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-300">Categoria *</label>
-                            <select 
+                        </Field>
+                        <Field label="Categoria *">
+                            <Select
                                 required
                                 value={categoryId}
                                 onChange={(e) => setCategoryId(e.target.value)}
-                                className="w-full bg-[#1A1B1D] border border-white/10 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary"
                             >
                                 <option value="">Selecione uma categoria</option>
                                 {categories?.map((cat) => (
                                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                                 ))}
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-300">Cor</label>
-                            <select value={color} onChange={(e) => setColor(e.target.value)} className="w-full bg-[#1A1B1D] border border-white/10 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary">
+                            </Select>
+                        </Field>
+                        <Field label="Cor">
+                            <Select value={color} onChange={(e) => setColor(e.target.value)}>
                                 <option value="">Selecione uma cor</option>
                                 {productColorOptions.map(option => <option key={option} value={option}>{option}</option>)}
-                            </select>
-                        </div>
+                            </Select>
+                        </Field>
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-300">Descrição</label>
-                        <textarea 
+                    <Field label="Descrição">
+                        <Textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             rows={4}
-                            className="w-full bg-[#1A1B1D] border border-white/10 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary"
                             placeholder="Descreva os detalhes e diferenciais do produto..."
                         />
-                    </div>
+                    </Field>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-300">Preço Base (R$) *</label>
-                            <input 
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <Field label="Preço Base (R$) *">
+                            <Input
                                 required
                                 value={price}
                                 onChange={(e) => setPrice(e.target.value)}
-                                type="number" 
+                                type="number"
                                 step="0.01"
-                                className="w-full bg-[#1A1B1D] border border-white/10 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary"
                                 placeholder="0.00"
                             />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-300">Preço Promocional (R$)</label>
-                            <input 
+                        </Field>
+                        <Field label="Preço Promocional (R$)">
+                            <Input
                                 value={promotionalPrice}
                                 onChange={(e) => setPromotionalPrice(e.target.value)}
-                                type="number" 
+                                type="number"
                                 step="0.01"
-                                className="w-full bg-[#1A1B1D] border border-white/10 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary"
                                 placeholder="0.00"
                             />
-                        </div>
+                        </Field>
                     </div>
-                    
-                    <div className="flex items-center gap-3 pt-2">
-                        <input 
-                            checked={active}
-                            onChange={(e) => setActive(e.target.checked)}
-                            type="checkbox" 
-                            className="w-5 h-5 rounded border-gray-300 text-brand-secondary focus:ring-brand-secondary" 
-                        />
-                        <span className="text-sm font-medium text-white">Produto Ativo na Loja</span>
-                    </div>
-                </div>
+
+                    <Checkbox checked={active} onChange={(e) => setActive(e.target.checked)}>
+                        Produto Ativo na Loja
+                    </Checkbox>
+                </Card>
 
                 <VariantStockEditor variants={variants} onChange={setVariants} />
 
                 {/* Dimensões (Opcional) */}
-                <div className="bg-[#2A2A2A] border border-white/5 p-4 sm:p-6 rounded-xl shadow-sm space-y-5 sm:space-y-6">
-                    <h2 className="text-xl font-bold border-b border-white/5 pb-4">Dimensões para Frete (Opcional)</h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
-                        <div className="space-y-2">
-                            <label className="text-xs text-gray-400">Peso (kg)</label>
-                            <input type="number" step="0.01" value={weight} onChange={(e) => setWeight(e.target.value)} className="w-full bg-[#1A1B1D] border border-white/10 rounded-lg py-2 px-3 text-white" />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-xs text-gray-400">Largura (cm)</label>
-                            <input type="number" step="0.1" value={width} onChange={(e) => setWidth(e.target.value)} className="w-full bg-[#1A1B1D] border border-white/10 rounded-lg py-2 px-3 text-white" />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-xs text-gray-400">Altura (cm)</label>
-                            <input type="number" step="0.1" value={height} onChange={(e) => setHeight(e.target.value)} className="w-full bg-[#1A1B1D] border border-white/10 rounded-lg py-2 px-3 text-white" />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-xs text-gray-400">Profundidade (cm)</label>
-                            <input type="number" step="0.1" value={depth} onChange={(e) => setDepth(e.target.value)} className="w-full bg-[#1A1B1D] border border-white/10 rounded-lg py-2 px-3 text-white" />
-                        </div>
+                <Card as="section" className={sectionClass}>
+                    <h2 className={sectionTitleClass}>Dimensões para Frete (Opcional)</h2>
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                        <Field label="Peso (kg)">
+                            <Input type="number" step="0.01" value={weight} onChange={(e) => setWeight(e.target.value)} />
+                        </Field>
+                        <Field label="Largura (cm)">
+                            <Input type="number" step="0.1" value={width} onChange={(e) => setWidth(e.target.value)} />
+                        </Field>
+                        <Field label="Altura (cm)">
+                            <Input type="number" step="0.1" value={height} onChange={(e) => setHeight(e.target.value)} />
+                        </Field>
+                        <Field label="Profundidade (cm)">
+                            <Input type="number" step="0.1" value={depth} onChange={(e) => setDepth(e.target.value)} />
+                        </Field>
                     </div>
-                </div>
+                </Card>
 
                 {/* Imagens */}
-                <div className="bg-[#2A2A2A] border border-white/5 p-4 sm:p-6 rounded-xl shadow-sm space-y-5 sm:space-y-6">
-                    <h2 className="text-xl font-bold border-b border-white/5 pb-4">Imagens do Produto</h2>
-                    
+                <Card as="section" className={sectionClass}>
+                    <h2 className={sectionTitleClass}>Imagens do Produto</h2>
+
                     {imagePreviews.length > 0 && (
-                        <div className="flex gap-4 overflow-x-auto pb-4">
+                        <div className="flex gap-4 overflow-x-auto pb-2">
                             {imagePreviews.map((preview, index) => (
-                                <div key={index} className="relative w-32 h-32 rounded-lg overflow-hidden shrink-0 border border-white/10">
+                                <div key={preview} className="relative h-32 w-32 shrink-0 overflow-hidden rounded-adm-control border border-adm-line">
                                     <Image src={preview} alt={`Prévia da imagem ${index + 1} do produto`} width={128} height={128} unoptimized className="h-full w-full object-cover" />
-                                    <button 
+                                    <button
                                         type="button"
                                         onClick={() => removeImage(index)}
-                                        className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white hover:bg-red-500 transition-colors"
+                                        aria-label={`Remover imagem ${index + 1}`}
+                                        className="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded-full bg-black/70 text-white transition-colors hover:bg-adm-accent focus-visible:outline-2 focus-visible:outline-adm-accent-ink"
                                     >
-                                        <X className="w-4 h-4" />
+                                        <X className="h-4 w-4" aria-hidden="true" />
                                     </button>
                                 </div>
                             ))}
                         </div>
                     )}
 
-                    <div 
+                    <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Fazer upload de imagens do produto"
                         onClick={() => fileInputRef.current?.click()}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                fileInputRef.current?.click();
+                            }
+                        }}
                         onDragOver={(e) => e.preventDefault()}
                         onDragEnter={(e) => {
                             e.preventDefault();
@@ -282,44 +273,35 @@ export default function NovoProdutoPage() {
                             if (e.currentTarget === e.target) setIsDragging(false);
                         }}
                         onDrop={handleDrop}
-                        className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer flex flex-col items-center justify-center gap-2 ${
+                        className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-adm-card border-2 border-dashed p-8 text-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adm-accent-ink ${
                             isDragging
-                                ? 'border-brand-secondary bg-brand-secondary/10'
-                                : 'border-white/20 hover:bg-white/[0.02]'
+                                ? 'border-adm-accent-ink bg-adm-accent/10'
+                                : 'border-adm-line-strong hover:bg-adm-hover/50'
                         }`}
                     >
-                        <div className="p-4 bg-[#1A1B1D] rounded-full text-brand-secondary mb-2">
-                            <ImageIcon className="w-8 h-8" />
+                        <div className="mb-2 rounded-full bg-adm-sunken p-4 text-adm-accent-ink">
+                            <ImageIcon className="h-8 w-8" aria-hidden="true" />
                         </div>
-                        <p className="font-medium text-white">Clique para fazer upload de imagens</p>
-                        <p className="text-sm text-gray-500">A primeira imagem será a principal</p>
-                        <input 
-                            type="file" 
-                            multiple 
+                        <p className="font-medium">Clique para fazer upload de imagens</p>
+                        <p className="text-sm text-adm-ink-subtle">A primeira imagem será a principal</p>
+                        <input
+                            type="file"
+                            multiple
                             accept="image/*"
-                            className="hidden" 
+                            className="hidden"
                             ref={fileInputRef}
                             onChange={handleFileChange}
                         />
                     </div>
-                </div>
+                </Card>
 
                 {/* Submit Actions */}
-                <div className="flex items-center justify-end gap-4 pt-4">
-                    <Link 
-                        href="/admin/produtos"
-                        className="px-6 py-2.5 rounded-lg border border-white/10 text-white font-medium hover:bg-white/10 transition-colors"
-                    >
-                        Cancelar
-                    </Link>
-                    <button 
-                        type="submit"
-                        disabled={loading}
-                        className="px-6 py-2.5 rounded-lg bg-brand-secondary text-white font-medium flex items-center gap-2 hover:bg-red-700 transition-colors disabled:opacity-50"
-                    >
-                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                <div className="flex items-center justify-end gap-3 pt-2">
+                    <LinkButton href="/admin/produtos" size="lg">Cancelar</LinkButton>
+                    <Button type="submit" variant="primary" size="lg" loading={loading}>
+                        {!loading && <Save className="h-5 w-5" aria-hidden="true" />}
                         {loading ? 'Salvando...' : 'Salvar Produto'}
-                    </button>
+                    </Button>
                 </div>
             </form>
         </div>

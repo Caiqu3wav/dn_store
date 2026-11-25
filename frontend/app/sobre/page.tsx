@@ -180,7 +180,7 @@ export default function SobrePage() {
 
                             <div className="relative aspect-square md:aspect-auto md:h-[600px] w-full rounded-2xl overflow-hidden border border-black/10">
                                 <Image
-                                    src="/assets/Images/tenda_dn.jpeg"
+                                    src="/assets/Images/sobre-estilo-vida.jpg"
                                     alt="Estilo de vida ao ar livre"
                                     fill
                                     className="object-cover"

@@ -499,6 +499,19 @@ public class OrderService {
         return orderRepository.findAll();
     }
 
+    /**
+     * Pedidos mais recentes primeiro, opcionalmente sem alguns status e limitados a {@code limit}
+     * ({@code null} = sem limite). Usado pelo painel para não baixar a lista inteira.
+     */
+    public List<Order> findRecent(Integer limit, java.util.Collection<String> excludedStatuses) {
+        org.springframework.data.domain.Pageable page = limit == null
+                ? org.springframework.data.domain.Pageable.unpaged()
+                : org.springframework.data.domain.PageRequest.of(0, limit);
+        return excludedStatuses == null || excludedStatuses.isEmpty()
+                ? orderRepository.findAllByOrderByCreatedAtDescIdAsc(page)
+                : orderRepository.findByStatusNotInOrderByCreatedAtDescIdAsc(excludedStatuses, page);
+    }
+
     public List<Order> findByUser(UUID userId) {
         return orderRepository.findByUserId(userId);
     }

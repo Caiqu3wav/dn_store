@@ -3,6 +3,7 @@ package com.dnstore.backend.repository;
 import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.User;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,6 +23,14 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     @Override
     @EntityGraph(attributePaths = "user")
     List<Order> findAll();
+
+    /** Pedidos mais recentes primeiro (desempate por id). Com Pageable o LIMIT é aplicado no SQL. */
+    @EntityGraph(attributePaths = "user")
+    List<Order> findAllByOrderByCreatedAtDescIdAsc(Pageable pageable);
+
+    /** Igual a {@link #findAllByOrderByCreatedAtDescIdAsc}, sem os pedidos nos status informados. */
+    @EntityGraph(attributePaths = "user")
+    List<Order> findByStatusNotInOrderByCreatedAtDescIdAsc(Collection<String> statuses, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT o FROM Order o WHERE o.id = :orderId")
