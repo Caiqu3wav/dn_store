@@ -41,6 +41,14 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void duplicateStockEntry_shouldReturn409WithCodeAndTheExistingEntryId() throws Exception {
+        mockMvc.perform(get("/test-errors/duplicate-entry"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errors.code").value("STOCK_ENTRY_DUPLICATE"))
+                .andExpect(jsonPath("$.errors.existingEntryId").value("11111111-1111-1111-1111-111111111111"));
+    }
+
+    @Test
     void plainConflict_shouldNotCarryTheStaleQuoteCode() throws Exception {
         mockMvc.perform(get("/test-errors/conflict"))
                 .andExpect(status().isConflict())
@@ -179,6 +187,12 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/test-errors/payment-gateway")
         void paymentGateway() {
             throw new PaymentGatewayException("private-provider-detail");
+        }
+
+        @GetMapping("/test-errors/duplicate-entry")
+        void duplicateEntry() {
+            throw new DuplicateStockEntryException("Já existe a nota NF-1 para este fornecedor.",
+                    java.util.UUID.fromString("11111111-1111-1111-1111-111111111111"));
         }
 
         @GetMapping("/test-errors/stale-quote")
