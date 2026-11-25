@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { Plus, Search, Edit, Trash2, Filter, X, Package, Check, Image as ImageIcon } from 'lucide-react';
@@ -11,37 +10,44 @@ import { fetcher, productService } from '@/services/productService';
 import { Category, Product } from '@/types';
 import { productColorOptions } from '@/utils/productColor';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { Badge, Button, EmptyState, ErrorState, IconButton, IconLink, LinkButton, PageHeader, Skeleton, TableSkeletonRows } from '../_components/ui';
+import { Field, Input, Select } from '../_components/form';
+import { Table, Tbody, Td, Th, Thead, rowClass } from '../_components/table';
+import { useConfirm } from '../_components/confirm';
 
 // O modal de padrões (~440 linhas) só é usado ao clicar no botão; fica fora do bundle inicial da lista.
 // O placeholder reproduz o botão para o cabeçalho não mudar de tamanho enquanto o chunk carrega.
 const ProductDefaultsManager = dynamic(() => import('./ProductDefaultsManager'), {
     ssr: false,
     loading: () => (
-        <button type="button" disabled className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-brand-secondary/60 px-3 text-sm font-medium text-red-200 opacity-60 sm:px-4">
-            <Check className="h-4 w-4" /> Definir padrões
-        </button>
+        <Button size="lg" disabled>
+            <Check className="h-4 w-4" aria-hidden="true" /> Definir padrões
+        </Button>
     ),
 });
 
 export default function AdminProductsPage() {
+    const confirm = useConfirm();
     const [searchTerm, setSearchTerm] = useState('');
-    // A lista (e os critérios do modal de padrões) usam o termo já "assentado", não cada tecla.
+    // A lista (e os critérios do modal de padrões) usam os termos já "assentados", não cada tecla.
     const debouncedSearch = useDebouncedValue(searchTerm);
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [categoryId, setCategoryId] = useState('');
     const [color, setColor] = useState('');
     const [minPrice, setMinPrice] = useState('');
     const [maxPrice, setMaxPrice] = useState('');
+    const debouncedMinPrice = useDebouncedValue(minPrice);
+    const debouncedMaxPrice = useDebouncedValue(maxPrice);
     const { data: categories } = useSWR<Category[]>('/categories', fetcher);
 
     const productQuery = new URLSearchParams();
     if (debouncedSearch) productQuery.set('search', debouncedSearch);
     if (categoryId) productQuery.set('categoryId', categoryId);
     if (color) productQuery.set('color', color);
-    if (minPrice) productQuery.set('minPrice', minPrice);
-    if (maxPrice) productQuery.set('maxPrice', maxPrice);
+    if (debouncedMinPrice) productQuery.set('minPrice', debouncedMinPrice);
+    if (debouncedMaxPrice) productQuery.set('maxPrice', debouncedMaxPrice);
 
-    const { data: productsData, mutate, isLoading } = useSWR<Product[]>(
+    const { data: productsData, error: productsError, mutate, isLoading } = useSWR<Product[]>(
         `/products/admin?${productQuery.toString()}`,
         fetcher
     );
@@ -64,133 +70,156 @@ export default function AdminProductsPage() {
         new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price);
 
     const handleDelete = async (id: string) => {
-        if (confirm('Tem certeza que deseja remover este produto?')) {
-            try {
-                const result = await productService.deleteProduct(id);
-                if (result?.outcome === 'ARCHIVED') {
-                    toast.success(result.message);
-                } else {
-                    toast.success('Produto removido.');
-                }
-                mutate();
-            } catch (error) {
-                console.error("Erro ao deletar", error);
-                toast.error('Erro ao deletar produto.');
+        const confirmed = await confirm({
+            title: 'Remover produto',
+            message: 'Tem certeza que deseja remover este produto?',
+            confirmLabel: 'Remover',
+        });
+        if (!confirmed) return;
+
+        try {
+            const result = await productService.deleteProduct(id);
+            if (result?.outcome === 'ARCHIVED') {
+                toast.success(result.message);
+            } else {
+                toast.success('Produto removido.');
             }
+            mutate();
+        } catch (error) {
+            console.error("Erro ao deletar", error);
+            toast.error('Erro ao deletar produto.');
         }
     };
 
+    const thumbnail = (product: Product, size: number) => (
+        <div
+            className="relative grid shrink-0 place-items-center overflow-hidden rounded-adm-control border border-adm-line bg-adm-sunken"
+            style={{ width: size, height: size }}
+        >
+            {product.images?.[0]?.imageUrl
+                ? <Image src={product.images[0].imageUrl} alt="" fill sizes={`${size}px`} unoptimized className="object-cover" />
+                : <ImageIcon className="h-4 w-4 text-adm-ink-subtle" aria-hidden="true" />}
+        </div>
+    );
+
+    const statusBadge = (product: Product) => (
+        <Badge tone={product.active ? 'success' : 'neutral'} dot>{product.active ? 'Ativo' : 'Inativo'}</Badge>
+    );
+
+    const showSkeleton = isLoading && !productsError;
+
     return (
-        <div className="flex h-[calc(100dvh-6rem)] min-h-96 flex-col gap-5 text-white lg:h-[calc(100dvh-4rem)]">
-            <header className="flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-brand-secondary">Catálogo</p>
-                    <h1 className="text-2xl font-bold sm:text-3xl">Produtos</h1>
-                    <p className="mt-1 text-sm text-gray-400">Gerencie preços, estoque e disponibilidade.</p>
-                </div>
-                <div className="grid grid-cols-2 gap-2 sm:flex">
-                    <ProductDefaultsManager
-                        products={filteredProducts}
-                        loading={isLoading}
-                        categories={categories || []}
-                        filters={{ search: debouncedSearch, categoryId, color, minPrice, maxPrice }}
-                        onApplied={() => { void mutate(); }}
-                    />
-                    <Link href="/admin/produtos/lote" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/15 px-3 text-sm font-medium text-gray-200 transition hover:bg-white/5 sm:px-4">
-                        Upload em lote
-                    </Link>
-                    <Link href="/admin/produtos/novo" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-secondary px-3 text-sm font-semibold text-white transition hover:bg-red-700 sm:px-4">
-                        <Plus className="h-4 w-4" /> Novo produto
-                    </Link>
-                </div>
-            </header>
+        <div className="mx-auto flex h-[calc(100dvh-5.5rem)] min-h-96 max-w-7xl flex-col gap-5 md:h-[calc(100dvh-7.5rem)] lg:h-[calc(100dvh-4rem)]">
+            <PageHeader
+                eyebrow="Catálogo"
+                title="Produtos"
+                description="Gerencie preços, estoque e disponibilidade."
+                actions={
+                    <>
+                        <ProductDefaultsManager
+                            products={filteredProducts}
+                            loading={isLoading}
+                            categories={categories || []}
+                            filters={{ search: debouncedSearch, categoryId, color, minPrice: debouncedMinPrice, maxPrice: debouncedMaxPrice }}
+                            onApplied={() => { void mutate(); }}
+                        />
+                        <LinkButton href="/admin/produtos/lote" size="lg">Upload em lote</LinkButton>
+                        <LinkButton href="/admin/produtos/novo" variant="primary" size="lg">
+                            <Plus className="h-4 w-4" aria-hidden="true" /> Novo produto
+                        </LinkButton>
+                    </>
+                }
+            />
 
             <section className="space-y-3" aria-label="Busca e filtros de produtos">
                 <div className="flex flex-col gap-2 sm:flex-row">
                     <div className="relative min-w-0 flex-1">
-                        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-                        <input type="search" placeholder="Buscar por nome..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="min-h-11 w-full rounded-lg border border-white/10 bg-[#1A1B1D] py-2.5 pl-10 pr-4 text-sm text-white placeholder-gray-500 outline-none focus:border-brand-secondary focus:ring-1 focus:ring-brand-secondary" />
+                        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-adm-ink-subtle" aria-hidden="true" />
+                        <Input type="search" aria-label="Buscar produtos por nome" placeholder="Buscar por nome..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="min-h-11 pl-10" />
                     </div>
-                    <button type="button" onClick={() => setFiltersOpen(open => !open)} aria-expanded={filtersOpen} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-white/10 bg-[#2A2A2A] px-4 text-sm text-gray-200 transition hover:bg-white/10">
-                        <Filter className="h-4 w-4" /> Filtros{activeFilters > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-brand-secondary px-1 text-xs font-bold text-white">{activeFilters}</span>}
-                    </button>
+                    <Button size="lg" onClick={() => setFiltersOpen(open => !open)} aria-expanded={filtersOpen}>
+                        <Filter className="h-4 w-4" aria-hidden="true" /> Filtros
+                        {activeFilters > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-adm-accent px-1 text-xs font-bold text-white">{activeFilters}</span>}
+                    </Button>
                 </div>
-                {filtersOpen && <div className="grid grid-cols-1 gap-3 rounded-lg border border-white/10 bg-[#222325] p-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <label className="space-y-1 text-xs text-gray-400">Categoria
-                        <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="min-h-10 w-full rounded-md border border-white/10 bg-[#1A1B1D] px-3 text-sm text-white">
+                {filtersOpen && <div className="grid grid-cols-1 gap-3 rounded-adm-card border border-adm-line bg-adm-surface p-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <Field label="Categoria">
+                        <Select value={categoryId} onChange={e => setCategoryId(e.target.value)}>
                             <option value="">Todas as categorias</option>
                             {categories?.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
-                        </select>
-                    </label>
-                    <label className="space-y-1 text-xs text-gray-400">Cor
-                        <select value={color} onChange={e => setColor(e.target.value)} className="min-h-10 w-full rounded-md border border-white/10 bg-[#1A1B1D] px-3 text-sm text-white">
+                        </Select>
+                    </Field>
+                    <Field label="Cor">
+                        <Select value={color} onChange={e => setColor(e.target.value)}>
                             <option value="">Todas as cores</option>
                             {productColorOptions.map(option => <option key={option} value={option}>{option}</option>)}
-                        </select>
-                    </label>
-                    <label className="space-y-1 text-xs text-gray-400">Preço mínimo
-                        <input type="number" min="0" step="0.01" value={minPrice} onChange={e => setMinPrice(e.target.value)} placeholder="R$ 0,00" className="min-h-10 w-full rounded-md border border-white/10 bg-[#1A1B1D] px-3 text-sm text-white placeholder-gray-500" />
-                    </label>
-                    <label className="space-y-1 text-xs text-gray-400">Preço máximo
-                        <input type="number" min="0" step="0.01" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="Sem limite" className="min-h-10 w-full rounded-md border border-white/10 bg-[#1A1B1D] px-3 text-sm text-white placeholder-gray-500" />
-                    </label>
-                    {activeFilters > 0 && <button type="button" onClick={resetFilters} className="inline-flex items-center gap-1 text-left text-xs font-medium text-brand-secondary hover:text-red-300 sm:col-span-2 lg:col-span-4"><X className="h-3.5 w-3.5" /> Limpar filtros</button>}
+                        </Select>
+                    </Field>
+                    <Field label="Preço mínimo">
+                        <Input type="number" min="0" step="0.01" value={minPrice} onChange={e => setMinPrice(e.target.value)} placeholder="R$ 0,00" />
+                    </Field>
+                    <Field label="Preço máximo">
+                        <Input type="number" min="0" step="0.01" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} placeholder="Sem limite" />
+                    </Field>
+                    {activeFilters > 0 && <button type="button" onClick={resetFilters} className="inline-flex items-center gap-1 rounded text-left text-xs font-medium text-adm-accent-ink hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adm-accent-ink sm:col-span-2 lg:col-span-4"><X className="h-3.5 w-3.5" aria-hidden="true" /> Limpar filtros</button>}
                 </div>}
             </section>
 
-            <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-white/10 bg-[#222325]" aria-label="Lista de produtos">
-                <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-                    <div className="flex items-center gap-2 text-sm font-semibold"><Package className="h-4 w-4 text-brand-secondary" /> Catálogo</div>
-                    <span className="text-xs text-gray-400">{isLoading ? 'Carregando...' : `${filteredProducts.length} ${filteredProducts.length === 1 ? 'produto' : 'produtos'}`}</span>
+            <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-adm-card border border-adm-line bg-adm-surface shadow-adm-card" aria-label="Lista de produtos">
+                <div className="flex items-center justify-between border-b border-adm-line px-4 py-3">
+                    <h2 className="flex items-center gap-2 text-sm font-semibold"><Package className="h-4 w-4 text-adm-accent-ink" aria-hidden="true" /> Catálogo</h2>
+                    <span className="text-xs text-adm-ink-muted" role="status">{isLoading ? 'Carregando...' : `${filteredProducts.length} ${filteredProducts.length === 1 ? 'produto' : 'produtos'}`}</span>
                 </div>
                 <div className="min-h-0 flex-1 overflow-auto">
-                    <table className="hidden w-full min-w-[760px] border-collapse text-left md:table">
-                        <thead className="sticky top-0 z-10 bg-[#1A1B1D] text-xs uppercase text-gray-400 shadow-sm">
-                            <tr><th className="px-4 py-3 font-medium">Produto</th><th className="px-4 py-3 font-medium">Categoria</th><th className="px-4 py-3 text-right font-medium">Preço</th><th className="px-4 py-3 text-right font-medium">Estoque</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 text-right font-medium">Ações</th></tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                            {filteredProducts.map(product => <tr key={product.id} className="transition hover:bg-white/3">
-                                <td className="px-4 py-2.5">
+                    <Table className="hidden min-w-[760px] md:table">
+                        <Thead className="sticky top-0 z-10 shadow-sm">
+                            <tr><Th>Produto</Th><Th>Categoria</Th><Th className="text-right">Preço</Th><Th className="text-right">Estoque</Th><Th>Status</Th><Th className="text-right">Ações</Th></tr>
+                        </Thead>
+                        <Tbody>
+                            {showSkeleton && <TableSkeletonRows columns={6} rows={8} />}
+                            {filteredProducts.map(product => <tr key={product.id} className={rowClass()}>
+                                <Td className="py-2.5">
                                     <div className="flex min-w-0 items-center gap-3">
-                                        <div className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-md border border-white/10 bg-[#1A1B1D]">
-                                            {product.images?.[0]?.imageUrl ? <Image src={product.images[0].imageUrl} alt="" fill sizes="40px" unoptimized className="object-cover" /> : <ImageIcon className="h-4 w-4 text-gray-600" />}
-                                        </div>
-                                        <div className="min-w-0"><p className="max-w-[280px] truncate text-sm font-medium text-white">{product.name}</p><p className="text-xs text-gray-500">#{product.id.slice(0, 8)}</p></div>
+                                        {thumbnail(product, 40)}
+                                        <div className="min-w-0"><p className="max-w-[280px] truncate text-sm font-medium">{product.name}</p><p className="text-xs text-adm-ink-subtle">#{product.id.slice(0, 8)}</p></div>
                                     </div>
-                                </td>
-                                <td className="px-4 py-2.5 text-sm text-gray-400">{getCategoryName(product)}</td>
-                                <td className="px-4 py-2.5 text-right text-sm font-medium tabular-nums text-white">{formatPrice(product.price)}</td>
-                                <td className="px-4 py-2.5 text-right text-sm tabular-nums text-gray-300">{product.stock ?? 0}<span className="ml-1 text-xs text-gray-500">un.</span></td>
-                                <td className="px-4 py-2.5"><span className={`inline-flex items-center gap-1.5 text-xs ${product.active ? 'text-emerald-400' : 'text-gray-500'}`}><span className={`h-1.5 w-1.5 rounded-full ${product.active ? 'bg-emerald-400' : 'bg-gray-500'}`} />{product.active ? 'Ativo' : 'Inativo'}</span></td>
-                                <td className="px-4 py-2.5"><div className="flex justify-end gap-1">
-                                    <Link href={`/admin/produtos/${product.id}`} title="Editar produto" aria-label={`Editar ${product.name}`} className="grid h-9 w-9 place-items-center rounded-md text-gray-400 transition hover:bg-white/10 hover:text-white"><Edit className="h-4 w-4" /></Link>
-                                    <button type="button" onClick={() => handleDelete(product.id)} title="Excluir produto" aria-label={`Excluir ${product.name}`} className="grid h-9 w-9 place-items-center rounded-md text-gray-400 transition hover:bg-red-500/10 hover:text-red-400"><Trash2 className="h-4 w-4" /></button>
-                                </div></td>
+                                </Td>
+                                <Td className="py-2.5 text-adm-ink-muted">{getCategoryName(product)}</Td>
+                                <Td className="py-2.5 text-right font-medium tabular-nums">{formatPrice(product.price)}</Td>
+                                <Td className="py-2.5 text-right tabular-nums text-adm-ink-muted">{product.stock ?? 0}<span className="ml-1 text-xs text-adm-ink-subtle">un.</span></Td>
+                                <Td className="py-2.5">{statusBadge(product)}</Td>
+                                <Td className="py-2.5"><div className="flex justify-end gap-1">
+                                    <IconLink href={`/admin/produtos/${product.id}`} label={`Editar ${product.name}`}><Edit className="h-4 w-4" aria-hidden="true" /></IconLink>
+                                    <IconButton tone="danger" label={`Excluir ${product.name}`} onClick={() => handleDelete(product.id)}><Trash2 className="h-4 w-4" aria-hidden="true" /></IconButton>
+                                </div></Td>
                             </tr>)}
-                        </tbody>
-                    </table>
+                        </Tbody>
+                    </Table>
 
-                    <div className="divide-y divide-white/5 md:hidden">
+                    <div className="divide-y divide-adm-line md:hidden">
+                        {showSkeleton && Array.from({ length: 5 }, (_, index) => <div key={index} className="flex items-start gap-3 p-3" aria-hidden="true">
+                            <Skeleton className="h-14 w-14 shrink-0" />
+                            <div className="flex-1 space-y-2"><Skeleton className="h-4 w-3/4" /><Skeleton className="h-3 w-1/3" /><Skeleton className="h-4 w-1/2" /></div>
+                        </div>)}
                         {filteredProducts.map(product => <article key={product.id} className="flex items-start gap-3 p-3">
-                            <div className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-md border border-white/10 bg-[#1A1B1D]">
-                                {product.images?.[0]?.imageUrl ? <Image src={product.images[0].imageUrl} alt="" fill sizes="56px" unoptimized className="object-cover" /> : <ImageIcon className="h-5 w-5 text-gray-600" />}
-                            </div>
+                            {thumbnail(product, 56)}
                             <div className="min-w-0 flex-1">
-                                <div className="flex items-start justify-between gap-2"><h2 className="truncate text-sm font-semibold">{product.name}</h2><span className={`shrink-0 text-xs ${product.active ? 'text-emerald-400' : 'text-gray-500'}`}>{product.active ? 'Ativo' : 'Inativo'}</span></div>
-                                <p className="mt-0.5 truncate text-xs text-gray-500">{getCategoryName(product)}</p>
-                                <div className="mt-2 flex items-center justify-between gap-2"><p className="text-sm font-semibold tabular-nums">{formatPrice(product.price)} <span className="font-normal text-gray-500">· {product.stock ?? 0} un.</span></p><div className="flex gap-1">
-                                    <Link href={`/admin/produtos/${product.id}`} aria-label={`Editar ${product.name}`} className="grid h-9 w-9 place-items-center rounded-md text-gray-400 hover:bg-white/10 hover:text-white"><Edit className="h-4 w-4" /></Link>
-                                    <button type="button" onClick={() => handleDelete(product.id)} aria-label={`Excluir ${product.name}`} className="grid h-9 w-9 place-items-center rounded-md text-gray-400 hover:bg-red-500/10 hover:text-red-400"><Trash2 className="h-4 w-4" /></button>
+                                <div className="flex items-start justify-between gap-2"><h3 className="truncate text-sm font-semibold">{product.name}</h3>{statusBadge(product)}</div>
+                                <p className="mt-0.5 truncate text-xs text-adm-ink-subtle">{getCategoryName(product)}</p>
+                                <div className="mt-2 flex items-center justify-between gap-2"><p className="text-sm font-semibold tabular-nums">{formatPrice(product.price)} <span className="font-normal text-adm-ink-subtle">· {product.stock ?? 0} un.</span></p><div className="flex gap-1">
+                                    <IconLink href={`/admin/produtos/${product.id}`} label={`Editar ${product.name}`}><Edit className="h-4 w-4" aria-hidden="true" /></IconLink>
+                                    <IconButton tone="danger" label={`Excluir ${product.name}`} onClick={() => handleDelete(product.id)}><Trash2 className="h-4 w-4" aria-hidden="true" /></IconButton>
                                 </div></div>
                             </div>
                         </article>)}
                     </div>
 
-                    {!isLoading && filteredProducts.length === 0 && <div className="flex min-h-52 flex-col items-center justify-center px-4 text-center">
-                        <Package className="mb-3 h-8 w-8 text-gray-600" />
-                        <p className="text-sm font-medium text-gray-300">Nenhum produto encontrado</p>
-                        <p className="mt-1 text-xs text-gray-500">Revise a busca ou os filtros selecionados.</p>
-                    </div>}
+                    {productsError && !productsData && <ErrorState title="Não foi possível carregar os produtos." onRetry={() => { void mutate(); }} />}
+                    {!isLoading && !productsError && filteredProducts.length === 0 && <EmptyState
+                        icon={Package}
+                        title="Nenhum produto encontrado"
+                        description="Revise a busca ou os filtros selecionados."
+                    />}
                 </div>
             </section>
         </div>
