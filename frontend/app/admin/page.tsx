@@ -6,10 +6,17 @@ import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/services/productService';
 import { adminService, AdminDashboardData, AdminOrder, MelhorEnvioStatus } from '@/services/adminService';
-import { isUnpaidOrder, orderStatusLabel, orderStatusStyle } from '@/utils/orderStatus';
+import { UNPAID_ORDER_STATUSES, isUnpaidOrder, orderStatusLabel, orderStatusStyle } from '@/utils/orderStatus';
 import { toast } from 'react-hot-toast';
 
 const RECENT_ORDERS_LIMIT = 5;
+
+// Só os pedidos recentes e pagos: o backend aplica o LIMIT. O filtro/ordenação abaixo continua no cliente
+// como proteção caso a API ignore os parâmetros (nesse caso ela devolve a lista completa, como antes).
+const RECENT_ORDERS_KEY = `/orders/all?${[
+    `limit=${RECENT_ORDERS_LIMIT}`,
+    ...UNPAID_ORDER_STATUSES.map((status) => `excludeStatus=${status}`),
+].join('&')}`;
 
 // Horários do backend vêm em UTC sem fuso; sem o "Z" o navegador os leria como horário local.
 const formatUtcDateTime = (value?: string | null) =>
@@ -52,7 +59,7 @@ export default function AdminDashboard() {
     const [dashboardData, setDashboardData] = useState<AdminDashboardData | null>(null);
     const [loading, setLoading] = useState(true);
     const [connectingMelhorEnvio, setConnectingMelhorEnvio] = useState(false);
-    const { data: orders, error: ordersError } = useSWR<AdminOrder[]>('/orders/all', fetcher);
+    const { data: orders, error: ordersError } = useSWR<AdminOrder[]>(RECENT_ORDERS_KEY, fetcher);
     const { data: melhorEnvioStatus, error: melhorEnvioStatusError, mutate: refreshMelhorEnvioStatus } =
         useSWR<MelhorEnvioStatus>('/integrations/melhor-envio/status', fetcher);
 
