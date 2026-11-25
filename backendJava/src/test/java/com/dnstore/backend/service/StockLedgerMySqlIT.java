@@ -15,6 +15,7 @@ import com.dnstore.backend.model.ProductVariant;
 import com.dnstore.backend.model.User;
 import com.dnstore.backend.model.enums.ProductRemovalOutcome;
 import com.dnstore.backend.model.enums.StockAdjustmentReason;
+import com.dnstore.backend.model.enums.StockMovementType;
 import com.dnstore.backend.repository.UserRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -364,6 +365,60 @@ class StockLedgerMySqlIT {
             assertThat(d.ledgerBalance()).isEqualTo(4);
             assertThat(d.difference()).isEqualTo(-2);
         });
+    }
+
+    @Test
+    void queryEndpointsFilterAndPageAgainstTheRealSchema() {
+        String withStock = createVariant(5);
+        String other = createVariant(0);
+        var result = entryService.create(entry("NF-Q-1", UUID.randomUUID().toString(),
+                line(withStock, 10, null), line(other, 4, null)), admin);
+        adjustmentService.adjust(adjustment(withStock, -2, 15, StockAdjustmentReason.AVARIA,
+                UUID.randomUUID().toString()), admin);
+
+        var all = queryService.searchMovements(movementFilter(withStock, null, null, null, null), 0, 10);
+        assertThat(all.getContent()).extracting(m -> m.type().name())
+                .as("mais recente primeiro")
+                .containsExactly("AJUSTE", "ENTRADA_NOTA", "SALDO_INICIAL");
+        assertThat(all.getContent().get(0).actor().id()).isEqualTo(admin.getId());
+        assertThat(all.getContent().get(1).reference().label()).startsWith("Nota NF-Q-1");
+
+        assertThat(queryService.searchMovements(movementFilter(null, StockMovementType.ENTRADA_NOTA, null, null, null),
+                0, 10).getContent()).extracting(m -> m.variant().id().toString())
+                .containsExactlyInAnyOrder(withStock, other);
+        assertThat(queryService.searchMovements(movementFilter(withStock, null,
+                com.dnstore.backend.model.enums.StockReferenceType.STOCK_ENTRY, result.entryId().toString(), null),
+                0, 10).getContent()).hasSize(1);
+        assertThat(queryService.searchMovements(movementFilter(null, null, null, null, "nf-q-1"), 0, 10)
+                .getTotalElements()).isEqualTo(2);
+        assertThat(queryService.searchMovements(movementFilter(null, null, null, null, "NF-NAO-EXISTE"), 0, 10)
+                .getContent()).isEmpty();
+        assertThat(queryService.searchMovements(new StockQueryService.MovementFilter(null,
+                null, null, java.time.LocalDate.now(), java.time.LocalDate.now(), admin.getId(), null, null, null),
+                0, 100).getContent()).extracting(m -> m.actor().id()).containsOnly(admin.getId());
+        assertThat(queryService.searchMovements(movementFilter(withStock, null, null, null, null), 1, 2)
+                .getContent()).hasSize(1);
+
+        assertThat(queryService.searchEntries(new StockQueryService.EntryFilter(
+                UUID.fromString(supplierId), "q-1", null, null), 0, 10).getContent())
+                .singleElement().satisfies(entry -> {
+                    assertThat(entry.itemCount()).isEqualTo(2);
+                    assertThat(entry.totalUnits()).isEqualTo(14);
+                    assertThat(entry.supplier().id().toString()).isEqualTo(supplierId);
+                });
+        assertThat(queryService.searchEntries(new StockQueryService.EntryFilter(
+                UUID.fromString(supplierId), "NF_Q%", null, null), 0, 10).getContent())
+                .as("curingas do LIKE são escapados").isEmpty();
+
+        assertThat(queryService.variantDetail(UUID.fromString(withStock)).stock()).isEqualTo(13);
+        assertThat(queryService.searchVariants(PREFIX.toLowerCase() + " produto", 0, 10).getContent())
+                .extracting(v -> v.id().toString()).contains(withStock, other);
+    }
+
+    private StockQueryService.MovementFilter movementFilter(String variantId, StockMovementType type,
+            com.dnstore.backend.model.enums.StockReferenceType referenceType, String referenceId, String invoice) {
+        return new StockQueryService.MovementFilter(variantId == null ? null : UUID.fromString(variantId), null, type,
+                null, null, null, referenceType, referenceId, invoice);
     }
 
     // ---------------------------------------------------------------- helpers
