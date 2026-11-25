@@ -17,6 +17,14 @@ import {
 import { cn } from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
+import { SWRConfig } from 'swr';
+
+// Padrões de cache do admin. Sem isto o SWR refaz toda listagem (inclusive /orders/all, que é pesada)
+// a cada foco de janela. Telas que precisam de dado fresco (pedidos) sobrescrevem revalidateOnFocus.
+const adminSwrConfig = {
+    revalidateOnFocus: false,
+    dedupingInterval: 10_000,
+};
 
 const adminLinks = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -134,7 +142,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                 {/* Page Content */}
                 <div className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 md:p-8">
-                    {children}
+                    <SWRConfig value={adminSwrConfig}>{children}</SWRConfig>
                 </div>
             </div>
         </div>

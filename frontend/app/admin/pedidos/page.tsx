@@ -13,6 +13,9 @@ import { isUnpaidOrder, orderStatusLabel as statusLabel, orderStatusStyle as get
 const ADMIN_SETTABLE_STATUSES = ['PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 const MANUAL_CONFIRMABLE_STATUSES = ['PENDING_PAYMENT', 'PAYMENT_FAILED'];
 const MIN_REASON_LENGTH = 10;
+// O status do pedido muda por webhook de pagamento; mantém a revalidação ao focar a janela, mas com
+// intervalo maior que o padrão do SWR para não rebaixar a lista inteira a cada troca de aba.
+const ORDERS_SWR_OPTIONS = { revalidateOnFocus: true, focusThrottleInterval: 30_000 };
 
 const errorMessage = (error: unknown, fallback: string) => {
     const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
@@ -20,7 +23,7 @@ const errorMessage = (error: unknown, fallback: string) => {
 };
 
 export default function AdminOrdersPage() {
-    const { data: allOrders, mutate } = useSWR<AdminOrder[]>('/orders/all', fetcher);
+    const { data: allOrders, mutate } = useSWR<AdminOrder[]>('/orders/all', fetcher, ORDERS_SWR_OPTIONS);
     const [showUnpaid, setShowUnpaid] = useState(false);
     const unpaidCount = allOrders?.filter((order) => isUnpaidOrder(order.status)).length ?? 0;
     const orders = showUnpaid ? allOrders : allOrders?.filter((order) => !isUnpaidOrder(order.status));
