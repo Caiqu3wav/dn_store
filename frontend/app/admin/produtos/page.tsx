@@ -10,9 +10,12 @@ import { fetcher, productService } from '@/services/productService';
 import { Category, Product } from '@/types';
 import ProductDefaultsManager from './ProductDefaultsManager';
 import { productColorOptions } from '@/utils/productColor';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 export default function AdminProductsPage() {
     const [searchTerm, setSearchTerm] = useState('');
+    // A lista (e os critérios do modal de padrões) usam o termo já "assentado", não cada tecla.
+    const debouncedSearch = useDebouncedValue(searchTerm);
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [categoryId, setCategoryId] = useState('');
     const [color, setColor] = useState('');
@@ -21,7 +24,7 @@ export default function AdminProductsPage() {
     const { data: categories } = useSWR<Category[]>('/categories', fetcher);
 
     const productQuery = new URLSearchParams();
-    if (searchTerm) productQuery.set('search', searchTerm);
+    if (debouncedSearch) productQuery.set('search', debouncedSearch);
     if (categoryId) productQuery.set('categoryId', categoryId);
     if (color) productQuery.set('color', color);
     if (minPrice) productQuery.set('minPrice', minPrice);
@@ -79,7 +82,7 @@ export default function AdminProductsPage() {
                         products={filteredProducts}
                         loading={isLoading}
                         categories={categories || []}
-                        filters={{ search: searchTerm, categoryId, color, minPrice, maxPrice }}
+                        filters={{ search: debouncedSearch, categoryId, color, minPrice, maxPrice }}
                         onApplied={() => { void mutate(); }}
                     />
                     <Link href="/admin/produtos/lote" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/15 px-3 text-sm font-medium text-gray-200 transition hover:bg-white/5 sm:px-4">
