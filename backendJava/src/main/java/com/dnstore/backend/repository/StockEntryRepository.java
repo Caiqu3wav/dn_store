@@ -13,6 +13,8 @@ public interface StockEntryRepository extends JpaRepository<StockEntry, UUID>, J
 
     Optional<StockEntry> findByIdempotencyKey(String idempotencyKey);
 
+    boolean existsByCreatedBy_Id(UUID userId);
+
     Optional<StockEntry> findBySupplier_IdAndInvoiceNumber(UUID supplierId, String invoiceNumber);
 
     @EntityGraph(attributePaths = { "supplier", "createdBy" })

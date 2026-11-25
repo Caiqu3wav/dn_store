@@ -36,6 +36,8 @@ public interface StockMovementRepository extends Repository<StockMovement, UUID>
 
     java.util.Optional<StockMovement> findByIdempotencyKey(String idempotencyKey);
 
+    boolean existsByActor_Id(UUID userId);
+
     /** Variantes cujo estoque atual diverge da soma dos deltas do livro. */
     @Query("""
             SELECT v.id AS variantId, v.stock AS stock, SUM(m.quantityDelta) AS ledgerBalance

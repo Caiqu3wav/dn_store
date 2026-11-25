@@ -64,6 +64,7 @@ class StockLedgerMySqlIT {
     @Autowired private StockQueryService queryService;
     @Autowired private OrderService orderService;
     @Autowired private ProductService productService;
+    @Autowired private UserService userService;
 
     private User admin;
     private String supplierId;
@@ -419,6 +420,20 @@ class StockLedgerMySqlIT {
             com.dnstore.backend.model.enums.StockReferenceType referenceType, String referenceId, String invoice) {
         return new StockQueryService.MovementFilter(variantId == null ? null : UUID.fromString(variantId), null, type,
                 null, null, null, referenceType, referenceId, invoice);
+    }
+
+    @Test
+    void deletingAUserWithStockHistoryIsRejectedWithAClearConflictAndOthersStillDelete() {
+        String variant = createVariant(4);
+        adjustmentService.adjust(adjustment(variant, -1, 4, StockAdjustmentReason.AVARIA,
+                UUID.randomUUID().toString()), admin);
+
+        assertThatThrownBy(() -> userService.delete(admin.getId()))
+                .isInstanceOf(ConflictException.class).hasMessageContaining("não pode ser excluído");
+        assertThat(count("SELECT COUNT(*) FROM users WHERE id = ?", admin.getId().toString())).isEqualTo(1);
+
+        User withoutHistory = createUser("ADMIN");
+        assertThat(userService.delete(withoutHistory.getId())).isTrue();
     }
 
     // ---------------------------------------------------------------- helpers
