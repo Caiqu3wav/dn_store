@@ -200,7 +200,7 @@ export default function ProductInteractive({
                                         border font-medium transition-all
                                         ${
                                             selectedVariantId === variant.id
-                                                ? 'bg-black text-white border-black'
+                                                ? 'bg-background text-white border-background ring-2 ring-brand-red-primary ring-offset-2'
                                                 : available
                                                     ? 'bg-white text-black border-gray-200 hover:border-black'
                                                     : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
@@ -236,16 +236,15 @@ export default function ProductInteractive({
                     </Button>
 
                     <Button
-                        variant="outline"
                         size="lg"
-                        className="h-14 w-14 p-0"
+                        className="group h-14 w-14 p-0 transition-all duration-200 hover:scale-110 hover:shadow-lg hover:shadow-brand-red-primary/40 active:scale-95"
                         type="button"
                         aria-label={favorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
                         aria-pressed={favorite}
                         disabled={authLoading || favoritesLoading}
                         onClick={handleToggleFavorite}
                     >
-                        <Heart className={`w-6 h-6 ${favorite ? 'fill-current text-brand-red' : ''}`} />
+                        <Heart className={`w-6 h-6 transition-transform duration-200 group-hover:animate-heart-beat ${favorite ? 'fill-current' : ''}`} />
                     </Button>
 
                 </div>
