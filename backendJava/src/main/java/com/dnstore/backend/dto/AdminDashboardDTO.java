@@ -14,4 +14,6 @@ public class AdminDashboardDTO {
     private long totalProducts;
     private BigDecimal totalRevenue;
     private BigDecimal averageTicket;
+    /** Pedidos com pagamento confirmado: base da receita e do ticket médio. */
+    private long paidOrders;
 }

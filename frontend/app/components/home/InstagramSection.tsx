@@ -142,7 +142,7 @@ export default function InstagramSection() {
 
           {/* Mural da Loja com Behold */}
           <div className="w-full">
-            {/* @ts-ignore */}
+            {/* @ts-expect-error elemento customizado do widget do Behold */}
             <behold-widget feed-id="6OwnBAUKXZiiO0rEiWyn"></behold-widget>
           </div>
         </div>

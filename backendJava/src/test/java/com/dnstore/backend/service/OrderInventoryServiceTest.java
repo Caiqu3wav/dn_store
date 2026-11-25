@@ -1,6 +1,7 @@
 package com.dnstore.backend.service;
 
 import com.dnstore.backend.exception.ConflictException;
+import com.dnstore.backend.model.Coupon;
 import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.OrderItem;
 import com.dnstore.backend.model.PhysicalProduct;
@@ -26,6 +27,9 @@ import static org.mockito.Mockito.lenient;
 class OrderInventoryServiceTest {
 
     @Mock
+    private CouponService couponService;
+
+    @Mock
     private ProductVariantRepository productVariantRepository;
 
     private OrderInventoryService inventoryService;
@@ -34,7 +38,7 @@ class OrderInventoryServiceTest {
 
     @BeforeEach
     void setUp() {
-        inventoryService = new OrderInventoryService(productVariantRepository);
+        inventoryService = new OrderInventoryService(productVariantRepository, couponService);
         variant = new ProductVariant();
         variant.setId(UUID.randomUUID());
         variant.setStock(2);
@@ -86,5 +90,50 @@ class OrderInventoryServiceTest {
 
         assertThat(variant.getStock()).isEqualTo(2);
         verify(productVariantRepository, never()).save(any(ProductVariant.class));
+    }
+
+    @Test
+    void releaseReservedStock_shouldReturnCouponUsageTogetherWithStockAndOnlyOnce() {
+        Coupon coupon = new Coupon();
+        coupon.setId(UUID.randomUUID());
+        order.setCoupon(coupon);
+
+        inventoryService.releaseReservedStock(order);
+        inventoryService.releaseReservedStock(order); // cancelamento + expiração repetidos
+
+        verify(couponService, times(1)).releaseUsage(coupon);
+    }
+
+    @Test
+    void releaseReservedStock_withoutCoupon_shouldNotTouchCoupons() {
+        inventoryService.releaseReservedStock(order);
+
+        verifyNoInteractions(couponService);
+    }
+
+    @Test
+    void reserveReleasedStock_shouldReapplyCouponUsage() {
+        Coupon coupon = new Coupon();
+        coupon.setId(UUID.randomUUID());
+        order.setCoupon(coupon);
+        order.setStockReleased(true);
+        variant.setStock(5);
+
+        inventoryService.reserveReleasedStock(order);
+
+        verify(couponService).reapplyUsage(coupon);
+    }
+
+    @Test
+    void reserveReleasedStock_whenStockIsInsufficient_shouldNotReapplyCouponUsage() {
+        Coupon coupon = new Coupon();
+        coupon.setId(UUID.randomUUID());
+        order.setCoupon(coupon);
+        order.setStockReleased(true);
+
+        assertThatThrownBy(() -> inventoryService.reserveReleasedStock(order))
+                .isInstanceOf(ConflictException.class);
+
+        verifyNoInteractions(couponService);
     }
 }

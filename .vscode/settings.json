@@ -6,5 +6,6 @@
         "Push-Location": true,
         "Pop-Location": true,
         "npx tsc": true
-    }
+    },
+    "java.configuration.updateBuildConfiguration": "automatic"
 }

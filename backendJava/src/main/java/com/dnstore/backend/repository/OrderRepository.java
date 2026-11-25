@@ -3,6 +3,7 @@ package com.dnstore.backend.repository;
 import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.User;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -16,6 +17,10 @@ import java.util.UUID;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, UUID> {
+
+    @Override
+    @EntityGraph(attributePaths = "user")
+    List<Order> findAll();
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT o FROM Order o WHERE o.id = :orderId")
@@ -35,6 +40,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
             @Param("statuses") List<String> statuses,
             @Param("createdBefore") LocalDateTime createdBefore);
 
-    @Query("SELECT COALESCE(SUM(o.total), 0) FROM Order o")
-    BigDecimal sumTotalRevenue();
+    @Query("SELECT COALESCE(SUM(o.total), 0) FROM Order o WHERE o.status IN :statuses")
+    BigDecimal sumTotalByStatusIn(@Param("statuses") java.util.Collection<String> statuses);
+
+    long countByStatusIn(java.util.Collection<String> statuses);
 }

@@ -5,6 +5,7 @@ import com.dnstore.backend.exception.ShippingGatewayException;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -30,6 +31,7 @@ public class MelhorEnvioOAuthClient {
         this(restClientBuilder, properties, new ObjectMapper());
     }
 
+    @Autowired
     public MelhorEnvioOAuthClient(
             RestClient.Builder restClientBuilder,
             MelhorEnvioProperties properties,
@@ -103,7 +105,12 @@ public class MelhorEnvioOAuthClient {
         }
         try {
             JsonNode error = objectMapper.readTree(responseBody).get("error");
-            return error == null || !error.isTextual() ? null : error.textValue();
+            if (error == null || !error.isTextual()) {
+                return null;
+            }
+            // O código vai para logs e para o painel: só aceita o formato curto de um código OAuth.
+            String code = error.textValue();
+            return code.matches("[A-Za-z0-9_.-]{1,40}") ? code : null;
         } catch (Exception ignored) {
             return null;
         }

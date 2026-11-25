@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Plus, Search, Edit, Trash2, Filter, X, Package, Image as ImageIcon } from 'lucide-react';
 import { useState } from 'react';
 import useSWR from 'swr';
+import { toast } from 'react-hot-toast';
 import { fetcher, productService } from '@/services/productService';
 import { Category, Product } from '@/types';
 import ProductDefaultsManager from './ProductDefaultsManager';
@@ -51,11 +52,16 @@ export default function AdminProductsPage() {
     const handleDelete = async (id: string) => {
         if (confirm('Tem certeza que deseja remover este produto?')) {
             try {
-                await productService.deleteProduct(id);
+                const result = await productService.deleteProduct(id);
+                if (result?.outcome === 'ARCHIVED') {
+                    toast.success(result.message);
+                } else {
+                    toast.success('Produto removido.');
+                }
                 mutate();
             } catch (error) {
                 console.error("Erro ao deletar", error);
-                alert('Erro ao deletar produto.');
+                toast.error('Erro ao deletar produto.');
             }
         }
     };

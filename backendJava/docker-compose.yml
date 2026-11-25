@@ -8,5 +8,9 @@ services:
     env_file:
       - path: .env
         format: raw
+    # A imagem usa o perfil "prod" por padrão. Rodando localmente com este
+    # compose, usamos "local" (sem perfil de produção) a menos que o .env defina outro.
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local}
     ports:
       - "8080:8080"

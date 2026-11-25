@@ -1,5 +1,6 @@
 package com.dnstore.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -32,6 +33,8 @@ public class Cart {
     @JdbcTypeCode(java.sql.Types.VARCHAR)
     private UUID id;
 
+    // A resposta do carrinho não deve expor dados do usuário (e a associação lazy chega como proxy).
+    @JsonIgnore
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;

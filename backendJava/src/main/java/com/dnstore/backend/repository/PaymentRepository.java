@@ -35,4 +35,8 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Payment p WHERE p.externalId = :externalId")
     Optional<Payment> findByExternalIdForUpdate(@Param("externalId") String externalId);
+
+    /** Total já reembolsado nos pagamentos dos pedidos com os status informados. */
+    @Query("SELECT COALESCE(SUM(p.refundedAmount), 0) FROM Payment p WHERE p.order.status IN :statuses")
+    java.math.BigDecimal sumRefundedByOrderStatusIn(@Param("statuses") java.util.Collection<String> statuses);
 }

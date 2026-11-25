@@ -9,10 +9,19 @@ import { useAuth } from "@/app/context/AuthContext";
 import { authService } from "@/services/authService";
 import { accountService } from "@/services/accountService";
 import type { AuthChallengeResponse, AuthResponse, AuthResult } from "@/services/authService";
+import axios from "axios";
+import { getApiErrorMessage } from "@/utils/apiError";
+import { safeNextPath } from "@/utils/safeRedirect";
 
-const responseMessage = (error: unknown, fallback: string) => {
-  const responseData = (error as { response?: { data?: { message?: string } | string } }).response?.data;
-  return typeof responseData === 'string' ? responseData : responseData?.message || fallback;
+const CODE_ERROR_OVERRIDES = {
+  400: 'Código inválido ou expirado. Confira o código digitado ou solicite um novo.',
+  429: 'Muitas tentativas. Aguarde cerca de 1 minuto antes de tentar novamente.',
+};
+
+const RESEND_ERROR_OVERRIDES = {
+  429: 'Aguarde cerca de 1 minuto antes de solicitar outro código.',
+  502: 'Não foi possível enviar o e-mail agora. Tente novamente em instantes.',
+  503: 'O envio de e-mails está indisponível no momento. Tente novamente mais tarde.',
 };
 
 function Auth() {
@@ -33,7 +42,7 @@ function Auth() {
   const [mfaOfferError, setMfaOfferError] = useState('');
   const { login } = useAuth();
   const router = useRouter();
-  const nextPath = searchParams.get('next') || '/';
+  const nextPath = safeNextPath(searchParams.get('next'));
 
   const completeLogin = (data: AuthResponse) => {
     login(data.token, data.user);
@@ -52,6 +61,15 @@ function Auth() {
     setChallengeMessage('');
   };
 
+  const sendVerificationCode = async (email: string) => {
+    try {
+      await authService.resendVerification({ email });
+      setChallengeMessage('Enviamos um novo código para o seu e-mail.');
+    } catch (error: unknown) {
+      setChallengeError(getApiErrorMessage(error, undefined, RESEND_ERROR_OVERRIDES));
+    }
+  };
+
   const handleLoginSubmit = async ({ email, password }: AuthFormSubmission) => {
     setIsRegistrationChallenge(false);
     setErrorMsg("");
@@ -60,7 +78,14 @@ function Auth() {
       const result = await authService.login({ email, password });
       handleAuthResult(result);
     } catch (err: unknown) {
-      setErrorMsg(responseMessage(err, "Erro ao fazer login. Verifique suas credenciais."));
+      const data = axios.isAxiosError(err) ? err.response?.data : undefined;
+      if (axios.isAxiosError(err) && err.response?.status === 403 && data?.status === 'EMAIL_VERIFICATION_REQUIRED') {
+        // O backend só confirma que a conta existe e não está verificada; o código precisa ser (re)enviado.
+        handleAuthResult(data as AuthChallengeResponse);
+        await sendVerificationCode(email);
+      } else {
+        setErrorMsg(getApiErrorMessage(err, undefined, { 401: "E-mail ou senha incorretos." }));
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -75,7 +100,7 @@ function Auth() {
       handleAuthResult(result);
     } catch (err: unknown) {
       setIsRegistrationChallenge(false);
-      setErrorMsg(responseMessage(err, "Erro ao cadastrar."));
+      setErrorMsg(getApiErrorMessage(err, "Não foi possível concluir o cadastro. Tente novamente."));
     } finally {
       setIsSubmitting(false);
     }
@@ -98,7 +123,7 @@ function Auth() {
         completeLogin(result);
       }
     } catch (error: unknown) {
-      setChallengeError(responseMessage(error, 'Não foi possível validar o código. Confira e tente novamente.'));
+      setChallengeError(getApiErrorMessage(error, 'Não foi possível validar o código. Confira e tente novamente.', CODE_ERROR_OVERRIDES));
     } finally {
       setIsChallengeLoading(false);
     }
@@ -112,7 +137,7 @@ function Auth() {
       toast.success('Autenticação em duas etapas ativada.');
       router.push(nextPath);
     } catch (error: unknown) {
-      setMfaOfferError(responseMessage(error, 'Não foi possível ativar agora. Você pode configurar isso na sua conta.'));
+      setMfaOfferError(getApiErrorMessage(error, 'Não foi possível ativar agora. Você pode configurar isso na sua conta.'));
     } finally {
       setIsSavingMfa(false);
     }
@@ -131,7 +156,7 @@ function Auth() {
       }
       setChallengeMessage('Se a solicitação for válida, um novo código foi enviado.');
     } catch (error: unknown) {
-      setChallengeError(responseMessage(error, 'Não foi possível enviar outro código agora.'));
+      setChallengeError(getApiErrorMessage(error, 'Não foi possível enviar outro código agora.', RESEND_ERROR_OVERRIDES));
     } finally {
       setIsChallengeLoading(false);
     }

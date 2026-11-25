@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
-import api from '@/lib/axios';
-import axios from 'axios';
+import { getApiErrorCode, getApiErrorMessage } from '@/utils/apiError';
+import { formatCep } from '@/utils/authFormatters';
+import { QuoteCartItem, requestShippingQuotes } from '../shippingQuote';
 
 export interface ShippingOption {
     id: string;          // UUID da ShippingQuoteOptionEntity — enviado no checkout
@@ -25,17 +26,16 @@ export interface DeliveryData {
 }
 
 interface Props {
-    items: {
-        id: string;
-        productId?: string;
-        productVariantId?: string;
-        size?: string;
-        quantity: number;
-    }[];
+    items: QuoteCartItem[];
     data: DeliveryData;
     onChange: (data: DeliveryData) => void;
     shipping: ShippingOption | null;
     onShippingChange: (shipping: ShippingOption | null) => void;
+    /** Opções e aviso ficam no checkout para sobreviverem a uma nova cotação feita fora desta etapa. */
+    shippingOptions: ShippingOption[];
+    onShippingOptionsChange: (options: ShippingOption[]) => void;
+    shippingNotice: string;
+    onShippingNoticeChange: (notice: string) => void;
     onNext: () => void;
 }
 
@@ -44,15 +44,18 @@ const STATES = [
     'PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'
 ];
 
-export function StepDelivery({ items, data, onChange, shipping, onShippingChange, onNext }: Props) {
+export function StepDelivery({
+    items, data, onChange, shipping, onShippingChange,
+    shippingOptions, onShippingOptionsChange, shippingNotice, onShippingNoticeChange, onNext,
+}: Props) {
     const [loadingCep, setLoadingCep] = useState(false);
-    const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
     const [shippingError, setShippingError] = useState('');
 
     const set = (field: keyof DeliveryData, value: string) => {
         onChange({ ...data, [field]: value });
         if (field === 'zipCode') {
-            setShippingOptions([]);
+            onShippingOptionsChange([]);
+            onShippingNoticeChange('');
             onShippingChange(null);
         }
     };
@@ -62,16 +65,11 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
         if (cep.length !== 8) return;
         setLoadingCep(true);
         setShippingError('');
+        onShippingNoticeChange('');
         try {
-            await api.put('/cart/sync', items.map(item => ({
-                productId: item.productId ?? item.id,
-                productVariantId: item.productVariantId,
-                size: item.size,
-                quantity: item.quantity,
-            })));
             const [addressResult, quoteResult] = await Promise.allSettled([
                 fetch(`https://viacep.com.br/ws/${cep}/json/`).then(response => response.json()),
-                api.post<ShippingOption[]>('/orders/shipping-quotes', { zipCode: cep }),
+                requestShippingQuotes(items, cep),
             ]);
 
             if (addressResult.status === 'fulfilled' && !addressResult.value.erro) {
@@ -86,25 +84,30 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
             }
 
             if (quoteResult.status === 'fulfilled') {
-                // backend returns ShippingOption[] with UUID id, serviceId, typeName, cost, deadLineDays, source
-                const options: ShippingOption[] = quoteResult.value.data;
-                setShippingOptions(options);
+                const options = quoteResult.value;
+                onShippingOptionsChange(options);
                 onShippingChange(null);
                 if (options.length === 0) {
                     setShippingError('Não há opções de entrega disponíveis para este CEP.');
                 }
             } else {
-                setShippingOptions([]);
+                onShippingOptionsChange([]);
                 onShippingChange(null);
-                setShippingError('Não foi possível cotar o frete para este CEP. Tente novamente.');
+                if (getApiErrorCode(quoteResult.reason) === 'SHIPPING_NOT_AVAILABLE') {
+                    // O Melhor Envio respondeu, mas nenhum serviço atende: não é falha do site.
+                    onShippingNoticeChange('Não encontramos entrega disponível para este CEP com os itens do carrinho. Confira o CEP ou informe outro endereço.');
+                } else {
+                    setShippingError(getApiErrorMessage(
+                        quoteResult.reason,
+                        'Não foi possível cotar o frete para este CEP. Tente novamente.',
+                        { 400: 'CEP inválido ou sem cobertura de entrega. Confira o CEP informado.' },
+                    ));
+                }
             }
         } catch (error: unknown) {
-            setShippingOptions([]);
+            onShippingOptionsChange([]);
             onShippingChange(null);
-            const backendMessage = axios.isAxiosError(error)
-                ? (error.response?.data as { message?: string } | undefined)?.message
-                : undefined;
-            setShippingError(backendMessage || 'Não foi possível consultar o CEP. Verifique o número e tente novamente.');
+            setShippingError(getApiErrorMessage(error, 'Não foi possível consultar o CEP. Verifique o número e tente novamente.'));
         } finally {
             setLoadingCep(false);
         }
@@ -125,12 +128,13 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* CEP */}
                 <div className="relative">
-                    <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">CEP *</label>
+                    <label htmlFor="delivery-zip" className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">CEP *</label>
                     <div className="relative">
                         <input
+                            id="delivery-zip"
                             type="text"
                             value={data.zipCode}
-                            onChange={e => set('zipCode', e.target.value)}
+                            onChange={e => set('zipCode', formatCep(e.target.value))}
                             onBlur={handleCepBlur}
                             placeholder="00000-000"
                             maxLength={9}
@@ -148,8 +152,9 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
 
                 {/* Estado */}
                 <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Estado *</label>
+                    <label htmlFor="delivery-state" className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Estado *</label>
                     <select
+                        id="delivery-state"
                         value={data.state}
                         onChange={e => set('state', e.target.value)}
                         className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-secondary focus:border-transparent transition"
@@ -161,9 +166,10 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
 
                 {/* Rua */}
                 <div className="md:col-span-2">
-                    <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Rua *</label>
+                    <label htmlFor="delivery-street" className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Rua *</label>
                     <input
                         type="text"
+                        id="delivery-street"
                         value={data.street}
                         onChange={e => set('street', e.target.value)}
                         placeholder="Nome da rua"
@@ -173,9 +179,10 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
 
                 {/* Número */}
                 <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Número *</label>
+                    <label htmlFor="delivery-number" className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Número *</label>
                     <input
                         type="text"
+                        id="delivery-number"
                         value={data.number}
                         onChange={e => set('number', e.target.value)}
                         placeholder="123"
@@ -185,9 +192,10 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
 
                 {/* Complemento */}
                 <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Complemento</label>
+                    <label htmlFor="delivery-complement" className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Complemento</label>
                     <input
                         type="text"
+                        id="delivery-complement"
                         value={data.complement}
                         onChange={e => set('complement', e.target.value)}
                         placeholder="Apto, bloco... (opcional)"
@@ -197,9 +205,10 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
 
                 {/* Bairro */}
                 <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Bairro</label>
+                    <label htmlFor="delivery-neighborhood" className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Bairro</label>
                     <input
                         type="text"
+                        id="delivery-neighborhood"
                         value={data.neighborhood}
                         onChange={e => set('neighborhood', e.target.value)}
                         placeholder="Bairro"
@@ -209,9 +218,10 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
 
                 {/* Cidade */}
                 <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Cidade *</label>
+                    <label htmlFor="delivery-city" className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Cidade *</label>
                     <input
                         type="text"
+                        id="delivery-city"
                         value={data.city}
                         onChange={e => set('city', e.target.value)}
                         placeholder="Cidade"
@@ -223,6 +233,7 @@ export function StepDelivery({ items, data, onChange, shipping, onShippingChange
             <section aria-labelledby="shipping-options-title" className="space-y-3">
                 <h3 id="shipping-options-title" className="text-sm font-bold uppercase text-gray-600">Opções de entrega</h3>
                 {loadingCep && <p role="status" className="text-sm text-gray-500">Consultando opções de entrega...</p>}
+                {shippingNotice && <p role="status" className="text-sm text-amber-700">{shippingNotice}</p>}
                 {shippingError && <p role="alert" className="text-sm text-red-700">{shippingError}</p>}
                 {!loadingCep && shippingOptions.length > 0 && (
                     <div className="grid gap-3 sm:grid-cols-2">

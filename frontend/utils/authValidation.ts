@@ -32,6 +32,29 @@ export function isValidCpf(value: string): boolean {
   return remainder === Number(cpf[10]);
 }
 
+export function isValidCnpj(value: string): boolean {
+  const cnpj = onlyDigits(value);
+
+  if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) {
+    return false;
+  }
+
+  const checkDigit = (length: number) => {
+    let weight = length - 7;
+    let sum = 0;
+
+    for (let i = 0; i < length; i++) {
+      sum += Number(cnpj[i]) * weight--;
+      if (weight < 2) weight = 9;
+    }
+
+    const remainder = sum % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
+  };
+
+  return checkDigit(12) === Number(cnpj[12]) && checkDigit(13) === Number(cnpj[13]);
+}
+
 export function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }

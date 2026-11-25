@@ -1,7 +1,18 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { productService } from '../../../services/productService';
 import ProductInteractive from '../ProductInteractive';
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+    const { id } = await params;
+    try {
+        const product = await productService.getProductById(id);
+        return product?.name ? { title: product.name, description: product.description } : {};
+    } catch {
+        return {};
+    }
+}
 
 export default async function ProductPage({
     params

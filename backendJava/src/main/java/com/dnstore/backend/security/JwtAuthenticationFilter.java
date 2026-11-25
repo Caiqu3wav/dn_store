@@ -60,7 +60,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             } else if (userDetails == null) {
-                log.warn("security.jwt.user_not_found email={} ip={}", userEmail, request.getRemoteAddr());
+                log.warn("security.jwt.user_not_found email={} ip={}", LogSanitizer.maskEmail(userEmail), request.getRemoteAddr());
             }
         }
 

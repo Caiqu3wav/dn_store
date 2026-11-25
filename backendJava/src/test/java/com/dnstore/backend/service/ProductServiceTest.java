@@ -5,6 +5,7 @@ import com.dnstore.backend.model.Category;
 import com.dnstore.backend.model.PhysicalProduct;
 import com.dnstore.backend.model.Product;
 import com.dnstore.backend.model.ProductVariant;
+import com.dnstore.backend.model.enums.ProductRemovalOutcome;
 import com.dnstore.backend.repository.CategoryRepository;
 import com.dnstore.backend.repository.ProductRepository;
 import com.dnstore.backend.repository.ProductVariantRepository;
@@ -247,5 +248,64 @@ class ProductServiceTest {
 
         assertThat(specification.getValue().toPredicate(root, mock(CriteriaQuery.class), criteriaBuilder))
                 .isSameAs(activePredicate);
+    }
+
+    @Test
+    void delete_whenProductHasNoReferences_shouldDeletePermanently() {
+        UUID id = UUID.randomUUID();
+        PhysicalProduct product = new PhysicalProduct();
+        product.setId(id);
+        product.setActive(true);
+        when(productRepository.findById(id)).thenReturn(Optional.of(product));
+        when(productRepository.isReferencedByOrders(id)).thenReturn(false);
+        when(productRepository.isReferencedByCarts(id)).thenReturn(false);
+
+        Optional<ProductRemovalOutcome> outcome = productService.delete(id);
+
+        assertThat(outcome).contains(ProductRemovalOutcome.DELETED);
+        verify(productRepository).delete(product);
+    }
+
+    @Test
+    void delete_whenProductIsInOrders_shouldArchiveInsteadOfDeleting() {
+        UUID id = UUID.randomUUID();
+        PhysicalProduct product = new PhysicalProduct();
+        product.setId(id);
+        product.setActive(true);
+        when(productRepository.findById(id)).thenReturn(Optional.of(product));
+        when(productRepository.isReferencedByOrders(id)).thenReturn(true);
+
+        Optional<ProductRemovalOutcome> outcome = productService.delete(id);
+
+        assertThat(outcome).contains(ProductRemovalOutcome.ARCHIVED);
+        assertThat(product.isActive()).isFalse();
+        verify(productRepository).save(product);
+        verify(productRepository, never()).delete(any(Product.class));
+    }
+
+    @Test
+    void delete_whenProductIsInCarts_shouldArchiveInsteadOfDeleting() {
+        UUID id = UUID.randomUUID();
+        PhysicalProduct product = new PhysicalProduct();
+        product.setId(id);
+        product.setActive(true);
+        when(productRepository.findById(id)).thenReturn(Optional.of(product));
+        when(productRepository.isReferencedByOrders(id)).thenReturn(false);
+        when(productRepository.isReferencedByCarts(id)).thenReturn(true);
+
+        Optional<ProductRemovalOutcome> outcome = productService.delete(id);
+
+        assertThat(outcome).contains(ProductRemovalOutcome.ARCHIVED);
+        assertThat(product.isActive()).isFalse();
+        verify(productRepository, never()).delete(any(Product.class));
+    }
+
+    @Test
+    void delete_whenProductDoesNotExist_shouldReturnEmpty() {
+        UUID id = UUID.randomUUID();
+        when(productRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThat(productService.delete(id)).isEmpty();
+        verify(productRepository, never()).delete(any(Product.class));
     }
 }

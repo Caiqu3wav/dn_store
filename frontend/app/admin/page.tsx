@@ -1,14 +1,60 @@
 'use client';
 
-import { DollarSign, ShoppingBag, Package, Users } from 'lucide-react';
+import Link from 'next/link';
+import { DollarSign, Package, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { adminService, AdminDashboardData } from '@/services/adminService';
+import useSWR from 'swr';
+import { fetcher } from '@/services/productService';
+import { adminService, AdminDashboardData, AdminOrder, MelhorEnvioStatus } from '@/services/adminService';
+import { isUnpaidOrder, orderStatusLabel, orderStatusStyle } from '@/utils/orderStatus';
 import { toast } from 'react-hot-toast';
+
+const RECENT_ORDERS_LIMIT = 5;
+
+// Horários do backend vêm em UTC sem fuso; sem o "Z" o navegador os leria como horário local.
+const formatUtcDateTime = (value?: string | null) =>
+    value
+        ? new Date(`${value}Z`).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+        : null;
+
+const MELHOR_ENVIO_STATE_UI: Record<MelhorEnvioStatus['state'], { label: string; style: string; hint: string }> = {
+    CONNECTED: {
+        label: 'Conectado',
+        style: 'bg-green-500/15 text-green-400',
+        hint: 'O token é renovado automaticamente antes de vencer.',
+    },
+    RENEWAL_FAILING: {
+        label: 'Renovação falhando',
+        style: 'bg-yellow-500/15 text-yellow-400',
+        hint: 'A última renovação automática falhou. O sistema tenta de novo sozinho; se persistir, reconecte.',
+    },
+    REAUTH_REQUIRED: {
+        label: 'Reconexão necessária',
+        style: 'bg-red-500/15 text-red-400',
+        hint: 'O Melhor Envio recusou a renovação. Clique em Conectar Melhor Envio; sem isso o frete fica indisponível.',
+    },
+    NOT_CONNECTED: {
+        label: 'Não conectado',
+        style: 'bg-red-500/15 text-red-400',
+        hint: 'Conecte a conta para calcular fretes reais.',
+    },
+    DISABLED: {
+        label: 'Integração desativada',
+        style: 'bg-gray-500/15 text-gray-300',
+        hint: 'O backend não está configurado para usar o Melhor Envio.',
+    },
+};
+
+const formatCurrency = (value?: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value ?? 0);
 
 export default function AdminDashboard() {
     const [dashboardData, setDashboardData] = useState<AdminDashboardData | null>(null);
     const [loading, setLoading] = useState(true);
     const [connectingMelhorEnvio, setConnectingMelhorEnvio] = useState(false);
+    const { data: orders, error: ordersError } = useSWR<AdminOrder[]>('/orders/all', fetcher);
+    const { data: melhorEnvioStatus, error: melhorEnvioStatusError, mutate: refreshMelhorEnvioStatus } =
+        useSWR<MelhorEnvioStatus>('/integrations/melhor-envio/status', fetcher);
 
     useEffect(() => {
         const searchParams = new URLSearchParams(window.location.search);
@@ -24,12 +70,13 @@ export default function AdminDashboard() {
                 ? 'A autorização do Melhor Envio foi cancelada.'
                 : 'Não foi possível conectar o Melhor Envio.';
         if (status === 'connected') {
+            refreshMelhorEnvioStatus();
             toast.success(message);
         } else {
             toast.error(message);
         }
         window.history.replaceState({}, '', '/admin');
-    }, []);
+    }, [refreshMelhorEnvioStatus]);
 
     useEffect(() => {
         const loadDashboard = async () => {
@@ -61,18 +108,19 @@ export default function AdminDashboard() {
     };
 
     const stats = dashboardData ? [
-        { title: 'Receita Total', value: `R$ ${dashboardData.totalRevenue.toFixed(2).replace('.', ',')}`, icon: DollarSign, trend: '', isPositive: true },
-        { title: 'Total de Pedidos', value: dashboardData.totalOrders.toString(), icon: ShoppingBag, trend: '', isPositive: true },
+        { title: 'Receita (pedidos pagos)', value: `R$ ${dashboardData.totalRevenue.toFixed(2).replace('.', ',')}`, icon: DollarSign, trend: '', isPositive: true },
         { title: 'Total de Produtos', value: dashboardData.totalProducts.toString(), icon: Package, trend: '', isPositive: true },
         { title: 'Total Usuários', value: dashboardData.totalUsers.toString(), icon: Users, trend: '', isPositive: true },
     ] : [
-        { title: 'Receita Total', value: 'R$ 0,00', icon: DollarSign, trend: '', isPositive: true },
-        { title: 'Total de Pedidos', value: '0', icon: ShoppingBag, trend: '', isPositive: true },
+        { title: 'Receita (pedidos pagos)', value: 'R$ 0,00', icon: DollarSign, trend: '', isPositive: true },
         { title: 'Total de Produtos', value: '0', icon: Package, trend: '', isPositive: true },
         { title: 'Total Usuários', value: '0', icon: Users, trend: '', isPositive: true },
     ];
 
-    const recentOrders: { id: string; customer: string; date: string; status: string; total: string }[] = [];
+    const recentOrders = (orders ?? [])
+        .filter((order) => !isUnpaidOrder(order.status))
+        .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())
+        .slice(0, RECENT_ORDERS_LIMIT);
 
     return (
         <div className="space-y-8 text-white">
@@ -88,6 +136,37 @@ export default function AdminDashboard() {
                         <p className="mt-1 text-sm text-gray-400">
                             Conecte a conta administrativa do Melhor Envio para calcular fretes reais.
                         </p>
+                        <div className="mt-3 space-y-1 text-sm" role="status">
+                            {melhorEnvioStatus ? (
+                                <>
+                                    <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${MELHOR_ENVIO_STATE_UI[melhorEnvioStatus.state].style}`}>
+                                        Melhor Envio: {MELHOR_ENVIO_STATE_UI[melhorEnvioStatus.state].label}
+                                        {melhorEnvioStatus.environment ? ` (${melhorEnvioStatus.environment})` : ''}
+                                    </span>
+                                    <p className="text-gray-400">{MELHOR_ENVIO_STATE_UI[melhorEnvioStatus.state].hint}</p>
+                                    {melhorEnvioStatus.accessTokenExpiresAt && (
+                                        <p className="text-gray-500">
+                                            Token atual válido até {formatUtcDateTime(melhorEnvioStatus.accessTokenExpiresAt)}.
+                                        </p>
+                                    )}
+                                    {melhorEnvioStatus.persistencePending && (
+                                        <p className="text-yellow-400">
+                                            O Melhor Envio emitiu um token novo que ainda não foi gravado no banco. O sistema continua tentando; se persistir, verifique o banco de dados.
+                                        </p>
+                                    )}
+                                    {melhorEnvioStatus.lastRefreshFailure && (
+                                        <p className="text-gray-500">
+                                            Última falha de renovação: {formatUtcDateTime(melhorEnvioStatus.lastRefreshFailure.at)}
+                                            {melhorEnvioStatus.lastRefreshFailure.httpStatus ? ` (HTTP ${melhorEnvioStatus.lastRefreshFailure.httpStatus})` : ''}.
+                                        </p>
+                                    )}
+                                </>
+                            ) : melhorEnvioStatusError ? (
+                                <p className="text-yellow-400">Não foi possível consultar o estado da conexão.</p>
+                            ) : (
+                                <p className="text-gray-500">Consultando estado da conexão...</p>
+                            )}
+                        </div>
                     </div>
                     <button
                         type="button"
@@ -101,7 +180,7 @@ export default function AdminDashboard() {
             </section>
 
             {/* Stat Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {stats.map((stat, i) => {
                     const Icon = stat.icon;
                     return (
@@ -127,9 +206,9 @@ export default function AdminDashboard() {
             <div className="bg-[#2A2A2A] border border-white/5 rounded-xl shadow-sm overflow-hidden">
                 <div className="p-6 border-b border-white/5 flex items-center justify-between">
                     <h2 className="text-lg font-bold text-white">Pedidos Recentes</h2>
-                    <button className="text-sm text-brand-secondary hover:text-red-400 font-medium transition-colors">
+                    <Link href="/admin/pedidos" className="text-sm text-brand-secondary hover:text-red-400 font-medium transition-colors">
                         Ver todos
-                    </button>
+                    </Link>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
@@ -143,21 +222,35 @@ export default function AdminDashboard() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                            {recentOrders.map((order, i) => (
-                                <tr key={i} className="hover:bg-white/[0.02] transition-colors">
-                                    <td className="p-4 font-medium text-white">{order.id}</td>
-                                    <td className="p-4 text-gray-300">{order.customer}</td>
-                                    <td className="p-4 text-gray-400 text-sm">{order.date}</td>
-                                    <td className="p-4">
-                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full border ${
-                                            order.status === 'delivered' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
-                                        }`}>
-                                            {order.status}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 font-medium text-white">{order.total}</td>
+                            {!orders && !ordersError ? (
+                                <tr>
+                                    <td colSpan={5} className="p-6 text-center text-gray-500">Carregando pedidos...</td>
                                 </tr>
-                            ))}
+                            ) : ordersError ? (
+                                <tr>
+                                    <td colSpan={5} className="p-6 text-center text-gray-500">Não foi possível carregar os pedidos.</td>
+                                </tr>
+                            ) : recentOrders.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="p-6 text-center text-gray-500">Nenhum pedido realizado ainda.</td>
+                                </tr>
+                            ) : (
+                                recentOrders.map((order) => (
+                                    <tr key={order.id} className="hover:bg-white/[0.02] transition-colors">
+                                        <td className="p-4 font-mono text-xs text-gray-400">{order.id.slice(0, 8)}...</td>
+                                        <td className="p-4 text-gray-300">{order.user?.name || order.user?.email || 'Cliente'}</td>
+                                        <td className="p-4 text-gray-400 text-sm whitespace-nowrap">
+                                            {order.createdAt ? new Date(order.createdAt).toLocaleDateString('pt-BR') : '-'}
+                                        </td>
+                                        <td className="p-4">
+                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full border whitespace-nowrap ${orderStatusStyle(order.status)}`}>
+                                                {orderStatusLabel(order.status)}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 font-medium text-white whitespace-nowrap">{formatCurrency(order.total)}</td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>

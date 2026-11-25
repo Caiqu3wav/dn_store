@@ -1,7 +1,9 @@
+
 package com.dnstore.backend.service;
 
 import com.dnstore.backend.model.PaymentWebhookEvent;
 import com.dnstore.backend.repository.PaymentWebhookEventRepository;
+import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -16,68 +18,142 @@ import org.springframework.transaction.annotation.Transactional;
 public class PaymentWebhookTransactionService {
 
     private final PaymentWebhookEventRepository repository;
-    @Value("${payment.webhook.max-attempts:8}") private int maxAttempts;
-    @Value("${payment.webhook.lease-minutes:10}") private long leaseMinutes;
+
+    @Value("${payment.webhook.max-attempts:8}")
+    private int maxAttempts;
+
+    @Value("${payment.webhook.lease-minutes:10}")
+    private long leaseMinutes;
+
+    @PostConstruct
+    void validateConfiguration() {
+        if (maxAttempts <= 0) {
+            throw new IllegalStateException(
+                    "payment.webhook.max-attempts deve ser maior que zero.");
+        }
+
+        if (leaseMinutes <= 0) {
+            throw new IllegalStateException(
+                    "payment.webhook.lease-minutes deve ser maior que zero.");
+        }
+    }
 
     @Transactional
     public PaymentWebhookEvent claimNext() {
-        return repository.findNextEligibleForUpdate(LocalDateTime.now()).map(event -> {
-            event.setProcessingStatus("PROCESSING");
-            event.setAttemptCount(event.getAttemptCount() + 1);
-            event.setLastAttemptAt(LocalDateTime.now());
-            event.setProcessingStartedAt(LocalDateTime.now());
-            event.setErrorMessage(null);
-            return repository.save(event);
-        }).orElse(null);
+        LocalDateTime now = LocalDateTime.now();
+
+        return repository.findNextEligibleForUpdate(now)
+                .map(event -> {
+                    event.setProcessingStatus("PROCESSING");
+                    event.setAttemptCount(event.getAttemptCount() + 1);
+                    event.setLastAttemptAt(now);
+                    event.setProcessingStartedAt(now);
+                    event.setProcessedAt(null);
+                    event.setErrorMessage(null);
+
+                    return repository.saveAndFlush(event);
+                })
+                .orElse(null);
     }
 
     @Transactional
     public void complete(PaymentWebhookEvent event) {
-        event.setProcessingStatus("PROCESSED");
-        event.setProcessedAt(LocalDateTime.now());
-        event.setProcessingStartedAt(null);
-        event.setNextAttemptAt(null);
-        repository.save(event);
+        int updated = repository.completeClaimed(
+                event.getEventId(),
+                event.getAttemptCount(),
+                LocalDateTime.now());
+
+        if (updated == 0) {
+            log.warn(
+                    "payment.webhook.stale_completion eventId={} attempt={}",
+                    event.getEventId(),
+                    event.getAttemptCount());
+        }
     }
 
     @Transactional
     public void requireReview(PaymentWebhookEvent event, String message) {
-        event.setProcessingStatus("REQUIRES_REVIEW");
-        event.setProcessedAt(null);
-        event.setProcessingStartedAt(null);
-        event.setNextAttemptAt(null);
-        event.setErrorMessage(message);
-        repository.save(event);
+        int updated = repository.requireReviewClaimed(
+                event.getEventId(),
+                event.getAttemptCount(),
+                message);
+
+        if (updated == 0) {
+            log.warn(
+                    "payment.webhook.stale_review eventId={} attempt={}",
+                    event.getEventId(),
+                    event.getAttemptCount());
+        }
     }
 
     @Transactional
     public void retryOrFail(PaymentWebhookEvent event, String message) {
-        event.setErrorMessage(message);
-        event.setProcessingStartedAt(null);
-        if (event.getAttemptCount() >= maxAttempts) {
-            event.setProcessingStatus("FAILED");
-            event.setNextAttemptAt(null);
-            log.error("payment.webhook.failed eventId={} attempts={}", event.getEventId(), event.getAttemptCount());
-        } else {
-            event.setProcessingStatus("RETRY");
-            event.setNextAttemptAt(LocalDateTime.now().plusSeconds(backoffSeconds(event.getAttemptCount())));
-            log.warn("payment.webhook.retry eventId={} attempt={}", event.getEventId(), event.getAttemptCount());
+        int attempt = event.getAttemptCount();
+
+        if (attempt >= maxAttempts) {
+            int updated = repository.failClaimed(
+                    event.getEventId(),
+                    attempt,
+                    message);
+
+            if (updated > 0) {
+                log.error(
+                        "payment.webhook.failed eventId={} attempts={}",
+                        event.getEventId(),
+                        attempt);
+            } else {
+                log.warn(
+                        "payment.webhook.stale_failure eventId={} attempt={}",
+                        event.getEventId(),
+                        attempt);
+            }
+
+            return;
         }
-        repository.save(event);
+
+        LocalDateTime nextAttemptAt = LocalDateTime.now()
+                .plusSeconds(backoffSeconds(attempt));
+
+        int updated = repository.retryClaimed(
+                event.getEventId(),
+                attempt,
+                nextAttemptAt,
+                message);
+
+        if (updated > 0) {
+            log.warn(
+                    "payment.webhook.retry eventId={} attempt={} nextAttemptAt={}",
+                    event.getEventId(),
+                    attempt,
+                    nextAttemptAt);
+        } else {
+            log.warn(
+                    "payment.webhook.stale_retry eventId={} attempt={}",
+                    event.getEventId(),
+                    attempt);
+        }
     }
 
     @Transactional
     public void recoverExpired() {
+        LocalDateTime now = LocalDateTime.now();
+
         List<PaymentWebhookEvent> expired = repository.findExpiredProcessing(
-                LocalDateTime.now().minusMinutes(leaseMinutes));
-        expired.forEach(event -> {
+                now.minusMinutes(leaseMinutes));
+
+        for (PaymentWebhookEvent event : expired) {
             event.setProcessingStatus("RETRY");
             event.setProcessingStartedAt(null);
-            event.setNextAttemptAt(LocalDateTime.now());
+            event.setNextAttemptAt(now);
             event.setErrorMessage("Lease de processamento expirado.");
-            repository.save(event);
-            log.warn("payment.webhook.recovered eventId={}", event.getEventId());
-        });
+
+            log.warn(
+                    "payment.webhook.recovered eventId={} attempt={}",
+                    event.getEventId(),
+                    event.getAttemptCount());
+        }
+
+        repository.saveAll(expired);
     }
 
     private long backoffSeconds(int attempt) {

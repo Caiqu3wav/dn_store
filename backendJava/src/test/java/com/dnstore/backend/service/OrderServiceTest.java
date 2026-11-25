@@ -5,6 +5,7 @@ import com.dnstore.backend.model.enums.Role;
 import com.dnstore.backend.config.MelhorEnvioProperties;
 import com.dnstore.backend.exception.ConflictException;
 import com.dnstore.backend.exception.ResourceNotFoundException;
+import com.dnstore.backend.exception.StaleShippingQuoteException;
 import com.dnstore.backend.repository.*;
 import com.dnstore.backend.service.shipping.ShippingGateway.ShippingItem;
 import com.dnstore.backend.service.shipping.ShippingQuote;
@@ -197,6 +198,34 @@ class OrderServiceTest {
         }
 
         @Test
+        void quoteShipping_catalogPackageMeasurements_shouldMapHeightWidthDepthAndWeightToShippingItem() {
+                // height, width, depth (sent as length), weight: the registered package measurements.
+                double[][] measurements = {
+                                { 12, 20, 25, 0.20 }, // Boné
+                                { 4, 22, 30, 0.25 }, // Camisa de ciclismo
+                                { 3, 22, 28, 0.20 }, // Camisa de poliamida
+                                { 3, 10, 20, 0.08 } // Meia
+                };
+
+                for (double[] m : measurements) {
+                        PhysicalProduct product = physicalProduct();
+                        product.setHeight(m[0]);
+                        product.setWidth(m[1]);
+                        product.setDepth(m[2]);
+                        product.setWeight(m[3]);
+                        clearInvocations(deliveryService);
+
+                        orderService.quoteShipping(user, "12500-000");
+
+                        verify(deliveryService).calculateOptions(eq("12500000"), eq(List.of(new ShippingItem(
+                                        variant.getId().toString(),
+                                        BigDecimal.valueOf(m[3]), BigDecimal.valueOf(m[1]),
+                                        BigDecimal.valueOf(m[0]), BigDecimal.valueOf(m[2]),
+                                        new BigDecimal("100.00"), 2))));
+                }
+        }
+
+        @Test
         void quoteShipping_zeroWeight_shouldRejectProduct() {
                 physicalProduct().setWeight(0);
 
@@ -210,7 +239,7 @@ class OrderServiceTest {
 
                 assertThatThrownBy(() -> orderService.checkout(
                                 user, null, quoteOptionId, null, address.getId()))
-                                .isInstanceOf(ConflictException.class)
+                                .isInstanceOf(StaleShippingQuoteException.class)
                                 .hasMessageContaining("dados do carrinho");
 
                 verify(orderRepository, never()).save(any(Order.class));
@@ -230,8 +259,101 @@ class OrderServiceTest {
                                 quoteOptionId,
                                 null,
                                 null))
-                                .isInstanceOf(ConflictException.class)
+                                .isInstanceOf(StaleShippingQuoteException.class)
                                 .hasMessageContaining("opção de frete expirou");
+        }
+
+        @Test
+        void checkout_rejectsExpiredQuoteWithStaleCodeAndNeverCreatesOrder() {
+                UUID quoteOptionId = orderService.quoteShipping(user, address.getZipCode()).get(0).id();
+                shippingOptions.get(quoteOptionId).setExpiresAt(LocalDateTime.now(java.time.ZoneOffset.UTC).minusSeconds(1));
+
+                assertThatThrownBy(() -> orderService.checkout(
+                                user, null, quoteOptionId, null, address.getId()))
+                                .isInstanceOf(StaleShippingQuoteException.class);
+
+                verify(orderRepository, never()).save(any(Order.class));
+        }
+
+        @Test
+        void checkout_withoutShippingOptionAsksForNewQuote() {
+                assertThatThrownBy(() -> orderService.checkout(user, null, null, null, address.getId()))
+                                .isInstanceOf(StaleShippingQuoteException.class);
+        }
+
+        @Test
+        void checkout_afterStaleQuoteCustomerCanQuoteAgainAndCompleteWithServerSidePrice() {
+                UUID expired = orderService.quoteShipping(user, address.getZipCode()).get(0).id();
+                shippingOptions.get(expired).setExpiresAt(LocalDateTime.now(java.time.ZoneOffset.UTC).minusSeconds(1));
+                assertThatThrownBy(() -> orderService.checkout(user, null, expired, null, address.getId()))
+                                .isInstanceOf(StaleShippingQuoteException.class);
+
+                UUID fresh = orderService.quoteShipping(user, address.getZipCode()).get(0).id();
+                Order order = orderService.checkout(user, null, fresh, null, address.getId());
+
+                assertThat(fresh).isNotEqualTo(expired);
+                assertThat(order.getShippingCost()).isEqualByComparingTo("10.00");
+                assertThat(order.getTotal()).isEqualByComparingTo("210.00");
+        }
+
+        @Test
+        void quoteShipping_recentQuoteForSameCartAndZipIsReusedWithoutCallingTheProvider() {
+                ShippingQuoteOptionEntity recent = new ShippingQuoteOptionEntity();
+                recent.setId(UUID.randomUUID());
+                recent.setServiceId("1:123");
+                recent.setServiceName("Correios PAC");
+                recent.setPrice(new BigDecimal("10.00"));
+                recent.setDeliveryDays(3);
+                recent.setSource("MELHOR_ENVIO");
+                recent.setQuotedAt(LocalDateTime.now(java.time.ZoneOffset.UTC).minusMinutes(1));
+                when(shippingQuoteOptionRepository.findReusable(
+                                eq(user.getId()), anyString(), eq("12500000"), eq("12600000"), eq("sandbox"),
+                                any(LocalDateTime.class), any(LocalDateTime.class)))
+                                .thenReturn(List.of(recent));
+
+                List<OrderService.ShippingOption> options = orderService.quoteShipping(user, "12500-000");
+
+                assertThat(options).singleElement().satisfies(option -> {
+                        assertThat(option.id()).isEqualTo(recent.getId());
+                        assertThat(option.cost()).isEqualByComparingTo("10.00");
+                });
+                verify(deliveryService, never()).calculateOptions(anyString(), anyList());
+                verify(shippingQuoteOptionRepository, never()).save(any(ShippingQuoteOptionEntity.class));
+        }
+
+        @Test
+        void quoteShipping_reuseOnlyReturnsOptionsFromTheLatestProviderQuery() {
+                LocalDateTime latestAt = LocalDateTime.now(java.time.ZoneOffset.UTC).minusMinutes(1);
+                ShippingQuoteOptionEntity latest = reusableOption("Correios PAC", latestAt);
+                ShippingQuoteOptionEntity older = reusableOption("Jadlog .Package", latestAt.minusMinutes(2));
+                when(shippingQuoteOptionRepository.findReusable(
+                                any(UUID.class), anyString(), anyString(), anyString(), anyString(),
+                                any(LocalDateTime.class), any(LocalDateTime.class)))
+                                .thenReturn(List.of(latest, older));
+
+                assertThat(orderService.quoteShipping(user, "12500-000"))
+                                .extracting(OrderService.ShippingOption::typeName)
+                                .containsExactly("Correios PAC");
+        }
+
+        @Test
+        void quoteShipping_whenNothingReusableCallsTheProviderAndPersistsOnce() {
+                orderService.quoteShipping(user, "12500-000");
+
+                verify(deliveryService, times(1)).calculateOptions(anyString(), anyList());
+                verify(shippingQuoteOptionRepository, times(1)).save(any(ShippingQuoteOptionEntity.class));
+        }
+
+        private ShippingQuoteOptionEntity reusableOption(String name, LocalDateTime quotedAt) {
+                ShippingQuoteOptionEntity option = new ShippingQuoteOptionEntity();
+                option.setId(UUID.randomUUID());
+                option.setServiceId(name);
+                option.setServiceName(name);
+                option.setPrice(new BigDecimal("10.00"));
+                option.setDeliveryDays(3);
+                option.setSource("MELHOR_ENVIO");
+                option.setQuotedAt(quotedAt);
+                return option;
         }
 
         @Test
@@ -368,6 +490,73 @@ class OrderServiceTest {
 
                 assertThat(order.getStatus()).isEqualTo("CANCELLED");
                 verify(orderInventoryService).releaseReservedStock(order);
+        }
+
+        private Coupon percentageCoupon() {
+                Coupon coupon = new Coupon();
+                coupon.setId(UUID.randomUUID());
+                coupon.setCode("DN10");
+                coupon.setActive(true);
+                coupon.setDiscountPercentage(new BigDecimal("10"));
+                return coupon;
+        }
+
+        @Test
+        void checkout_withCoupon_shouldConsumeUsageAtomicallyAndApplyDiscount() {
+                Coupon coupon = percentageCoupon();
+                when(couponService.validateCoupon("DN10")).thenReturn(Optional.of(coupon));
+                UUID shippingOptionId = orderService.quoteShipping(user, address.getZipCode()).get(0).id();
+
+                Order order = orderService.checkout(user, null, shippingOptionId, "DN10", address.getId());
+
+                // 2 x 100,00 - 10% + 10,00 de frete
+                assertThat(order.getTotal()).isEqualByComparingTo("190.00");
+                assertThat(order.getDiscountAmount()).isEqualByComparingTo("20.00");
+                assertThat(order.getCoupon()).isSameAs(coupon);
+                verify(couponService).registerUsage(coupon);
+                // Nunca mais "ler, incrementar e gravar" o cupom: o contador só muda pelo UPDATE atômico.
+                verify(couponRepository, never()).save(any(Coupon.class));
+        }
+
+        @Test
+        void checkout_whenCouponLimitWasReached_shouldFailBeforeTouchingStockOrOrder() {
+                Coupon coupon = percentageCoupon();
+                when(couponService.validateCoupon("DN10")).thenReturn(Optional.of(coupon));
+                org.mockito.Mockito.doThrow(new IllegalArgumentException("Este cupom já atingiu o limite máximo de uso."))
+                                .when(couponService).registerUsage(coupon);
+                UUID shippingOptionId = orderService.quoteShipping(user, address.getZipCode()).get(0).id();
+
+                assertThatThrownBy(() -> orderService.checkout(user, null, shippingOptionId, "DN10", address.getId()))
+                                .isInstanceOf(IllegalArgumentException.class)
+                                .hasMessageContaining("limite máximo de uso");
+
+                assertThat(variant.getStock()).isEqualTo(5);
+                verify(orderRepository, never()).save(any(Order.class));
+        }
+
+        @Test
+        void updateStatus_markingPaidThroughTheGenericEndpoint_shouldBeRejected() {
+                assertThatThrownBy(() -> orderService.updateStatus(UUID.randomUUID(), "PAID"))
+                                .isInstanceOf(IllegalArgumentException.class)
+                                .hasMessageContaining("confirmação manual de pagamento");
+
+                verifyNoInteractions(orderRepository);
+        }
+
+        @Test
+        void updateStatus_cancelledOrderWithReleasedStock_cannotGoBackToLogistics() {
+                Order order = new Order();
+                order.setId(UUID.randomUUID());
+                order.setStatus("CANCELLED");
+                order.setStockReleased(true);
+                when(orderRepository.findByIdForUpdate(order.getId())).thenReturn(Optional.of(order));
+
+                assertThatThrownBy(() -> orderService.updateStatus(order.getId(), "PROCESSING"))
+                                .isInstanceOf(ConflictException.class)
+                                .hasMessageContaining("estoque deste pedido já foi devolvido");
+
+                assertThat(order.getStatus()).isEqualTo("CANCELLED");
+                verify(orderRepository, never()).save(order);
         }
 
         private PhysicalProduct physicalProduct() {

@@ -168,18 +168,29 @@ public class AsaasGatewayService implements PaymentGateway {
             String eventType = requireString(payload.get("event"), "event");
             String externalId = requireString(payment.get("id"), "payment.id");
             String status = requireString(payment.get("status"), "payment.status");
-            String normalizedStatus = PaymentStatus.fromAsaas(status).name();
             return new WebhookResult(
                     eventId,
                     externalId,
                     eventType,
-                    normalizedStatus,
+                    normalizeWebhookStatus(status),
                     optionalString(payment.get("externalReference")),
                     decimalValue(payment.get("value")),
                     optionalString(payment.get("currency")),
                     optionalString(payment.get("customer")));
         } catch (JsonProcessingException | ClassCastException exception) {
             throw new PaymentGatewayException("Webhook inválido.", exception);
+        }
+    }
+
+    /**
+     * O status do webhook é informativo: o worker consulta o estado canônico no Asaas antes de aplicar
+     * qualquer mudança. Um status ainda desconhecido não pode impedir a persistência do evento.
+     */
+    private String normalizeWebhookStatus(String status) {
+        try {
+            return PaymentStatus.fromAsaas(status).name();
+        } catch (IllegalArgumentException exception) {
+            return "UNSUPPORTED";
         }
     }
 
@@ -340,7 +351,8 @@ public class AsaasGatewayService implements PaymentGateway {
     private ProviderPayment parseProviderPayment(Map<?, ?> body) {
         return new ProviderPayment(
                 requireString(body.get("id"), "payment.id"),
-                PaymentStatus.fromAsaas(requireString(body.get("status"), "payment.status")).name(),
+                PaymentStatus.fromAsaas(
+                        requireString(body.get("status"), "payment.status")).name(),
                 optionalString(body.get("externalReference")),
                 decimalValue(body.get("value")),
                 optionalString(body.get("currency")),
@@ -349,8 +361,11 @@ public class AsaasGatewayService implements PaymentGateway {
                 null,
                 null,
                 optionalString(body.get("bankSlipUrl")),
-                optionalString(body.get("identificationField") != null
-                        ? body.get("identificationField") : body.get("barCode")));
+                optionalString(
+                        body.get("identificationField") != null
+                                ? body.get("identificationField")
+                                : body.get("barCode")),
+                calculateRefundedAmount(body.get("refunds")));
     }
 
     private void verifyExpectedCharge(PaymentResult result, String reference, BigDecimal amount) {
@@ -409,5 +424,42 @@ public class AsaasGatewayService implements PaymentGateway {
             return new BigDecimal(number.toString());
         }
         return null;
+    }
+
+    private BigDecimal calculateRefundedAmount(Object refundsValue) {
+        if (refundsValue == null) {
+            return BigDecimal.ZERO;
+        }
+
+        if (!(refundsValue instanceof List<?> refunds)) {
+            throw new PaymentGatewayException(
+                    "Formato inválido do campo refunds retornado pelo Asaas.");
+        }
+
+        BigDecimal totalRefunded = BigDecimal.ZERO;
+
+        for (Object item : refunds) {
+            if (!(item instanceof Map<?, ?> refund)) {
+                throw new PaymentGatewayException(
+                        "Item inválido no histórico de estornos do Asaas.");
+            }
+
+            String status = optionalString(refund.get("status"));
+
+            if (!"DONE".equalsIgnoreCase(status)) {
+                continue;
+            }
+
+            BigDecimal value = decimalValue(refund.get("value"));
+
+            if (value == null || value.signum() <= 0) {
+                throw new PaymentGatewayException(
+                        "Valor inválido em estorno concluído pelo Asaas.");
+            }
+
+            totalRefunded = totalRefunded.add(value);
+        }
+
+        return totalRefunded;
     }
 }

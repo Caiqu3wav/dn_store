@@ -63,6 +63,10 @@ public class Order {
     @Column(name = "stock_released", nullable = false)
     private boolean stockReleased;
 
+    /** Pagamento confirmado manualmente por um admin (não pelo Asaas). Detalhes em order_status_audit. */
+    @Column(name = "manual_payment_confirmed", nullable = false)
+    private boolean manualPaymentConfirmed;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

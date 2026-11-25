@@ -39,13 +39,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (!loading) {
             if (!user) {
                 toast.error("Você precisa estar logado para acessar esta página.");
-                router.push('/auth');
+                router.push(`/auth?next=${encodeURIComponent(pathname)}`);
             } else if (user.role !== 'ADMIN') {
                 toast.error("Acesso negado. Apenas administradores podem acessar esta área.");
                 router.push('/');
             }
         }
-    }, [user, loading, router]);
+    }, [user, loading, router, pathname]);
 
     if (loading || !user || user.role !== 'ADMIN') {
         return (
@@ -68,7 +68,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Sidebar */}
             <aside 
                 className={cn(
-                    "fixed top-0 left-0 z-50 h-screen w-64 bg-[#1A1B1D] border-r border-white/5 transform transition-transform duration-300 lg:translate-x-0 lg:static flex flex-col",
+                    "fixed top-0 left-0 z-50 h-dvh w-64 shrink-0 bg-[#1A1B1D] border-r border-white/5 transform transition-transform duration-300 lg:translate-x-0 lg:sticky lg:self-start flex flex-col",
                     isSidebarOpen ? "translate-x-0" : "-translate-x-full"
                 )}
             >
@@ -120,7 +120,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </aside>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
+            <div className="flex-1 min-w-0 flex flex-col min-h-screen">
                 {/* Topbar Mobile */}
                 <header className="lg:hidden bg-[#1A1B1D] border-b border-white/5 p-4 flex items-center justify-between sticky top-0 z-30">
                     <div className="flex items-center gap-3">
@@ -135,9 +135,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 md:p-8">
+                <div className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 md:p-8">
                     {children}
-                </main>
+                </div>
             </div>
         </div>
     );

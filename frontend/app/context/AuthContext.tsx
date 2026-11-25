@@ -48,7 +48,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [logout]);
 
   const login = (token: string, userData: User) => {
-    Cookies.set('auth_token', token, { expires: 1 }); // Expira em 1 dia
+    // Expira em 1 dia (igual à validade máxima do JWT). `secure` só em HTTPS para não quebrar o localhost.
+    Cookies.set('auth_token', token, {
+      expires: 1,
+      sameSite: 'strict',
+      secure: window.location.protocol === 'https:',
+    });
     localStorage.setItem('user_data', JSON.stringify(userData));
     setUser(userData);
   };

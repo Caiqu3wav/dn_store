@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Navbar } from "./components/Navbar";
-import { Footer } from "./components/Footer";
+import { ClientLayoutWrapper } from "./components/ClientLayoutWrapper";
 import { CartProvider } from "./context/CartContext";
 import { FavoritesProvider } from "./context/FavoritesContext";
 import { AuthProvider } from "./context/AuthContext";
@@ -19,7 +18,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Desafio Natureza | Aventura sobre duas rodas",
+  title: {
+    default: "Desafio Natureza | Aventura sobre duas rodas",
+    template: "%s | Desafio Natureza",
+  },
   description: "Loja oficial da Desafio Natureza. Roupas e acessórios para mountain bike e eventos esportivos.",
 };
 
@@ -36,11 +38,7 @@ export default function RootLayout({
         <AuthProvider>
           <CartProvider>
             <FavoritesProvider>
-              <Navbar />
-              <main className="min-h-screen">
-                {children}
-              </main>
-              <Footer />
+              <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
               <Toaster position="bottom-right" />
             </FavoritesProvider>
           </CartProvider>

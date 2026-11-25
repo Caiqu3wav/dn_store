@@ -214,13 +214,13 @@ export function Footer() {
                     </div>
                 </div>
 
-                {/* Copyright */}
-                <div className="border-t w-full self-center border-gray-800 pt-8 flex flex-col md:flex-row items-center justify-center gap-4 text-white text-xs text-center md:text-left bg-black py-8 -mx-4 px-4 lg:-mx-8 lg:px-8">
-                    <p>
-                        Copyright 2018 Desafio Natureza® - Todos os direitos reservados.
-                    </p>
-                </div>
+            </div>
 
+            {/* Copyright (fora do container para ocupar a largura total do rodapé) */}
+            <div className="border-t w-full border-gray-800 flex flex-col md:flex-row items-center justify-center gap-4 text-white text-xs text-center md:text-left bg-black py-8 px-4 lg:px-8">
+                <p>
+                    Copyright 2018 Desafio Natureza® - Todos os direitos reservados.
+                </p>
             </div>
         </footer>
     );
