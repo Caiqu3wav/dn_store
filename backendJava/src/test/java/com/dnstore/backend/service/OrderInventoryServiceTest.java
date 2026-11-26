@@ -38,7 +38,8 @@ class OrderInventoryServiceTest {
 
     @BeforeEach
     void setUp() {
-        inventoryService = new OrderInventoryService(productVariantRepository, couponService);
+        inventoryService = new OrderInventoryService(productVariantRepository, couponService,
+                TestStockLedger.create(new java.util.ArrayList<>()));
         variant = new ProductVariant();
         variant.setId(UUID.randomUUID());
         variant.setStock(2);

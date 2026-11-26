@@ -51,6 +51,9 @@ class ProductServiceTest {
     @Mock
     private ProductDefaultsService productDefaultsService;
 
+    @Mock
+    private StockLedger stockLedger;
+
     @InjectMocks
     private ProductService productService;
 

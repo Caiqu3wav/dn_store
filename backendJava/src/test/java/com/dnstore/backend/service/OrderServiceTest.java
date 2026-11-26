@@ -70,6 +70,9 @@ class OrderServiceTest {
         @Mock
         private MelhorEnvioProperties melhorEnvioProperties;
 
+        @Mock
+        private StockLedger stockLedger;
+
         @InjectMocks
         private OrderService orderService;
 
@@ -175,6 +178,7 @@ class OrderServiceTest {
                 assertThat(order.getItems()).hasSize(1);
                 assertThat(order.getItems().get(0).getPrice()).isEqualByComparingTo("100.00");
                 assertThat(variant.getStock()).isEqualTo(3);
+                verify(stockLedger).recordSale(any(Order.class));
                 verify(productVariantRepository, times(1)).save(variant);
                 verify(deliveryService).calculateOptions(eq("01000000"), eq(List.of(new ShippingItem(
                                 variant.getId().toString(),

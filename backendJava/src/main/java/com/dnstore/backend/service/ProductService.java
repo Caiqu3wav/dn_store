@@ -8,6 +8,7 @@ import com.dnstore.backend.model.ProductImage;
 import com.dnstore.backend.model.ProductVariant;
 import com.dnstore.backend.model.ProductVariantSizes;
 import com.dnstore.backend.model.enums.ProductRemovalOutcome;
+import com.dnstore.backend.model.enums.StockAdjustmentCategory;
 import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.repository.CategoryRepository;
 import com.dnstore.backend.repository.ProductRepository;
@@ -42,6 +43,7 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
     private final ProductVariantRepository productVariantRepository;
     private final ProductDefaultsService productDefaultsService;
+    private final StockLedger stockLedger;
 
     // --- R: Read ---
     public List<Product> findAll() {
@@ -127,6 +129,7 @@ public class ProductService {
             ensureLegacyDefaultVariant(saved);
         }
         persistMissingVariantSkus(saved);
+        recordInitialStock(saved.getVariants());
         return saved;
     }
 
@@ -157,6 +160,7 @@ public class ProductService {
                 ensureLegacyDefaultVariant(savedProduct);
             }
             persistMissingVariantSkus(savedProduct);
+            recordInitialStock(savedProduct.getVariants());
             saved.add(savedProduct);
         }
         return saved;
@@ -201,12 +205,17 @@ public class ProductService {
                 existingPhysical.setHeight(updatedPhysical.getHeight());
                 existingPhysical.setDepth(updatedPhysical.getDepth());
             }
+            List<ProductVariant> addedVariants = new ArrayList<>();
             if (updatedData.getVariants() != null && !updatedData.getVariants().isEmpty()) {
-                mergeVariants(existing, updatedData.getVariants());
+                mergeVariants(existing, updatedData.getVariants(), addedVariants);
             }
             synchronizeAggregateStock(existing);
             Product saved = productRepository.save(existing);
             persistMissingVariantSkus(saved);
+            if (!addedVariants.isEmpty()) {
+                productRepository.flush();
+                recordInitialStock(addedVariants);
+            }
             return saved;
         });
     }
@@ -239,7 +248,8 @@ public class ProductService {
         }
     }
 
-    private void mergeVariants(Product product, List<ProductVariant> incomingVariants) {
+    private void mergeVariants(Product product, List<ProductVariant> incomingVariants,
+            List<ProductVariant> addedVariants) {
         validateVariants(incomingVariants);
         List<ProductVariant> currentVariants = product.getVariants() == null
                 ? new ArrayList<>()
@@ -260,8 +270,11 @@ public class ProductService {
             if (current == null) {
                 incoming.setProduct(product);
                 currentVariants.add(incoming);
+                addedVariants.add(incoming);
             } else {
-                current.setStock(incoming.getStock());
+                // O valor absoluto continua sendo o que o admin enviou; o livro registra a diferença sob lock.
+                stockLedger.postSetTo(current, incoming.getStock(), StockLedger.Context.manual(
+                        "Edição do produto", StockAdjustmentCategory.PRODUCT_EDIT, StockActor.current(), null));
                 current.setActive(incoming.isActive());
                 current.setColor(incoming.getColor());
                 current.setType(incoming.getType());
@@ -272,6 +285,17 @@ public class ProductService {
         }
         product.setVariants(currentVariants);
         synchronizeAggregateStock(product);
+    }
+
+    /** Variantes novas com saldo entram no livro como saldo inicial (stock_before = 0, delta = saldo). */
+    private void recordInitialStock(List<ProductVariant> variants) {
+        if (variants == null) {
+            return;
+        }
+        String actor = StockActor.current();
+        for (ProductVariant variant : variants) {
+            stockLedger.recordInitial(variant, actor);
+        }
     }
 
     private void synchronizeAggregateStock(Product product) {

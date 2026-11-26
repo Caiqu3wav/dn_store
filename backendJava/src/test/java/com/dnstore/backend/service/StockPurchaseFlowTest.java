@@ -22,6 +22,8 @@ import com.dnstore.backend.repository.ProductVariantRepository;
 import com.dnstore.backend.repository.ShippingQuoteOptionRepository;
 import com.dnstore.backend.repository.StockMovementRepository;
 import com.dnstore.backend.service.payment.PaymentGateway;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -66,6 +68,7 @@ class StockPurchaseFlowTest {
     @Mock private FinancialBlockRepository financialBlockRepository;
     @Mock private ShippingQuoteOptionRepository shippingQuoteOptionRepository;
     @Mock private StockMovementRepository movementRepository;
+    @Mock private EntityManager entityManager;
     @Mock private PaymentGateway paymentGateway;
 
     private StockService stockService;
@@ -92,9 +95,10 @@ class StockPurchaseFlowTest {
         melhorEnvioProperties.setQuoteTtl(Duration.ofMinutes(15));
         melhorEnvioProperties.setQuoteReuseWindow(Duration.ofMinutes(5));
 
-        stockService = new StockService(variantRepository, movementRepository);
-        orderInventoryService = new OrderInventoryService(variantRepository, couponService);
-        ReflectionTestUtils.setField(orderInventoryService, "stockService", stockService);
+        lenient().when(entityManager.getLockMode(any())).thenReturn(LockModeType.PESSIMISTIC_WRITE);
+        StockLedger stockLedger = new StockLedger(movementRepository, entityManager);
+        stockService = new StockService(variantRepository, movementRepository, stockLedger);
+        orderInventoryService = new OrderInventoryService(variantRepository, couponService, stockLedger);
 
         orderService = new OrderService(
                 deliveryService,
@@ -108,8 +112,8 @@ class StockPurchaseFlowTest {
                 paymentRepository,
                 financialBlockRepository,
                 shippingQuoteOptionRepository,
-                melhorEnvioProperties);
-        ReflectionTestUtils.setField(orderService, "stockService", stockService);
+                melhorEnvioProperties,
+                stockLedger);
         ReflectionTestUtils.setField(orderService, "shippingGateway", "simulated");
 
         expirationService = new PaymentExpirationService(
@@ -140,12 +144,10 @@ class StockPurchaseFlowTest {
         // Stateful stock movement repository
         lenient().when(movementRepository.save(any(StockMovement.class))).thenAnswer(inv -> {
             StockMovement m = inv.getArgument(0);
-            if (m.getId() == null) m.setId(UUID.randomUUID());
-            if (m.getCreatedAt() == null) m.setCreatedAt(LocalDateTime.now());
             movementStore.add(m);
             return m;
         });
-        lenient().when(movementRepository.findByVariantIdOrderByCreatedAtDesc(any(UUID.class))).thenAnswer(inv -> {
+        lenient().when(movementRepository.findByVariantIdOrderBySeqDesc(any(UUID.class))).thenAnswer(inv -> {
             UUID vId = inv.getArgument(0);
             return movementStore.stream()
                     .filter(m -> m.getVariant().getId().equals(vId))
@@ -280,10 +282,12 @@ class StockPurchaseFlowTest {
         assertThat(movementStore).hasSize(3);
         assertThat(movementStore.get(0).getType()).isEqualTo(StockMovement.Type.ENTRY);
         assertThat(movementStore.get(0).getDelta()).isEqualTo(5);
+        assertThat(movementStore.get(0).getStockBefore()).isEqualTo(10);
         assertThat(movementStore.get(0).getStockAfter()).isEqualTo(15);
 
         assertThat(movementStore.get(1).getType()).isEqualTo(StockMovement.Type.SALE);
         assertThat(movementStore.get(1).getDelta()).isEqualTo(-4);
+        assertThat(movementStore.get(1).getStockBefore()).isEqualTo(15);
         assertThat(movementStore.get(1).getStockAfter()).isEqualTo(11);
         assertThat(movementStore.get(1).getOrder()).isEqualTo(order);
 
@@ -331,7 +335,8 @@ class StockPurchaseFlowTest {
                 .containsExactly(
                         StockMovement.Type.SALE,
                         StockMovement.Type.CANCELLATION,
-                        StockMovement.Type.SALE);
+                        StockMovement.Type.REACTIVATION);
+        assertThat(movementStore.get(2).getStockBefore()).isEqualTo(10);
         assertThat(movementStore.get(2).getStockAfter()).isEqualTo(7);
     }
 
