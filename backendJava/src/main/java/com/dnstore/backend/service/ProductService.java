@@ -205,17 +205,25 @@ public class ProductService {
                 existingPhysical.setHeight(updatedPhysical.getHeight());
                 existingPhysical.setDepth(updatedPhysical.getDepth());
             }
-            List<ProductVariant> addedVariants = new ArrayList<>();
+            // save() faz merge: as variantes novas viram cópias gerenciadas, então as reconhecemos por não estarem aqui.
+            Set<UUID> knownVariantIds = new HashSet<>();
+            if (existing.getVariants() != null) {
+                existing.getVariants().forEach(variant -> {
+                    if (variant.getId() != null) {
+                        knownVariantIds.add(variant.getId());
+                    }
+                });
+            }
             if (updatedData.getVariants() != null && !updatedData.getVariants().isEmpty()) {
-                mergeVariants(existing, updatedData.getVariants(), addedVariants);
+                mergeVariants(existing, updatedData.getVariants());
             }
             synchronizeAggregateStock(existing);
             Product saved = productRepository.save(existing);
             persistMissingVariantSkus(saved);
-            if (!addedVariants.isEmpty()) {
-                productRepository.flush();
-                recordInitialStock(addedVariants);
-            }
+            productRepository.flush();
+            recordInitialStock(saved.getVariants().stream()
+                    .filter(variant -> !knownVariantIds.contains(variant.getId()))
+                    .toList());
             return saved;
         });
     }
@@ -248,8 +256,7 @@ public class ProductService {
         }
     }
 
-    private void mergeVariants(Product product, List<ProductVariant> incomingVariants,
-            List<ProductVariant> addedVariants) {
+    private void mergeVariants(Product product, List<ProductVariant> incomingVariants) {
         validateVariants(incomingVariants);
         List<ProductVariant> currentVariants = product.getVariants() == null
                 ? new ArrayList<>()
@@ -270,7 +277,6 @@ public class ProductService {
             if (current == null) {
                 incoming.setProduct(product);
                 currentVariants.add(incoming);
-                addedVariants.add(incoming);
             } else {
                 // O valor absoluto continua sendo o que o admin enviou; o livro registra a diferença sob lock.
                 stockLedger.postSetTo(current, incoming.getStock(), StockLedger.Context.manual(

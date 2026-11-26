@@ -13,6 +13,9 @@ public interface StockEntryRepository extends Repository<StockEntry, UUID> {
 
     StockEntry save(StockEntry entry);
 
+    /** Grava já: violações de unicidade chegam traduzidas (DataIntegrityViolationException) e antes de mexer em saldo. */
+    StockEntry saveAndFlush(StockEntry entry);
+
     @Query("SELECT e FROM StockEntry e JOIN FETCH e.supplier WHERE e.id = :id")
     Optional<StockEntry> findDetailedById(@Param("id") UUID id);
 

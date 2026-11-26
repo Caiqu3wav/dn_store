@@ -1,5 +1,6 @@
 package com.dnstore.backend.service;
 
+import com.dnstore.backend.dto.StockDtos.MovementView;
 import com.dnstore.backend.exception.ConflictException;
 import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.exception.StockConflictException;
@@ -41,7 +42,7 @@ public class StockService {
                                 StockAdjustmentCategory category, String reason, String idempotencyKey,
                                 String performedBy) {}
 
-    public record AdjustResult(StockMovement movement, boolean replayed) {}
+    public record AdjustResult(MovementView movement, boolean replayed) {}
 
     /** Entrada avulsa, sem nota (endpoint legado /entry). Notas de fornecedor usam {@code StockEntryService}. */
     @Transactional
@@ -70,11 +71,19 @@ public class StockService {
     /** Compatível com o contrato antigo: delta + motivo. */
     @Transactional
     public StockMovement adjust(UUID variantId, int delta, String reason, String performedBy) {
-        return adjust(new AdjustCommand(variantId, delta, null, null, null, reason, null, performedBy)).movement();
+        return doAdjust(new AdjustCommand(variantId, delta, null, null, null, reason, null, performedBy)).movement();
     }
 
+    /** Ajuste completo (categoria, contagem, saldo esperado, idempotência); devolve DTO montado dentro da transação. */
     @Transactional
     public AdjustResult adjust(AdjustCommand cmd) {
+        Adjusted adjusted = doAdjust(cmd);
+        return new AdjustResult(MovementView.from(adjusted.movement()), adjusted.replayed());
+    }
+
+    private record Adjusted(StockMovement movement, boolean replayed) {}
+
+    private Adjusted doAdjust(AdjustCommand cmd) {
         if (cmd.reason() == null || cmd.reason().isBlank()) {
             throw new IllegalArgumentException("Motivo é obrigatório.");
         }
@@ -91,7 +100,7 @@ public class StockService {
         if (cmd.idempotencyKey() != null) {
             var existing = movementRepository.findByIdempotencyKey(cmd.idempotencyKey());
             if (existing.isPresent()) {
-                return new AdjustResult(sameAdjustmentOrFail(existing.get(), cmd), true);
+                return new Adjusted(sameAdjustmentOrFail(existing.get(), cmd), true);
             }
         }
         if (cmd.expectedBalance() != null && cmd.expectedBalance() != variant.getStock()) {
@@ -112,15 +121,23 @@ public class StockService {
         variantRepository.save(variant);
         log.info("stock.adjust variantId={} delta={} stockAfter={} category={} by={}",
                 variant.getId(), delta, variant.getStock(), category, cmd.performedBy());
-        return new AdjustResult(movement, false);
+        return new Adjusted(movement, false);
     }
 
-    public List<StockMovement> historyByProduct(UUID productId) {
-        return movementRepository.findByProductIdOrderBySeqDesc(productId);
+    /** Entrada avulsa devolvendo DTOs (usado pelo endpoint legado /entry). */
+    @Transactional
+    public List<MovementView> entryViews(List<StockEntryItem> items, String performedBy) {
+        return entry(items, performedBy).stream().map(MovementView::from).toList();
     }
 
-    public List<StockMovement> historyByVariant(UUID variantId) {
-        return movementRepository.findByVariantIdOrderBySeqDesc(variantId);
+    @Transactional(readOnly = true)
+    public List<MovementView> historyByProduct(UUID productId) {
+        return movementRepository.findByProductIdOrderBySeqDesc(productId).stream().map(MovementView::from).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<MovementView> historyByVariant(UUID variantId) {
+        return movementRepository.findByVariantIdOrderBySeqDesc(variantId).stream().map(MovementView::from).toList();
     }
 
     private StockMovement sameAdjustmentOrFail(StockMovement existing, AdjustCommand cmd) {
