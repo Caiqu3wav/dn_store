@@ -194,6 +194,38 @@ O banco de dados inclui:
 
 🚧 Em desenvolvimento  
 
+## 📦 Estoque: notas de entrada, livro e reconciliação
+
+**Modelo.** Saída = venda, entrada = nota de fornecedor, manutenção = ajuste manual. Todo saldo de variação muda por um único
+caminho, o *livro* (`stock_movements`, via `StockLedger`): cada linha guarda `stock_before`, `delta`, `stock_after`, tipo,
+quem fez e a referência (nota ou pedido), e **nunca é alterada nem apagada**. Se a gravação do livro falhar, a transação inteira
+falha (não existe venda sem livro). Tipos: `SALE`, `CANCELLATION`, `REACTIVATION`, `ENTRY`, `ADJUSTMENT`, `INITIAL`, `OPENING`.
+
+**Entrada por nota** (`POST /api/admin/stock/entries`): fornecedor + série/número + data + várias linhas (variação, quantidade,
+custo opcional). Uma transação só, tudo ou nada, variações travadas em ordem de id. A nota é imutável; erro se corrige com
+ajuste (categoria `CORRECTION`). Duplicidade: `UNIQUE(fornecedor, série, número)` e `idempotencyKey` (UUID gerado uma vez por
+abertura do formulário). Mesma chave e mesmo conteúdo devolve a nota existente (200, `replayed=true`); nota repetida com outra
+chave devolve 409 com `existingEntryId`.
+
+**Ajuste** (`PUT /api/admin/stock/adjust`): motivo obrigatório, categoria, `delta` ou `countedQuantity` (contagem; o delta é
+calculado sob lock) e `expectedBalance` (recusa com 409 + `currentBalance` se o saldo mudou desde que a tela foi aberta).
+
+**Reconciliação** (`GET /api/admin/stock/reconciliation`): compara `product_variants.stock` com o último movimento do livro.
+`OK`, `DIVERGENT` (saldo mudou fora do livro) ou `NO_LEDGER` (variação que já tinha estoque antes do livro). Para `NO_LEDGER`,
+"adotar saldo" grava um marcador `OPENING` com `stock_before = stock_after = N` e `delta = 0` (não inventa entrada). O detalhe por
+variação lista quebras de cadeia (`stock_before` ≠ `stock_after` da linha anterior, por `seq`).
+
+**Janela de deploy.** A V30 não bloqueia a versão antiga, que continua inserindo movimentos sem `stock_before`. Logo após o
+deploy podem aparecer poucas divergências pequenas ou linhas sem `stock_before`: são movimentos da instância antiga e somem da
+conta de quebra de cadeia (só se comparam linhas novas). Rode a reconciliação depois do deploy e confira.
+
+**Atenção ao deploy.** O DDL do MySQL **não é transacional**. Por isso a V29 usa `CREATE TABLE IF NOT EXISTS` (pode ser repetida
+se o Flyway marcar falha) e a V30 é uma única instrução `ALTER` (atômica no MySQL 8). O `seq` das linhas anteriores à V30 foi
+preenchido na ordem física da tabela, não cronológica entre elas; novas linhas têm `seq` monotônico.
+
+**Testes.** `StockWriteGuardTest` falha se surgir `setStock(` fora da lista de serviços que passam pelo livro. Os ITs de MySQL
+(`StockLedgerMySqlIT`, `StockNoteMySqlIT`) não rodam no `./mvnw test`; rode com `-Dtest=StockNoteMySqlIT` contra o MySQL local.
+
 ## Executar o backend com Docker
 
 O backend no Docker conecta ao banco MySQL do Aiven; nenhum servidor MySQL local é iniciado. No PowerShell, entre na pasta `backendJava` e configure `.env` com os dados do Aiven. Se ainda não houver um `.env`, copie o exemplo:
