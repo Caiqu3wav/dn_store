@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Clock, XCircle, Copy, Check, ExternalLink, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import api from '@/lib/axios';
+import { getApiErrorMessage } from '@/utils/apiError';
 
 interface PaymentResult {
     status: string;
@@ -27,6 +28,9 @@ export function StepConfirmation({ orderId, paymentMethod, result, onRetry, onBa
     const [status, setStatus] = useState(result.status);
     const [orderStatus, setOrderStatus] = useState(result.orderStatus);
     const [copied, setCopied] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [refreshError, setRefreshError] = useState('');
+    const refreshInFlight = useRef(false);
 
     useEffect(() => {
         if (status === 'PAID' || status === 'FAILED' || status === 'REFUNDED') {
@@ -34,30 +38,43 @@ export function StepConfirmation({ orderId, paymentMethod, result, onRetry, onBa
         }
     }, [status]);
 
-    // Polling para Pix e Boleto — máx 36 tentativas (3 min)
+    const refreshStatus = useCallback(async () => {
+        if (refreshInFlight.current) return;
+        refreshInFlight.current = true;
+        setIsRefreshing(true);
+        try {
+            const { data } = await api.post(`/payment/order/${orderId}/sync`);
+            setStatus(data.status);
+            setOrderStatus(data.orderStatus);
+            setRefreshError('');
+        } catch (error: unknown) {
+            setRefreshError(getApiErrorMessage(
+                error,
+                'Não foi possível consultar o pagamento agora. O pedido continua aguardando confirmação; tente novamente.',
+            ));
+        } finally {
+            refreshInFlight.current = false;
+            setIsRefreshing(false);
+        }
+    }, [orderId]);
+
     useEffect(() => {
-        if (status === 'PAID') return;
+        const terminal = status === 'PAID' || status === 'FAILED' || status === 'REFUNDED';
+        if (terminal) return;
 
-        let attempts = 0;
-        const MAX_ATTEMPTS = 36;
+        let active = true;
+        let timeout: ReturnType<typeof setTimeout> | undefined;
+        const poll = async () => {
+            await refreshStatus();
+            if (active) timeout = setTimeout(poll, 8000);
+        };
+        void poll();
 
-        const interval = setInterval(async () => {
-            attempts++;
-            try {
-                const { data } = await api.get(`/payment/order/${orderId}`);
-                setStatus(data.status);
-                setOrderStatus(data.orderStatus);
-                if (data.status === 'PAID' || data.status === 'FAILED' || data.status === 'REFUNDED') {
-                    clearInterval(interval);
-                }
-            } catch {
-                // silently ignore polling errors
-            }
-            if (attempts >= MAX_ATTEMPTS) clearInterval(interval);
-        }, 5000);
-
-        return () => clearInterval(interval);
-    }, [orderId, paymentMethod, status]);
+        return () => {
+            active = false;
+            if (timeout) clearTimeout(timeout);
+        };
+    }, [refreshStatus, status]);
 
     const copy = (text: string) => {
         navigator.clipboard.writeText(text);
@@ -69,7 +86,7 @@ export function StepConfirmation({ orderId, paymentMethod, result, onRetry, onBa
         return (
             <div className="text-center space-y-4 py-8">
                 <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
-                <h2 className="text-2xl font-black text-brand-primary">Pagamento Confirmado</h2>
+                <h2 className="text-2xl font-black text-black">Pagamento Confirmado</h2>
                 <p className="text-gray-500">
                     {orderStatus === 'PAYMENT_REVIEW' || orderStatus === 'EXPIRED'
                         ? 'O pedido precisa de análise da loja. Ele não será preparado automaticamente.'
@@ -78,7 +95,7 @@ export function StepConfirmation({ orderId, paymentMethod, result, onRetry, onBa
                 <p className="text-xs text-gray-400">Pedido #{orderId}</p>
                 <Link
                     href="/"
-                    className="inline-block mt-4 bg-brand-primary text-white font-bold px-8 py-4 rounded-xl hover:bg-brand-secondary transition-colors"
+                    className="inline-block mt-4 text-white font-bold px-8 py-4 rounded-xl hover:bg-brand-secondary transition-colors"
                 >
                     Voltar para a Loja
                 </Link>
@@ -90,7 +107,7 @@ export function StepConfirmation({ orderId, paymentMethod, result, onRetry, onBa
         return (
             <div className="text-center space-y-4 py-8">
                 <XCircle className="w-16 h-16 text-red-500 mx-auto" />
-                <h2 className="text-2xl font-black text-brand-primary">
+                <h2 className="text-2xl font-black">
                     {orderStatus === 'EXPIRED' || orderStatus === 'CANCELLED'
                         ? 'Prazo para pagamento encerrado'
                         : 'Pagamento Recusado'}
@@ -103,7 +120,7 @@ export function StepConfirmation({ orderId, paymentMethod, result, onRetry, onBa
                         <button
                             type="button"
                             onClick={onRetry}
-                            className="inline-block mt-4 border-2 border-brand-primary text-brand-primary font-bold px-8 py-4 rounded-xl hover:bg-gray-50 transition-colors"
+                            className="inline-block mt-4 border-2 border-brand-primary  font-bold px-8 py-4 rounded-xl hover:bg-gray-50 transition-colors"
                         >
                             Tentar Novamente
                         </button>
@@ -117,8 +134,14 @@ export function StepConfirmation({ orderId, paymentMethod, result, onRetry, onBa
         <div className="space-y-6">
             <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-full bg-brand-primary text-white flex items-center justify-center text-sm font-bold">3</div>
-                <h2 className="text-xl font-bold text-brand-primary">Finalizar Pagamento</h2>
+                <h2 className="text-xl font-bold text-brand-primary">Acompanhe o pagamento</h2>
             </div>
+
+            {refreshError && (
+                <p role="alert" className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {refreshError}
+                </p>
+            )}
 
             {['CREATING', 'RECONCILIATION_REQUIRED'].includes(status) && (
                 <div role="status" className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -214,6 +237,15 @@ export function StepConfirmation({ orderId, paymentMethod, result, onRetry, onBa
                     <Loader2 className="w-3 h-3 animate-spin ml-auto" />
                 </div>
             )}
+
+            <button
+                type="button"
+                onClick={() => void refreshStatus()}
+                disabled={isRefreshing}
+                className="w-full rounded-xl border border-brand-secondary px-4 py-3 text-sm font-semibold text-brand-secondary transition hover:bg-brand-secondary/5 disabled:cursor-wait disabled:opacity-60"
+            >
+                {isRefreshing ? 'Consultando pagamento...' : 'Já paguei — consultar status'}
+            </button>
 
             <button
                 type="button"

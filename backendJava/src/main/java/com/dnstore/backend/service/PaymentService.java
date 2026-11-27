@@ -143,4 +143,42 @@ public class PaymentService {
         }
         return payment;
     }
+
+    public Payment syncPaymentStatusForUser(UUID orderId, UUID userId) {
+        return syncPaymentStatus(findByOrderIdAndUser(orderId, userId));
+    }
+
+    public Payment syncPaymentStatusForAdmin(UUID orderId) {
+        return syncPaymentStatus(findByOrderId(orderId));
+    }
+
+    private Payment syncPaymentStatus(Payment payment) {
+        PaymentStatus status = PaymentStatus.valueOf(payment.getStatus());
+        if (status == PaymentStatus.CREATING || status == PaymentStatus.RECONCILIATION_REQUIRED) {
+            return syncUncertainAttempt(payment);
+        }
+        if (status != PaymentStatus.PENDING && status != PaymentStatus.OVERDUE) {
+            return payment;
+        }
+        if (payment.getExternalId() == null || payment.getExternalId().isBlank()) {
+            throw new IllegalStateException("Pagamento pendente sem identificador do gateway.");
+        }
+
+        PaymentGateway.ProviderPayment providerPayment = gateway.getPayment(payment.getExternalId());
+        paymentState.reconcileProviderStatus(providerPayment);
+        return findByOrderId(payment.getOrder().getId());
+    }
+
+    private Payment syncUncertainAttempt(Payment payment) {
+        PaymentGateway.ProviderPayment found = gateway.findPaymentByReference(payment.getExternalReference());
+        if (found != null) {
+            PaymentGateway.ProviderPayment canonical = gateway.getPayment(found.externalId());
+            return paymentState.completeAttempt(payment.getId(), canonical.toPaymentResult());
+        }
+        if (payment.getCreatedAt() != null
+                && payment.getCreatedAt().isBefore(java.time.LocalDateTime.now().minusMinutes(1))) {
+            return paymentState.markReconciledFailure(payment.getId());
+        }
+        return paymentState.markUncertain(payment.getId());
+    }
 }

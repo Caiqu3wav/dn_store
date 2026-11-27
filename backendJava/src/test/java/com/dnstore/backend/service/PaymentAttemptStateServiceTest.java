@@ -320,6 +320,46 @@ class PaymentAttemptStateServiceTest {
         }
 
         @Test
+        void reconcileProviderStatus_paidShouldUpdatePaymentAndOrderWithoutWebhookEvent() {
+                Order order = order(
+                                user(),
+                                "PENDING_PAYMENT",
+                                LocalDateTime.now().minusMinutes(5));
+                Payment payment = payment(order, "PENDING", "key", "charge-1");
+
+                mockWebhookLookup(payment, order);
+                when(paymentRepository.save(payment)).thenReturn(payment);
+                when(orderRepository.save(order)).thenReturn(order);
+
+                boolean applied = service.reconcileProviderStatus(
+                                provider("charge-1", "PAID", payment.getExternalReference()));
+
+                assertThat(applied).isTrue();
+                assertThat(payment.getStatus()).isEqualTo("PAID");
+                assertThat(order.getStatus()).isEqualTo("PAID");
+                verify(webhookEventRepository, never()).saveAndFlush(any(PaymentWebhookEvent.class));
+        }
+
+        @Test
+        void reconcileProviderStatus_samePendingStatusShouldNotWriteDuplicateState() {
+                Order order = order(
+                                user(),
+                                "PENDING_PAYMENT",
+                                LocalDateTime.now().minusMinutes(5));
+                Payment payment = payment(order, "PENDING", "key", "charge-1");
+
+                mockWebhookLookup(payment, order);
+                PaymentGateway.ProviderPayment provider = provider(
+                                "charge-1", "PENDING", payment.getExternalReference());
+
+                assertThat(service.reconcileProviderStatus(provider)).isTrue();
+
+                verify(paymentRepository, never()).save(any(Payment.class));
+                verify(orderRepository, never()).save(any(Order.class));
+                verify(webhookEventRepository, never()).saveAndFlush(any(PaymentWebhookEvent.class));
+        }
+
+        @Test
         void applyWebhook_outOfOrderPendingAfterPaid_shouldNotDowngradePaymentOrOrder() {
                 Order order = order(
                                 user(),

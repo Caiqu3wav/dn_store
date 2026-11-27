@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
 import { getApiErrorCode, getApiErrorMessage } from '@/utils/apiError';
 import { formatCep } from '@/utils/authFormatters';
+import type { Address } from '@/services/accountService';
 import { QuoteCartItem, requestShippingQuotes } from '../shippingQuote';
 
 export interface ShippingOption {
@@ -36,8 +37,22 @@ interface Props {
     onShippingOptionsChange: (options: ShippingOption[]) => void;
     shippingNotice: string;
     onShippingNoticeChange: (notice: string) => void;
+    savedAddresses: Address[];
+    selectedAddressId: string | null;
+    addressLoadError: string;
+    onSavedAddressChange: (addressId: string | null) => void;
     onNext: () => void;
 }
+
+const EMPTY_DELIVERY: DeliveryData = {
+    zipCode: '',
+    street: '',
+    number: '',
+    complement: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+};
 
 const STATES = [
     'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
@@ -47,11 +62,13 @@ const STATES = [
 export function StepDelivery({
     items, data, onChange, shipping, onShippingChange,
     shippingOptions, onShippingOptionsChange, shippingNotice, onShippingNoticeChange, onNext,
+    savedAddresses, selectedAddressId, addressLoadError, onSavedAddressChange,
 }: Props) {
     const [loadingCep, setLoadingCep] = useState(false);
     const [shippingError, setShippingError] = useState('');
 
     const set = (field: keyof DeliveryData, value: string) => {
+        onSavedAddressChange(null);
         onChange({ ...data, [field]: value });
         if (field === 'zipCode') {
             onShippingOptionsChange([]);
@@ -113,10 +130,62 @@ export function StepDelivery({
         }
     };
 
+    const handleSavedAddressChange = async (addressId: string) => {
+        onShippingChange(null);
+        onShippingOptionsChange([]);
+        onShippingNoticeChange('');
+        setShippingError('');
+
+        if (!addressId) {
+            onSavedAddressChange(null);
+            onChange(EMPTY_DELIVERY);
+            return;
+        }
+
+        const address = savedAddresses.find(item => item.id === addressId);
+        if (!address) {
+            onSavedAddressChange(null);
+            setShippingError('Não foi possível carregar o endereço selecionado. Atualize a página e tente novamente.');
+            return;
+        }
+
+        onSavedAddressChange(addressId);
+        onChange({
+            zipCode: formatCep(address.zipCode),
+            street: address.street,
+            number: address.number,
+            complement: address.complement ?? '',
+            neighborhood: address.neighborhood ?? '',
+            city: address.city,
+            state: address.state,
+        });
+
+        const cep = address.zipCode.replace(/\D/g, '');
+        setLoadingCep(true);
+        try {
+            const options = await requestShippingQuotes(items, cep);
+            onShippingOptionsChange(options);
+            if (options.length === 0) {
+                setShippingError('Não há opções de entrega disponíveis para este CEP.');
+            }
+        } catch (error: unknown) {
+            setShippingError(getApiErrorMessage(
+                error,
+                'Não foi possível cotar o frete para este endereço. Tente novamente.',
+                { 400: 'CEP inválido ou sem cobertura de entrega. Confira o endereço salvo.' },
+            ));
+        } finally {
+            setLoadingCep(false);
+        }
+    };
+
     const isValid = data.zipCode && data.street && data.number && data.city && data.state && shipping?.id;
     const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', {
         style: 'currency', currency: 'BRL',
     }).format(value);
+    const selectableAddresses = savedAddresses.filter(
+        (address): address is Address & { id: string } => Boolean(address.id),
+    );
 
     return (
         <div className="space-y-6">
@@ -124,6 +193,31 @@ export function StepDelivery({
                 <div className="w-8 h-8 rounded-full bg-brand-primary text-white flex items-center justify-center text-sm font-bold">1</div>
                 <h2 className="text-xl font-bold text-brand-primary">Endereço de Entrega</h2>
             </div>
+
+            {addressLoadError && (
+                <p role="alert" className="text-sm text-red-700">{addressLoadError}</p>
+            )}
+
+            {selectableAddresses.length > 0 && (
+                <div>
+                    <label htmlFor="saved-address" className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
+                        Usar endereço salvo
+                    </label>
+                    <select
+                        id="saved-address"
+                        value={selectedAddressId ?? ''}
+                        onChange={event => void handleSavedAddressChange(event.target.value)}
+                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-secondary"
+                    >
+                        <option value="">Informar um novo endereço</option>
+                        {selectableAddresses.map(address => (
+                            <option key={address.id} value={address.id}>
+                                {address.street}, {address.number} - {address.city}/{address.state} ({formatCep(address.zipCode)})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* CEP */}

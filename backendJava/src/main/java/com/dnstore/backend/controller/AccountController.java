@@ -7,6 +7,7 @@ import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.model.enums.Role;
 import com.dnstore.backend.repository.AddressRepository;
 import com.dnstore.backend.repository.UserRepository;
+import com.dnstore.backend.service.AddressService;
 import com.dnstore.backend.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +25,7 @@ import java.util.UUID;
 public class AccountController {
     private final UserRepository userRepository;
     private final AddressRepository addressRepository;
+    private final AddressService addressService;
     private final OrderService orderService;
 
     @GetMapping("/me")
@@ -68,9 +70,8 @@ public class AccountController {
     @PostMapping("/addresses")
     public ResponseEntity<AddressResponse> addAddress(@AuthenticationPrincipal User user,
             @RequestBody Address address) {
-        address.setId(null);
-        address.setUser(user);
-        return ResponseEntity.status(201).body(new AddressResponse(addressRepository.save(address)));
+        return ResponseEntity.status(201)
+                .body(new AddressResponse(addressService.saveOrReuse(user, address)));
     }
 
     @DeleteMapping("/addresses/{id}")

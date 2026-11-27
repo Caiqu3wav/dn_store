@@ -58,6 +58,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
     private final AddressRepository addressRepository;
+    private final AddressService addressService;
     private final CouponService couponService;
     private final CouponRepository couponRepository;
     private final ProductVariantRepository productVariantRepository;
@@ -77,12 +78,13 @@ public class OrderService {
             CouponRepository couponRepository, ProductVariantRepository productVariantRepository,
             OrderInventoryService orderInventoryService, PaymentRepository paymentRepository,
             FinancialBlockRepository financialBlockRepository, ShippingQuoteOptionRepository shippingQuoteOptionRepository,
-            MelhorEnvioProperties melhorEnvioProperties, StockLedger stockLedger) {
+            MelhorEnvioProperties melhorEnvioProperties, StockLedger stockLedger, AddressService addressService) {
         this.stockLedger = stockLedger;
         this.deliveryService = deliveryService;
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
         this.addressRepository = addressRepository;
+        this.addressService = addressService;
         this.couponService = couponService;
         this.couponRepository = couponRepository;
         this.productVariantRepository = productVariantRepository;
@@ -101,7 +103,7 @@ public class OrderService {
             ShippingQuoteOptionRepository shippingQuoteOptionRepository, MelhorEnvioProperties melhorEnvioProperties) {
         this(deliveryService, orderRepository, cartRepository, addressRepository, couponService, couponRepository,
                 productVariantRepository, orderInventoryService, paymentRepository, null,
-                shippingQuoteOptionRepository, melhorEnvioProperties, null);
+                shippingQuoteOptionRepository, melhorEnvioProperties, null, new AddressService(addressRepository));
     }
 
     public record AddressData(
@@ -220,16 +222,15 @@ public class OrderService {
                 throw new IllegalArgumentException("Dados de endereço incompletos.");
             }
 
-            address = new Address();
-            address.setUser(user);
-            address.setStreet(addressData.street());
-            address.setNumber(addressData.number());
-            address.setComplement(addressData.complement());
-            address.setNeighborhood(addressData.neighborhood());
-            address.setCity(addressData.city());
-            address.setState(addressData.state());
-            address.setZipCode(addressData.zipCode());
-            address = addressRepository.save(address);
+            Address submittedAddress = new Address();
+            submittedAddress.setStreet(addressData.street());
+            submittedAddress.setNumber(addressData.number());
+            submittedAddress.setComplement(addressData.complement());
+            submittedAddress.setNeighborhood(addressData.neighborhood());
+            submittedAddress.setCity(addressData.city());
+            submittedAddress.setState(addressData.state());
+            submittedAddress.setZipCode(addressData.zipCode());
+            address = addressService.saveOrReuse(user, submittedAddress);
             zipCode = addressData.zipCode();
         } else {
             throw new IllegalArgumentException("Endereço de entrega é obrigatório.");

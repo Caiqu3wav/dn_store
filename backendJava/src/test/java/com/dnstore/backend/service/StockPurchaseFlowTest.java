@@ -70,6 +70,7 @@ class StockPurchaseFlowTest {
     @Mock private StockMovementRepository movementRepository;
     @Mock private EntityManager entityManager;
     @Mock private PaymentGateway paymentGateway;
+    @Mock private AddressService addressService;
 
     private StockService stockService;
     private OrderInventoryService orderInventoryService;
@@ -113,7 +114,8 @@ class StockPurchaseFlowTest {
                 financialBlockRepository,
                 shippingQuoteOptionRepository,
                 melhorEnvioProperties,
-                stockLedger);
+                stockLedger,
+                addressService);
         ReflectionTestUtils.setField(orderService, "shippingGateway", "simulated");
 
         expirationService = new PaymentExpirationService(

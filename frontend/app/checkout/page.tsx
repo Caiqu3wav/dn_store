@@ -12,6 +12,8 @@ import { useAuth } from '../context/AuthContext';
 import api from '@/lib/axios';
 import { getApiErrorCode, getApiErrorMessage } from '@/utils/apiError';
 import { requestShippingQuotes } from './shippingQuote';
+import { accountService } from '@/services/accountService';
+import type { Address } from '@/services/accountService';
 
 const SHIPPING_QUOTE_STALE = 'SHIPPING_QUOTE_STALE';
 
@@ -52,6 +54,9 @@ export default function CheckoutPage() {
     const [shipping, setShipping] = useState<ShippingOption | null>(null);
     const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
     const [shippingNotice, setShippingNotice] = useState('');
+    const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
+    const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+    const [addressLoadError, setAddressLoadError] = useState('');
     const [payment, setPayment] = useState<PaymentData>(EMPTY_PAYMENT);
     const [orderId, setOrderId] = useState<string>('');
     const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
@@ -69,6 +74,26 @@ export default function CheckoutPage() {
             setPayment(current => ({ ...current, payerPhone: user.phone ?? '' }));
         }
     }, [payment.payerPhone, user]);
+
+    useEffect(() => {
+        if (authLoading || !user?.id) return;
+        let cancelled = false;
+        setAddressLoadError('');
+
+        accountService.getAddresses()
+            .then(addresses => {
+                if (!cancelled) setSavedAddresses(addresses);
+            })
+            .catch(error => {
+                if (!cancelled) {
+                    setAddressLoadError(getApiErrorMessage(error, 'Não foi possível carregar os endereços salvos.'));
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [authLoading, user?.id]);
 
     useEffect(() => {
         if (authLoading || !user) return;
@@ -131,14 +156,19 @@ export default function CheckoutPage() {
         try {
             let currentOrderId = orderId;
             if (!currentOrderId) {
+                const address = selectedAddressId
+                    ? { addressId: selectedAddressId }
+                    : {
+                        zipCode: delivery.zipCode.replace(/\D/g, ''),
+                        street: delivery.street,
+                        number: delivery.number,
+                        complement: delivery.complement,
+                        neighborhood: delivery.neighborhood,
+                        city: delivery.city,
+                        state: delivery.state,
+                    };
                 const orderRes = await api.post('/orders', {
-                    zipCode: delivery.zipCode.replace(/\D/g, ''),
-                    street: delivery.street,
-                    number: delivery.number,
-                    complement: delivery.complement,
-                    neighborhood: delivery.neighborhood,
-                    city: delivery.city,
-                    state: delivery.state,
+                    ...address,
                     shippingOptionId: shipping?.id ?? null,  // UUID da cotação salva no backend
                 });
                 currentOrderId = orderRes.data.id as string;
@@ -219,6 +249,10 @@ export default function CheckoutPage() {
                                 items={items}
                                 data={delivery}
                                 onChange={setDelivery}
+                                savedAddresses={savedAddresses}
+                                selectedAddressId={selectedAddressId}
+                                addressLoadError={addressLoadError}
+                                onSavedAddressChange={setSelectedAddressId}
                                 shipping={shipping}
                                 onShippingChange={setShipping}
                                 shippingOptions={shippingOptions}

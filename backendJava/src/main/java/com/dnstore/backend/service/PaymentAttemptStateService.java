@@ -324,6 +324,46 @@ public class PaymentAttemptStateService {
                 return applyWebhookInternal(event, providerPayment, true);
         }
 
+        @Transactional
+        public boolean reconcileProviderStatus(PaymentGateway.ProviderPayment providerPayment) {
+                if (providerPayment == null
+                                || providerPayment.externalId() == null
+                                || providerPayment.externalId().isBlank()
+                                || providerPayment.status() == null
+                                || providerPayment.status().isBlank()) {
+                        throw new IllegalArgumentException(
+                                        "Dados insuficientes para reconciliar o pagamento.");
+                }
+
+                Payment reference = paymentRepository
+                                .findByExternalId(providerPayment.externalId())
+                                .orElseThrow(() -> new ResourceNotFoundException("Pagamento não encontrado."));
+
+                Order order = orderRepository.findByIdForUpdate(reference.getOrder().getId())
+                                .orElseThrow(() -> new ResourceNotFoundException("Pedido não encontrado."));
+
+                Payment payment = paymentRepository
+                                .findByExternalIdForUpdate(providerPayment.externalId())
+                                .orElseThrow(() -> new ResourceNotFoundException("Pagamento não encontrado."));
+
+                verifyProviderPayment(
+                                payment,
+                                providerPayment.externalId(),
+                                providerPayment.externalReference(),
+                                providerPayment.amount(),
+                                providerPayment.currency(),
+                                providerPayment.customerId());
+
+                return applyProviderStatus(
+                                payment,
+                                order,
+                                providerPayment,
+                                "ASAAS_STATUS_SYNC",
+                                null,
+                                "PROVIDER_SYNC",
+                                "Status consultado diretamente no gateway.");
+        }
+
         private boolean applyWebhookInternal(
                         PaymentGateway.WebhookResult event,
                         PaymentGateway.ProviderPayment providerPayment,
@@ -375,13 +415,38 @@ public class PaymentAttemptStateService {
                         persistEvent(event, payment.getExternalId());
                 }
 
+                return applyProviderStatus(
+                                payment,
+                                order,
+                                providerPayment,
+                                event.eventType(),
+                                event.eventId(),
+                                "WEBHOOK",
+                                "Webhook reconciliado com o estado canônico.");
+        }
+
+        private boolean applyProviderStatus(
+                        Payment payment,
+                        Order order,
+                        PaymentGateway.ProviderPayment providerPayment,
+                        String eventType,
+                        String eventId,
+                        String source,
+                        String reason) {
+
                 PaymentStatus current = PaymentStatus.valueOf(payment.getStatus());
 
                 PaymentStatus next = PaymentStatus.valueOf(providerPayment.status());
 
+                if (current == next && "PROVIDER_SYNC".equals(source)) {
+                        updateFinancialBlock(payment, order, next);
+                        return true;
+                }
+
                 if (!PaymentTransitionPolicy.isAllowed(current, next)) {
                         log.warn(
-                                        "payment.webhook.transition_rejected paymentId={} current={} next={}",
+                                        "payment.provider.transition_rejected source={} paymentId={} current={} next={}",
+                                        source,
                                         payment.getId(),
                                         current,
                                         next);
@@ -391,12 +456,13 @@ public class PaymentAttemptStateService {
                                         order,
                                         current,
                                         next,
-                                        event.eventType(),
-                                        event.eventId(),
+                                        eventType,
+                                        eventId,
                                         PaymentTransitionResult.IGNORED_OUT_OF_ORDER,
-                                        "Transição fora da ordem canônica.");
+                                        "Transição fora da ordem canônica.",
+                                        source);
 
-                        return true;
+                        return "WEBHOOK".equals(source);
                 }
 
                 if (current == next) {
@@ -433,10 +499,11 @@ public class PaymentAttemptStateService {
                                 order,
                                 current,
                                 next,
-                                event.eventType(),
-                                event.eventId(),
+                                eventType,
+                                eventId,
                                 PaymentTransitionResult.APPLIED,
-                                "Webhook reconciliado com o estado canônico.");
+                                reason,
+                                source);
 
                 updateFinancialBlock(payment, order, next);
 
@@ -526,6 +593,19 @@ public class PaymentAttemptStateService {
                         String eventId,
                         PaymentTransitionResult result,
                         String reason) {
+                recordHistory(payment, order, previous, next, eventType, eventId, result, reason, "WEBHOOK");
+        }
+
+        private void recordHistory(
+                        Payment payment,
+                        Order order,
+                        PaymentStatus previous,
+                        PaymentStatus next,
+                        String eventType,
+                        String eventId,
+                        PaymentTransitionResult result,
+                        String reason,
+                        String source) {
 
                 if (historyRepository == null) {
                         return;
@@ -543,7 +623,7 @@ public class PaymentAttemptStateService {
                 history.setExternalPaymentId(payment.getExternalId());
                 history.setAmount(payment.getAmount());
                 history.setRefundedAmount(payment.getRefundedAmount());
-                history.setSource("WEBHOOK");
+                history.setSource(source);
                 history.setResult(result.name());
                 history.setReason(reason);
 

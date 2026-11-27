@@ -7,6 +7,7 @@ import com.dnstore.backend.exception.ConflictException;
 import com.dnstore.backend.service.PaymentService;
 import com.dnstore.backend.service.PaymentWebhookIngestionService;
 import com.dnstore.backend.service.payment.PaymentGateway;
+import com.dnstore.backend.service.payment.PaymentGatewayException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -98,6 +99,22 @@ public class PaymentController {
             return ResponseEntity.ok(PaymentResponse.from(payment));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PostMapping("/order/{orderId}/sync")
+    public ResponseEntity<?> syncPaymentStatus(
+            @PathVariable UUID orderId,
+            @AuthenticationPrincipal User user) {
+        try {
+            Payment payment = user.getRole() == Role.ADMIN
+                    ? paymentService.syncPaymentStatusForAdmin(orderId)
+                    : paymentService.syncPaymentStatusForUser(orderId, user.getId());
+            return ResponseEntity.ok(PaymentResponse.from(payment));
+        } catch (PaymentGatewayException exception) {
+            log.warn("payment.status_sync.unavailable orderId={} userId={}", orderId, user.getId());
+            return ResponseEntity.status(503)
+                    .body(new ErrorResponse("Não foi possível consultar o pagamento no Asaas. Tente novamente."));
         }
     }
 

@@ -177,6 +177,29 @@ class PaymentServiceTest {
     }
 
     @Test
+    void syncPaymentStatus_pendingPixShouldApplyCanonicalAsaasStatus() {
+        UUID orderId = UUID.randomUUID();
+        User user = user();
+        Payment payment = payment(UUID.randomUUID(), order(orderId, user), "PENDING");
+        PaymentGateway.ProviderPayment paid = new PaymentGateway.ProviderPayment(
+                "charge-1", "PAID", payment.getExternalReference(), payment.getAmount(),
+                "BRL", "customer-1", "PIX", null, null, null, null);
+        when(paymentRepository.findByOrder_IdOrderByAttemptNumberDesc(orderId))
+                .thenReturn(java.util.List.of(payment));
+        when(gateway.getPayment("charge-1")).thenReturn(paid);
+        doAnswer(invocation -> {
+            payment.setStatus("PAID");
+            return true;
+        }).when(paymentState).reconcileProviderStatus(paid);
+
+        Payment result = paymentService.syncPaymentStatusForUser(orderId, user.getId());
+
+        assertThat(result.getStatus()).isEqualTo("PAID");
+        verify(gateway).getPayment("charge-1");
+        verify(paymentState).reconcileProviderStatus(paid);
+    }
+
+    @Test
     void webhookController_whenTokenInvalid_shouldReturnUnauthorized() throws Exception {
         PaymentService service = mock(PaymentService.class);
         com.dnstore.backend.service.PaymentWebhookIngestionService ingestion =

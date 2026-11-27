@@ -50,6 +50,9 @@ class OrderServiceTest {
         private AddressRepository addressRepository;
 
         @Mock
+        private AddressService addressService;
+
+        @Mock
         private CouponService couponService;
 
         @Mock
@@ -156,6 +159,8 @@ class OrderServiceTest {
                                 });
                 lenient().when(addressRepository.findByIdAndUser_Id(address.getId(), user.getId()))
                                 .thenReturn(Optional.of(address));
+                lenient().when(addressService.saveOrReuse(any(User.class), any(Address.class)))
+                                .thenAnswer(invocation -> invocation.getArgument(1));
                 lenient().when(orderRepository.save(any(Order.class)))
                                 .thenAnswer(invocation -> invocation.getArgument(0));
                 lenient().when(productVariantRepository.findByIdForUpdate(any(UUID.class)))
@@ -184,6 +189,20 @@ class OrderServiceTest {
                                 variant.getId().toString(),
                                 new BigDecimal("0.5"), new BigDecimal("20.0"), new BigDecimal("10.0"),
                                 new BigDecimal("30.0"), new BigDecimal("100.00"), 2))));
+        }
+
+        @Test
+        void checkout_newAddress_shouldUseAddressServiceToReuseSavedAddress() {
+                UUID shippingOptionId = orderService.quoteShipping(user, address.getZipCode()).get(0).id();
+                OrderService.AddressData submitted = new OrderService.AddressData(
+                                "Rua A", "123", null, "Centro", "São Paulo", "SP", "01000000");
+                when(addressService.saveOrReuse(eq(user), any(Address.class))).thenReturn(address);
+
+                Order order = orderService.checkout(user, submitted, shippingOptionId, null, null);
+
+                assertThat(order.getAddress()).isSameAs(address);
+                verify(addressService).saveOrReuse(eq(user), any(Address.class));
+                verify(addressRepository, never()).save(any(Address.class));
         }
 
         @Test
