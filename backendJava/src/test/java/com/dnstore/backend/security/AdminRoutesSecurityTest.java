@@ -38,6 +38,17 @@ class AdminRoutesSecurityTest {
     }
 
     private static final String[][] ADMIN_ONLY = {
+            {"GET", "/api/admin/stock/suppliers"},
+            {"POST", "/api/admin/stock/suppliers"},
+            {"POST", "/api/admin/stock/entries"},
+            {"GET", "/api/admin/stock/entries"},
+            {"GET", "/api/admin/stock/entries/123"},
+            {"PUT", "/api/admin/stock/adjust"},
+            {"GET", "/api/admin/stock/movements"},
+            {"GET", "/api/admin/stock/variants"},
+            {"GET", "/api/admin/stock/orders"},
+            {"GET", "/api/admin/stock/reconciliation"},
+            {"POST", "/api/admin/stock/reconciliation/adopt"},
             {"GET", "/api/products/admin"},
             {"GET", "/api/products/admin/123"},
             {"GET", "/api/products/admin/default-rules"},

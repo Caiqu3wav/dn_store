@@ -24,8 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -39,6 +41,7 @@ public class ProductDefaultsService {
     private final ProductVariantRepository productVariantRepository;
     private final CategoryRepository categoryRepository;
     private final ObjectMapper objectMapper;
+    private final StockLedger stockLedger;
 
     @Transactional(readOnly = true)
     public List<ProductDefaultRuleResponse> listRules() {
@@ -57,12 +60,29 @@ public class ProductDefaultsService {
                 .filter(product -> !excludedIds.contains(product.getId()))
                 .toList();
 
+        // Variantes criadas aqui (inclusive a "Único" que herda o saldo legado) entram no livro como saldo inicial.
+        Map<UUID, Set<UUID>> knownVariantIds = new HashMap<>();
         for (Product product : toUpdate) {
+            if (normalized.values().sizes() != null) {
+                knownVariantIds.put(product.getId(), variantIds(product));
+            }
             applyValues(product, normalized.values());
         }
 
         List<Product> savedProducts = productRepository.saveAll(toUpdate);
         savedProducts.forEach(this::persistMissingVariantSkus);
+        if (!knownVariantIds.isEmpty()) {
+            productRepository.flush();
+            String actor = StockActor.current();
+            for (Product saved : savedProducts) {
+                Set<UUID> known = knownVariantIds.getOrDefault(saved.getId(), Set.of());
+                for (ProductVariant variant : saved.getVariants()) {
+                    if (!known.contains(variant.getId())) {
+                        stockLedger.recordInitial(variant, actor);
+                    }
+                }
+            }
+        }
 
         ProductDefaultRule rule = new ProductDefaultRule();
         rule.setName(normalized.name());
@@ -353,6 +373,18 @@ public class ProductDefaultsService {
             }
         }
         product.setVariants(variants);
+    }
+
+    private Set<UUID> variantIds(Product product) {
+        Set<UUID> ids = new HashSet<>();
+        if (product.getVariants() != null) {
+            for (ProductVariant variant : product.getVariants()) {
+                if (variant.getId() != null) {
+                    ids.add(variant.getId());
+                }
+            }
+        }
+        return ids;
     }
 
     private void persistMissingVariantSkus(Product product) {

@@ -48,7 +48,8 @@ class ProductDefaultsServiceTest {
     @BeforeEach
     void setUp() {
         service = new ProductDefaultsService(
-                ruleRepository, productRepository, productVariantRepository, categoryRepository, new ObjectMapper());
+                ruleRepository, productRepository, productVariantRepository, categoryRepository, new ObjectMapper(),
+                mock(StockLedger.class));
     }
 
     @Test

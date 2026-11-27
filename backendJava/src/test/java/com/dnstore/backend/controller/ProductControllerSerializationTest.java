@@ -40,7 +40,8 @@ class ProductControllerSerializationTest {
                 productRepository,
                 mock(CategoryRepository.class),
                 mock(ProductVariantRepository.class),
-                mock(ProductDefaultsService.class));
+                mock(ProductDefaultsService.class),
+                mock(com.dnstore.backend.service.StockLedger.class));
         mockMvc = MockMvcBuilders.standaloneSetup(
                 new ProductController(
                         productService,

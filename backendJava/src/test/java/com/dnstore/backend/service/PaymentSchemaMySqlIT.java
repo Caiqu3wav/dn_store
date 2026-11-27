@@ -99,6 +99,7 @@ class PaymentSchemaMySqlIT {
         jdbc.update("DELETE FROM payment_financial_blocks WHERE order_id = ?", orderId);
         jdbc.update("DELETE FROM payment_financial_history WHERE order_id = ?", orderId);
         jdbc.update("DELETE FROM payments WHERE order_id = ?", orderId);
+        jdbc.update("DELETE FROM stock_movements WHERE order_id = ?", orderId);
         jdbc.update("DELETE FROM order_items WHERE order_id = ?", orderId);
         jdbc.update("DELETE FROM orders WHERE id = ?", orderId);
         if (shippingQuoteOptionId != null) {

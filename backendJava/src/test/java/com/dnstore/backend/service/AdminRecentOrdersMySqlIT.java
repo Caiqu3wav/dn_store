@@ -56,6 +56,7 @@ class AdminRecentOrdersMySqlIT {
 
     @AfterEach
     void cleanup() {
+        orderIds.forEach(id -> jdbc.update("DELETE FROM stock_movements WHERE order_id = ?", id));
         orderIds.forEach(id -> jdbc.update("DELETE FROM orders WHERE id = ?", id));
         addressIds.forEach(id -> jdbc.update("DELETE FROM addresses WHERE id = ?", id));
         jdbc.update("DELETE FROM users WHERE id = ?", userId);

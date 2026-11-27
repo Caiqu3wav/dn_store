@@ -5,9 +5,9 @@ import com.dnstore.backend.exception.ResourceNotFoundException;
 import com.dnstore.backend.model.Order;
 import com.dnstore.backend.model.OrderItem;
 import com.dnstore.backend.model.ProductVariant;
+import com.dnstore.backend.model.StockMovement;
 import com.dnstore.backend.repository.ProductVariantRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -21,9 +21,8 @@ import java.util.UUID;
 public class OrderInventoryService {
 
     private final ProductVariantRepository productVariantRepository;
-    @Autowired(required = false)
-    private StockService stockService;
     private final CouponService couponService;
+    private final StockLedger stockLedger;
 
     public void releaseReservedStock(Order order) {
         if (order.isStockReleased()) {
@@ -33,7 +32,7 @@ public class OrderInventoryService {
         Map<UUID, ProductVariant> variants = lockVariants(quantities.keySet());
         quantities.forEach((variantId, quantity) -> {
             ProductVariant variant = variants.get(variantId);
-            variant.setStock(Math.addExact(variant.getStock(), quantity));
+            stockLedger.post(variant, quantity, StockMovement.Type.CANCELLATION, StockLedger.Context.forOrder(order));
             productVariantRepository.save(variant);
         });
         // A reserva do pedido é estoque + utilização do cupom. Os dois voltam juntos e uma única vez:
@@ -42,7 +41,6 @@ public class OrderInventoryService {
             couponService.releaseUsage(order.getCoupon());
         }
         order.setStockReleased(true);
-        if (stockService != null) stockService.recordRelease(order);
     }
 
     public void reserveReleasedStock(Order order) {
@@ -61,14 +59,13 @@ public class OrderInventoryService {
         });
         quantities.forEach((variantId, quantity) -> {
             ProductVariant variant = variants.get(variantId);
-            variant.setStock(variant.getStock() - quantity);
+            stockLedger.post(variant, -quantity, StockMovement.Type.REACTIVATION, StockLedger.Context.forOrder(order));
             productVariantRepository.save(variant);
         });
         if (order.getCoupon() != null) {
             couponService.reapplyUsage(order.getCoupon());
         }
         order.setStockReleased(false);
-        if (stockService != null) stockService.recordSale(order);
     }
 
     private Map<UUID, Integer> quantitiesByVariant(Order order) {

@@ -66,8 +66,7 @@ public class OrderService {
     private final FinancialBlockRepository financialBlockRepository;
     private final ShippingQuoteOptionRepository shippingQuoteOptionRepository;
     private final MelhorEnvioProperties melhorEnvioProperties;
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private StockService stockService;
+    private final StockLedger stockLedger;
 
     @Value("${shipping.gateway:simulated}")
     private String shippingGateway;
@@ -78,7 +77,8 @@ public class OrderService {
             CouponRepository couponRepository, ProductVariantRepository productVariantRepository,
             OrderInventoryService orderInventoryService, PaymentRepository paymentRepository,
             FinancialBlockRepository financialBlockRepository, ShippingQuoteOptionRepository shippingQuoteOptionRepository,
-            MelhorEnvioProperties melhorEnvioProperties) {
+            MelhorEnvioProperties melhorEnvioProperties, StockLedger stockLedger) {
+        this.stockLedger = stockLedger;
         this.deliveryService = deliveryService;
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
@@ -101,7 +101,7 @@ public class OrderService {
             ShippingQuoteOptionRepository shippingQuoteOptionRepository, MelhorEnvioProperties melhorEnvioProperties) {
         this(deliveryService, orderRepository, cartRepository, addressRepository, couponService, couponRepository,
                 productVariantRepository, orderInventoryService, paymentRepository, null,
-                shippingQuoteOptionRepository, melhorEnvioProperties);
+                shippingQuoteOptionRepository, melhorEnvioProperties, null);
     }
 
     public record AddressData(
@@ -364,7 +364,8 @@ public class OrderService {
 
         // 5. Persistir
         Order savedOrder = orderRepository.save(order);
-        if (stockService != null) stockService.recordSale(savedOrder);
+        // A baixa (setStock) acontece acima; o livro registra logo após o save, na mesma transação.
+        stockLedger.recordSale(savedOrder);
         log.info("order.checkout_complete orderId={} userId={} total={} shipping={}",
                 savedOrder.getId(), user.getId(), savedOrder.getTotal(), savedOrder.getShippingCost());
 

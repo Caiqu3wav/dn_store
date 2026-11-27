@@ -89,8 +89,10 @@ public class ProductController {
 
     @GetMapping("/{id}/variants")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<ProductVariant>> getVariants(@PathVariable UUID id) {
-        return ResponseEntity.ok(productVariantRepository.findByProductId(id));
+    public ResponseEntity<List<ProductResponse.VariantResponse>> getVariants(@PathVariable UUID id) {
+        return ResponseEntity.ok(productVariantRepository.findByProductId(id).stream()
+                .map(ProductResponse.VariantResponse::from)
+                .toList());
     }
 
     /**

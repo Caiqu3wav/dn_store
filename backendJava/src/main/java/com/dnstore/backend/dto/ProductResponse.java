@@ -73,7 +73,7 @@ public record ProductResponse(
             boolean active,
             String sku,
             LocalDateTime createdAt) {
-        private static VariantResponse from(ProductVariant variant) {
+        public static VariantResponse from(ProductVariant variant) {
             return new VariantResponse(
                     variant.getId(),
                     variant.getSize(),

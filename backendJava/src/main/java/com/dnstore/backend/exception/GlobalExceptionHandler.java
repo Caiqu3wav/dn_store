@@ -56,6 +56,14 @@ public class GlobalExceptionHandler {
                         request.getRequestURI()));
     }
 
+    @ExceptionHandler(StockConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleStockConflict(StockConflictException exception,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiErrorResponse.of(HttpStatus.CONFLICT, exception.getMessage(), request.getRequestURI(),
+                        exception.getDetails()));
+    }
+
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ApiErrorResponse> handleConflict(ConflictException exception, HttpServletRequest request) {
         return response(HttpStatus.CONFLICT, exception.getMessage(), request);
